@@ -254,18 +254,35 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .acct-need{margin:0;padding:9px 11px;border-radius:8px;background:var(--paper);border:2px dashed var(--ink);font:700 13px/1.35 var(--font-ui)}
 .acct-google{gap:10px}
 .acct-google img{width:18px;height:18px}
-.pv{display:grid;grid-template-columns:minmax(0,350px) minmax(0,330px);gap:clamp(20px,3vw,40px);align-items:center;max-width:740px;width:100%}
-.pv-l{display:grid;gap:clamp(22px,4vh,38px)}
-.pv-rec{display:grid;gap:8px}
-.pv-rec .lab{font:800 12px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
-.pv-rec .v{font:800 clamp(34px,5vw,50px)/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
-.pv-rec .v.s::after{content:' s';font-size:.5em;letter-spacing:0;opacity:.55}
-.pv-board{padding:16px;display:grid;gap:12px;border-width:2.5px;border-radius:14px;box-shadow:5px 5px 0 var(--ink)}
-.pv-bh{display:flex;justify-content:space-between;align-items:baseline;font:italic 900 22px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
-.pv-bh span{font:800 11px/1 var(--font-ui);letter-spacing:.08em;color:var(--muted);font-style:normal}
-.pv-me{margin:0;font:800 12.5px/1 var(--font-num);color:var(--muted)} .pv-me:empty{display:none}
-.pv-board .board li{padding:8px 10px}
-@media (max-width:760px){.pv{grid-template-columns:1fr}}
+/* Fiche d'un niveau : classement en verre dépoli à gauche, gros bouton Jouer en bas à droite */
+#ui.pvmode .veil{opacity:.45}
+.pv-l{display:grid;gap:clamp(18px,3.4vh,30px);width:min(400px,100%)}
+.pv-glass{display:grid;gap:4px;padding:14px;border-radius:18px;background:rgba(255,255,255,.52);border:1.5px solid rgba(255,255,255,.85);
+  box-shadow:0 18px 50px rgba(17,17,17,.14),inset 0 1px 0 rgba(255,255,255,.9);-webkit-backdrop-filter:blur(16px) saturate(1.2);backdrop-filter:blur(16px) saturate(1.2)}
+.pv-bh{display:flex;justify-content:space-between;align-items:baseline;padding:4px 6px 10px;font:italic 900 21px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
+.pv-bh .sub{font:800 10.5px/1 var(--font-ui);font-style:normal;letter-spacing:.12em;color:var(--muted)}
+.pv-list .board{gap:2px}
+.pv-list .board li{border:0;border-radius:10px;padding:9px 10px;background:transparent;grid-template-columns:30px 1fr auto;transition:background .2s}
+.pv-list .board li:nth-child(odd){background:rgba(255,255,255,.42)}
+.pv-list .board li .rk{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:rgba(17,17,17,.07);color:var(--ink);font-size:12px}
+.pv-list .board li:nth-child(1) .rk{background:var(--red);color:#fff}
+.pv-list .board li:nth-child(2) .rk,.pv-list .board li:nth-child(3) .rk{background:var(--ink);color:#fff}
+.pv-list .board li.me{background:rgba(240,68,58,.14);box-shadow:inset 3px 0 0 var(--red)}
+.pv-list .acct-empty{padding:8px 6px;margin:0}
+.pv-mine{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding:12px 12px 10px;border-top:1.5px solid rgba(17,17,17,.1)}
+.pv-mine span{font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.pv-mine b{font:800 22px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.pv-mine b.s::after{content:' s';font-size:.55em;opacity:.55}
+#pvBoard + .pv-mine{margin-top:8px}
+#pvBoard[hidden] + .pv-mine{margin-top:0;border-top:0}
+.pv-play{position:absolute;right:max(16px,env(safe-area-inset-right,0px),6vw);bottom:calc(8vh + env(safe-area-inset-bottom,0px));
+  display:flex;align-items:center;gap:22px;padding:0 26px 0 34px;height:84px;border:3px solid var(--ink);border-radius:16px;background:var(--red);color:#fff;cursor:pointer;
+  font:italic 900 34px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em;box-shadow:7px 7px 0 var(--ink);transition:transform .18s var(--ease-pop),box-shadow .18s var(--ease-pop),background .2s}
+.pv-play svg{width:30px;height:30px;transition:transform .25s var(--ease-pop)}
+.pv-play:hover,.pv-play:focus-visible{transform:translate(-3px,-3px);box-shadow:10px 10px 0 var(--ink);background:var(--red-deep);outline:none}
+.pv-play:hover svg,.pv-play:focus-visible svg{transform:translateX(4px) scale(1.1)}
+.pv-play:active{transform:translate(3px,3px);box-shadow:3px 3px 0 var(--ink);transition-duration:.06s}
+@media (max-width:760px){.pv-play{position:static;margin-top:20px;width:min(400px,100%);justify-content:space-between}}
 #acct{z-index:50;animation:acctFade .22s ease-out both}
 #acct .acct-card{animation:acctIn .42s var(--ease-pop) both}
 @keyframes acctFade{from{background:rgba(17,17,17,0)}}
@@ -421,21 +438,20 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     </div>
   </section>
   <section id="scrLevel" class="screen" aria-label="Niveau">
-    <div class="pv">
-      <div class="pv-l">
-        <header class="lv-head stag" style="--i:0">
-          <button id="bBackLv" class="back" aria-label="Retour aux niveaux"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-          <h2 id="pvTitle">Niveau 01</h2>
-        </header>
-        <div class="pv-rec stag" style="--i:1"><span class="lab">Ton record</span><span id="pvRec" class="v">—</span></div>
-        <button id="bPlay" class="mbtn primary stag" style="--i:2"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg></span><span class="tx">Jouer</span></button>
-      </div>
-      <div id="pvBoard" class="pv-board card stag" style="--i:3" hidden>
-        <div class="pv-bh">Classement<span>Top 10</span></div>
-        <div id="pvList" class="fb-l"></div>
-        <p id="pvMe" class="pv-me"></p>
+    <div class="pv-l">
+      <header class="lv-head stag" style="--i:0">
+        <button id="bBackLv" class="back" aria-label="Retour aux niveaux"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <h2 id="pvTitle">Niveau 01</h2>
+      </header>
+      <div class="pv-glass stag" style="--i:1">
+        <div id="pvBoard" hidden>
+          <div class="pv-bh"><span>Classement</span><span class="sub">Top 10</span></div>
+          <div id="pvList" class="pv-list"></div>
+        </div>
+        <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b></div>
       </div>
     </div>
+    <button id="bPlay" class="pv-play stag" style="--i:2"><span>Jouer</span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg></button>
   </section>
 </div>
 
@@ -3292,6 +3308,7 @@ function screenItems() {
 function focusScreen() { const it = screenItems(); const k = UI.screen !== 'title' ? 1 : 0; if (it[k]) it[k].focus({ preventScroll: true }); }
 function showScreen(name, back) {
   UI.screen = name;
+  uiEl.classList.toggle('pvmode', name === 'level');
   for (const k in scr) {
     const el = scr[k], on = k === name;
     if (on) {
@@ -3454,18 +3471,14 @@ function openLevel(n) {
   wipe(() => { loadMap('level' + n); setupPreview(n); show(); });
 }
 async function pvBoard(n) {
-  const card = $('pvBoard'), list = $('pvList'), me = $('pvMe');
+  const card = $('pvBoard'), list = $('pvList');
   card.hidden = !(ACCT.on && boardOK(n));
   if (card.hidden) return;
-  list.textContent = '…'; me.textContent = '';
+  list.textContent = '…';
   try {
     const rows = await acctTop(n, 10);
     if (!PV || PV.n !== n) return;
     boardList(rows, list);
-    if (ACCT.user && !rows.some(r => r.uid === ACCT.user.uid)) {
-      const s = await ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(ACCT.user.uid).get();
-      if (s.exists && PV && PV.n === n) me.textContent = 'Toi : ' + fmtT(s.data().ms) + ' s';
-    }
   } catch (e) { list.textContent = 'Classement indisponible.'; }
 }
 $('bBackLv').addEventListener('click', () => { if (!UI.busy) showScreen('levels', true); });
