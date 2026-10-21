@@ -276,6 +276,13 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .acct-me{display:flex;align-items:center;gap:12px}
 .acct-me div{display:grid;gap:4px} .acct-me b{font:900 20px/1 var(--font-display)} .acct-me span{font-size:12.5px;color:var(--muted)}
 .acct-row{display:flex;gap:10px} .acct-row .ed-btn{flex:1}
+.acct-sec{display:flex;justify-content:space-between;align-items:baseline;margin-top:4px;font:800 11.5px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.acct-cnt{font:800 12px/1 var(--font-num);letter-spacing:0;text-transform:none;color:var(--ink)}
+.acct-recs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.acct-recs div{display:grid;gap:5px;padding:7px 8px;border:2px solid var(--lock-bg2);border-radius:8px}
+.acct-recs .n{font:italic 900 14px/1 var(--font-display);color:var(--muted)}
+.acct-recs .t{font:800 11.5px/1 var(--font-num);font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
+.acct-recs .ok{border-color:var(--ink)} .acct-recs .ok .n{color:var(--red)} .acct-recs .ok .t{color:var(--ink)}
 .acct-lv{display:flex;flex-wrap:wrap;gap:6px}
 .acct-empty{margin:4px 0;color:var(--muted);font-size:13px}
 .board{list-style:none;margin:0;padding:0;display:grid;gap:4px}
@@ -4742,11 +4749,21 @@ function acctRender() {
     }); });
     c.appendChild(f);
   } else if (v === 'me') {
+    c.appendChild(mkEl('h2', null, 'Mon compte'));
     const h = mkEl('div', 'acct-me'), av = mkEl('span', 'av', (ACCT.pseudo || ' ')[0].toUpperCase()), nm = mkEl('div');
-    nm.append(mkEl('b', null, ACCT.pseudo || 'Sans pseudo'), mkEl('span', null, ACCT.user ? (ACCT.user.email || '') : ''));
+    nm.append(mkEl('b', null, ACCT.pseudo || 'Sans pseudo'), mkEl('span', null, 'Connecté avec ' + (ACCT.user ? (ACCT.user.email || 'Google') : '')));
     h.append(av, nm); c.appendChild(h);
-    const done = Object.keys(records).filter(k => records[k] && boardOK(+k)).length;
-    c.appendChild(mkEl('p', 'acct-p', `${done} niveau${done > 1 ? 'x' : ''} terminé${done > 1 ? 's' : ''} · tes records sont gardés sur ton compte.`));
+    // Tes records, niveau par niveau (ce qui est gardé sur le compte)
+    const lv = Object.keys(BUILTIN).map(Number).sort((x, y) => x - y), done = lv.filter(k => records[k]).length;
+    const head = mkEl('div', 'acct-sec'); head.append(mkEl('span', null, 'Tes records'), mkEl('span', 'acct-cnt', done + ' / ' + lv.length + ' niveaux'));
+    c.appendChild(head);
+    const grid = mkEl('div', 'acct-recs');
+    for (const k of lv) {
+      const cell = mkEl('div', records[k] ? 'ok' : '');
+      cell.append(mkEl('span', 'n', String(k).padStart(2, '0')), mkEl('span', 't', records[k] ? fmtT(records[k]) + ' s' : '—'));
+      grid.appendChild(cell);
+    }
+    c.appendChild(grid);
     const row = mkEl('div', 'acct-row'), ch = mkEl('button', 'ed-btn', 'Changer de pseudo'), out = mkEl('button', 'ed-btn danger', 'Se déconnecter');
     ch.addEventListener('click', () => { ACCT.view = 'pseudo'; acctRender(); });
     out.addEventListener('click', () => acctDo(async () => { await ACCT.auth.signOut(); records = {}; saveRecords(); buildLevelGrid(); ACCT.view = 'login'; acctRender(); }));
