@@ -398,7 +398,6 @@ input[type=range]{width:100%;accent-color:var(--ink)}
         <h2>Éditeur</h2>
       </header>
       <div id="edGrid" class="grid"></div>
-      <p class="ed-note stag" style="--i:3">Choisis un niveau à construire ou à modifier (les niveaux 1 à 3 s'ouvrent dans leur version d'origine). Rien n'est enregistré sans le bouton « Enregistrer ». L'éditeur se pilote à la souris et au clavier.</p>
     </div>
   </section>
   <section id="scrLevels" class="screen" aria-label="Niveaux">
@@ -4569,6 +4568,9 @@ const acctEl = $('acct'), acctCard = acctEl.querySelector('.acct-card');
 const acctAllowed = () => !!FIREBASE_CONFIG && !/(^|\.)claude\.ai$|claudeusercontent|anthropic/.test(location.hostname);
 const boardOK = n => !!BUILTIN[n] && !CUSTOM[n];             // seulement les niveaux officiels, non modifiés
 const PSEUDO_RE = /^[A-Za-z0-9_.-]{3,16}$/;
+// L'éditeur n'est ouvert qu'à l'auteur du jeu (adresse vérifiée : Google, ou e-mail confirmé)
+const EDITOR_ADMIN = 'alexandre.tricot16@gmail.com';
+const isAdmin = () => !!(ACCT.user && ACCT.user.emailVerified && (ACCT.user.email || '').toLowerCase() === EDITOR_ADMIN);
 function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
 async function acctInit() {
   if (!acctAllowed()) return;
@@ -4576,7 +4578,7 @@ async function acctInit() {
     for (const f of ['app', 'auth', 'firestore']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${FB_VER}/firebase-${f}-compat.js`);
     firebase.initializeApp(FIREBASE_CONFIG);
     ACCT.auth = firebase.auth(); ACCT.db = firebase.firestore(); ACCT.on = true;
-    $('bAcct').hidden = false; $('bBoard').hidden = false;
+    $('bAcct').hidden = false; $('bBoard').hidden = false; $('bEditor').hidden = true;
     ACCT.auth.getRedirectResult().catch(e => acctMsg(e));
     ACCT.auth.onAuthStateChanged(u => acctUser(u));
   } catch (e) { ACCT.on = false; }
@@ -4704,6 +4706,7 @@ function acctRender() {
   b.querySelector('.av b').textContent = ACCT.pseudo ? ACCT.pseudo[0].toUpperCase() : '';
   b.querySelector('.nm').textContent = ACCT.user ? (ACCT.pseudo || 'Choisir un pseudo') : 'Se connecter';
   b.classList.toggle('in', !!ACCT.user);
+  if (ACCT.on) $('bEditor').hidden = !isAdmin();
   if (acctEl.hidden) return;
   const c = acctCard; c.textContent = '';
   const x = mkEl('button', 'acct-x', '×'); x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', acctClose); c.appendChild(x);
@@ -4753,17 +4756,12 @@ function acctRender() {
     const h = mkEl('div', 'acct-me'), av = mkEl('span', 'av', (ACCT.pseudo || ' ')[0].toUpperCase()), nm = mkEl('div');
     nm.append(mkEl('b', null, ACCT.pseudo || 'Sans pseudo'), mkEl('span', null, 'Connecté avec ' + (ACCT.user ? (ACCT.user.email || 'Google') : '')));
     h.append(av, nm); c.appendChild(h);
-    // Tes records, niveau par niveau (ce qui est gardé sur le compte)
-    const lv = Object.keys(BUILTIN).map(Number).sort((x, y) => x - y), done = lv.filter(k => records[k]).length;
-    const head = mkEl('div', 'acct-sec'); head.append(mkEl('span', null, 'Tes records'), mkEl('span', 'acct-cnt', done + ' / ' + lv.length + ' niveaux'));
-    c.appendChild(head);
-    const grid = mkEl('div', 'acct-recs');
-    for (const k of lv) {
-      const cell = mkEl('div', records[k] ? 'ok' : '');
-      cell.append(mkEl('span', 'n', String(k).padStart(2, '0')), mkEl('span', 't', records[k] ? fmtT(records[k]) + ' s' : '—'));
-      grid.appendChild(cell);
+    if (ACCT.user && !ACCT.user.emailVerified && ACCT.user.email) {
+      // Adresse pas encore confirmée (compte e-mail) : un lien de confirmation par e-mail
+      const vb = mkEl('button', 'ed-btn', 'Confirmer mon adresse e-mail');
+      vb.addEventListener('click', () => acctDo(async () => { await ACCT.user.sendEmailVerification(); acctMsg('E-mail envoyé : clique sur le lien reçu, puis recharge la page.', true); }));
+      c.appendChild(vb);
     }
-    c.appendChild(grid);
     const row = mkEl('div', 'acct-row'), ch = mkEl('button', 'ed-btn', 'Changer de pseudo'), out = mkEl('button', 'ed-btn danger', 'Se déconnecter');
     ch.addEventListener('click', () => { ACCT.view = 'pseudo'; acctRender(); });
     out.addEventListener('click', () => acctDo(async () => { await ACCT.auth.signOut(); records = {}; saveRecords(); buildLevelGrid(); ACCT.view = 'login'; acctRender(); }));
