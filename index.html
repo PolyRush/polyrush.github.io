@@ -254,7 +254,18 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .acct-need{margin:0;padding:9px 11px;border-radius:8px;background:var(--paper);border:2px dashed var(--ink);font:700 13px/1.35 var(--font-ui)}
 .acct-google{gap:10px}
 .acct-google img{width:18px;height:18px}
-.board-btn{margin-left:auto}
+.pv{display:grid;grid-template-columns:minmax(0,350px) minmax(0,330px);gap:clamp(20px,3vw,40px);align-items:center;max-width:740px;width:100%}
+.pv-l{display:grid;gap:clamp(22px,4vh,38px)}
+.pv-rec{display:grid;gap:8px}
+.pv-rec .lab{font:800 12px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.pv-rec .v{font:800 clamp(34px,5vw,50px)/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.03em}
+.pv-rec .v.s::after{content:' s';font-size:.5em;letter-spacing:0;opacity:.55}
+.pv-board{padding:16px;display:grid;gap:12px;border-width:2.5px;border-radius:14px;box-shadow:5px 5px 0 var(--ink)}
+.pv-bh{display:flex;justify-content:space-between;align-items:baseline;font:italic 900 22px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
+.pv-bh span{font:800 11px/1 var(--font-ui);letter-spacing:.08em;color:var(--muted);font-style:normal}
+.pv-me{margin:0;font:800 12.5px/1 var(--font-num);color:var(--muted)} .pv-me:empty{display:none}
+.pv-board .board li{padding:8px 10px}
+@media (max-width:760px){.pv{grid-template-columns:1fr}}
 #acct{z-index:50;animation:acctFade .22s ease-out both}
 #acct .acct-card{animation:acctIn .42s var(--ease-pop) both}
 @keyframes acctFade{from{background:rgba(17,17,17,0)}}
@@ -405,9 +416,25 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       <header class="lv-head stag" style="--i:0">
         <button id="bBack" class="back" aria-label="Retour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <h2>Niveaux</h2>
-        <button id="bBoard" class="ed-btn board-btn" hidden>Classement</button>
       </header>
       <div id="lvGrid" class="grid"></div>
+    </div>
+  </section>
+  <section id="scrLevel" class="screen" aria-label="Niveau">
+    <div class="pv">
+      <div class="pv-l">
+        <header class="lv-head stag" style="--i:0">
+          <button id="bBackLv" class="back" aria-label="Retour aux niveaux"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+          <h2 id="pvTitle">Niveau 01</h2>
+        </header>
+        <div class="pv-rec stag" style="--i:1"><span class="lab">Ton record</span><span id="pvRec" class="v">—</span></div>
+        <button id="bPlay" class="mbtn primary stag" style="--i:2"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg></span><span class="tx">Jouer</span></button>
+      </div>
+      <div id="pvBoard" class="pv-board card stag" style="--i:3" hidden>
+        <div class="pv-bh">Classement<span>Top 10</span></div>
+        <div id="pvList" class="fb-l"></div>
+        <p id="pvMe" class="pv-me"></p>
+      </div>
     </div>
   </section>
 </div>
@@ -1987,7 +2014,9 @@ function buildCustom(n, data) {
 const RAMP = { day: [150, 205, 255], cave: [0, 0, 0, 150, 205, 255] };
 function setRamp(v) { toonRamp.image = { data: new Uint8Array(v), width: v.length, height: 1 }; toonRamp.needsUpdate = true; }
 const _ax = new THREE.Vector3(), _ay = new THREE.Vector3(), _up = new THREE.Vector3(0, 0, -1), _cn = new THREE.Vector3();
+let curEnv = null;
 function setEnv(env) {
+  curEnv = env;
   const cave = !!env;
   setRamp(cave ? RAMP.cave : RAMP.day);
   scene.background.set(cave ? 0xf8f8f8 : 0xeef1f4);
@@ -3110,7 +3139,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'Escape') {
     if (!menu.hidden) { openMenu(false); if (UI.mode === 'menu') focusScreen(); return; }
-    if (UI.mode === 'menu') { if (UI.screen !== 'title') showScreen('title', true); return; }
+    if (UI.mode === 'menu') { if (UI.screen === 'level') showScreen('levels', true); else if (UI.screen !== 'title') showScreen('title', true); return; }
     if (!fly) openMenu(true);
     return;
   }
@@ -3224,7 +3253,7 @@ const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let records = {};
 try { records = JSON.parse(localStorage.getItem('polyrush.records') || '{}') || {}; } catch (e) { records = {}; }
 const saveRecords = () => { try { localStorage.setItem('polyrush.records', JSON.stringify(records)); } catch (e) {} };
-const uiEl = $('ui'), scr = { title: $('scrTitle'), levels: $('scrLevels'), editor: $('scrEditor') }, wipeEl = $('wipe');
+const uiEl = $('ui'), scr = { title: $('scrTitle'), levels: $('scrLevels'), editor: $('scrEditor'), level: $('scrLevel') }, wipeEl = $('wipe');
 const hudEl = $('hud'), timerEl = $('timer'), tMain = $('tMain');
 const finishEl = $('finish'), finTime = $('finTime'), finDelta = $('finDelta'), finRec = $('finRec'), winflash = $('winflash');
 const ICON_PLAY = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
@@ -3246,7 +3275,7 @@ function buildLevelGrid() {
     if (getBuilder(i) && (i === 1 || records[i - 1])) {
       b.className = 'tile open'; b.setAttribute('aria-label', 'Niveau ' + i);
       b.innerHTML = `<span class="num">${num}</span><span class="corner">${ICON_PLAY}</span><span class="best">${records[i] ? fmtT(records[i]) + ' s' : '—'}</span>`;
-      b.addEventListener('click', () => startLevel(i));
+      b.addEventListener('click', () => openLevel(i));
     } else {
       b.className = 'tile locked'; b.setAttribute('aria-label', `Niveau ${i}, verrouillé`); b.setAttribute('aria-disabled', 'true');
       b.innerHTML = `<span class="num">${num}</span><span class="corner">${ICON_LOCK}</span>`;
@@ -3257,6 +3286,7 @@ function buildLevelGrid() {
   $('prog').textContent = Object.keys(records).filter(k => records[k]).length + '/10';
 }
 function screenItems() {
+  if (UI.screen === 'level') return [$('bBackLv'), $('bPlay')];
   return UI.screen === 'title' ? [...scr.title.querySelectorAll('.mbtn')] : [...scr[UI.screen].querySelectorAll('.back, .tile')];
 }
 function focusScreen() { const it = screenItems(); const k = UI.screen !== 'title' ? 1 : 0; if (it[k]) it[k].focus({ preventScroll: true }); }
@@ -3369,11 +3399,77 @@ function flyCamera(fdt) {
 const _ml = new THREE.Vector3();
 function menuCamera(fdt) {
   menuT += Math.min(fdt, 1 / 20);
+  if (PV && MAP === 'level' + PV.n && (UI.screen !== 'title' || MAP !== 'level1')) { previewCamera(fdt); return; }
   const t = menuT + 8;
   camera.position.set(-15 + 6 * Math.sin(t * 0.061), 19 + 1.2 * Math.sin(t * 0.093), 10 + 4 * Math.sin(t * 0.037));
   _ml.set(10 + 5 * Math.sin(t * 0.05 + 1), 6, camera.position.z - 60);
   camera.lookAt(_ml);
 }
+
+/* ---------- Fiche d'un niveau : le niveau en fond, le classement à côté, « Jouer » ---------- */
+let PV = null;
+const _pc = new THREE.Vector3(), _pt = new THREE.Vector3(), _pr = new THREE.Vector3(), _pq = new THREE.Quaternion(), _pm = new THREE.Matrix4();
+function setupPreview(n) {
+  // Cadrage : derrière le départ et en hauteur, le regard vers l'arrivée (on voit le perso et le début du parcours)
+  const f = solids.find(b => b.finish);
+  const S = new THREE.Vector3(SPAWN.x, SPAWN.y, SPAWN.z);
+  const F = f ? new THREE.Vector3(f.c.x, f.c.y + f.h.y, f.c.z) : S.clone().add(new THREE.Vector3(-Math.sin(SPAWN.yaw || 0), 0, -Math.cos(SPAWN.yaw || 0)).multiplyScalar(40));
+  const dir = new THREE.Vector3(F.x - S.x, 0, F.z - S.z);
+  if (dir.lengthSq() < 1) dir.set(-Math.sin(SPAWN.yaw || 0), 0, -Math.cos(SPAWN.yaw || 0));
+  dir.normalize();
+  PV = { n, S, F, dir, t: 0, snap: true };
+}
+function previewCamera(fdt) {
+  PV.t += Math.min(fdt, 1 / 20);
+  const { S, F, dir } = PV, side = new THREE.Vector3(-dir.z, 0, dir.x);
+  const sway = Math.sin(PV.t * 0.11) * 3;
+  _pc.copy(S).addScaledVector(dir, -15).addScaledVector(side, 7 + sway); _pc.y = S.y + 11 + Math.sin(PV.t * 0.17) * 0.8;
+  const E = curEnv;                                         // la caméra reste dans la salle
+  if (E) { _pc.x = clamp(_pc.x, E.x0 + 3, E.x1 - 3); _pc.z = clamp(_pc.z, E.z0 + 3, E.z1 - 3); _pc.y = Math.min(_pc.y, E.y1 - 10); }
+  // Rien entre le perso et la caméra : si un bloc gêne, on se rapproche (comme la caméra du jeu)
+  {
+    const ox = S.x, oy = S.y + 4, oz = S.z, dx = _pc.x - ox, dy = _pc.y - oy, dz = _pc.z - oz, L = Math.hypot(dx, dy, dz);
+    let hit = L;
+    for (const B of solids) { if (B.noCam) continue; const t = rayBox(ox, oy, oz, dx / L, dy / L, dz / L, B, hit); if (t !== null && t < hit) hit = t; }
+    if (hit < L) { const k = Math.max(3, hit - 1.2) / L; _pc.set(ox + dx * k, oy + dy * k, oz + dz * k); }
+  }
+  // On regarde devant le départ, vers l'arrivée ; décalé à gauche pour que le niveau soit à droite de la fiche
+  const ahead = Math.min(S.distanceTo(F) * 0.45, 26);
+  _pt.copy(S).addScaledVector(dir, ahead); _pt.y = S.y + (F.y - S.y) * 0.3;
+  _pr.subVectors(_pt, _pc).normalize().cross(camera.up).normalize();
+  _pt.addScaledVector(_pr, -_pc.distanceTo(_pt) * 0.32);
+  _pm.lookAt(_pc, _pt, camera.up); _pq.setFromRotationMatrix(_pm);
+  const k = PV.snap ? 1 : 1 - Math.exp(-fdt * 3);
+  PV.snap = false;
+  camera.position.lerp(_pc, k); camera.quaternion.slerp(_pq, k);
+}
+function openLevel(n) {
+  if (UI.busy || !getBuilder(n)) return;
+  const show = () => {
+    $('pvTitle').textContent = 'Niveau ' + String(n).padStart(2, '0');
+    const rv = $('pvRec'); rv.textContent = records[n] ? fmtT(records[n]) : '—'; rv.classList.toggle('s', !!records[n]);
+    pvBoard(n); showScreen('level');
+  };
+  if (MAP === 'level' + n && PV && PV.n === n) { show(); return; }
+  wipe(() => { loadMap('level' + n); setupPreview(n); show(); });
+}
+async function pvBoard(n) {
+  const card = $('pvBoard'), list = $('pvList'), me = $('pvMe');
+  card.hidden = !(ACCT.on && boardOK(n));
+  if (card.hidden) return;
+  list.textContent = '…'; me.textContent = '';
+  try {
+    const rows = await acctTop(n, 10);
+    if (!PV || PV.n !== n) return;
+    boardList(rows, list);
+    if (ACCT.user && !rows.some(r => r.uid === ACCT.user.uid)) {
+      const s = await ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(ACCT.user.uid).get();
+      if (s.exists && PV && PV.n === n) me.textContent = 'Toi : ' + fmtT(s.data().ms) + ' s';
+    }
+  } catch (e) { list.textContent = 'Classement indisponible.'; }
+}
+$('bBackLv').addEventListener('click', () => { if (!UI.busy) showScreen('levels', true); });
+$('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
 
 function resetRun() {
   finToken++; pendingFinish = false;
@@ -4578,7 +4674,7 @@ async function acctInit() {
     for (const f of ['app', 'auth', 'firestore']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${FB_VER}/firebase-${f}-compat.js`);
     firebase.initializeApp(FIREBASE_CONFIG);
     ACCT.auth = firebase.auth(); ACCT.db = firebase.firestore(); ACCT.on = true;
-    $('bAcct').hidden = false; $('bBoard').hidden = false; $('bEditor').hidden = true;
+    $('bAcct').hidden = false; $('bEditor').hidden = true;
     ACCT.auth.getRedirectResult().catch(e => acctMsg(e));
     ACCT.auth.onAuthStateChanged(u => acctUser(u));
   } catch (e) { ACCT.on = false; }
@@ -4802,7 +4898,6 @@ acctEl.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Es
 acctEl.addEventListener('keyup', e => e.stopPropagation());
 acctEl.addEventListener('mousedown', e => { if (e.target === acctEl) acctClose(); });
 $('bAcct').addEventListener('click', () => acctOpen());
-$('bBoard').addEventListener('click', () => { ACCT.boardLv = Math.max(1, Math.min(...Object.keys(BUILTIN).map(Number).filter(k => !records[k]), Object.keys(BUILTIN).length)); acctOpen('board'); });
 
 slEl.hidden = true;
 buildLevelGrid(); buildEditorGrid();
