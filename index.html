@@ -240,6 +240,16 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:2px solid var(--ink);border-radius:8px;overflow:hidden}
 .seg button{font:800 12px/1 var(--font-ui);padding:9px 4px;border:0;border-left:2px solid var(--ink);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
 .seg button:first-child{border-left:0}
+/* Chargement : tant que le jeu et le compte ne sont pas prêts */
+#boot{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:var(--paper);transition:opacity .45s ease,visibility 0s .45s}
+#boot.done{opacity:0;visibility:hidden;pointer-events:none}
+#boot .boot-in{display:grid;justify-items:center;gap:22px}
+#boot .wlogo{font-size:clamp(40px,7vw,64px);transform:none}
+.boot-bar{position:relative;width:min(240px,60vw);height:6px;border-radius:99px;background:var(--lock-bg2);overflow:hidden;border:2px solid var(--ink)}
+.boot-bar i{position:absolute;top:0;bottom:0;left:0;width:38%;border-radius:99px;background:var(--red);animation:bootSlide 1.05s var(--ease-io) infinite}
+@keyframes bootSlide{from{transform:translateX(-105%)}to{transform:translateX(270%)}}
+#boot p{margin:0;font:700 13px/1 var(--font-ui);color:var(--muted);letter-spacing:.02em}
+@media (prefers-reduced-motion:reduce){.boot-bar i{animation-duration:2.4s}}
 /* Comptes */
 .acct-chip{justify-self:start;display:inline-flex;align-items:center;gap:12px;min-width:230px;padding:7px 14px 7px 7px;border:2.5px solid var(--ink);border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .12s,box-shadow .12s;text-align:left}
 .acct-chip:hover,.acct-chip:focus-visible{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);outline:none}
@@ -551,6 +561,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
   </div>
 </div>
 
+<div id="boot" role="status" aria-live="polite"><div class="boot-in"><span class="wlogo">Poly <span>Rush</span></span><div class="boot-bar"><i></i></div><p id="bootTxt">Chargement…</p></div></div>
 <div id="acct" class="ed-overlay" hidden><div class="acct-card card" role="dialog" aria-label="Compte"></div></div>
 <div id="wipe" aria-hidden="true"><i class="w1"></i><i class="w2"><span class="wlogo">Poly <span>Rush</span></span></i></div>
 <button id="gear" class="card" aria-label="Réglages" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
@@ -4681,8 +4692,13 @@ const PSEUDO_RE = /^[A-Za-z0-9_.-]{3,16}$/;
 const EDITOR_ADMIN = 'alexandre.tricot16@gmail.com';
 const isAdmin = () => !!(ACCT.user && ACCT.user.emailVerified && (ACCT.user.email || '').toLowerCase() === EDITOR_ADMIN);
 function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+// Écran de chargement : retiré dès que le compte est connu (ou tout de suite sans comptes ; 10 s au plus)
+const bootEl = $('boot');
+function bootDone() { bootEl.classList.add('done'); }
 async function acctInit() {
-  if (!acctAllowed()) return;
+  if (!acctAllowed()) { bootDone(); return; }
+  $('bootTxt').textContent = 'Connexion au compte…';
+  setTimeout(bootDone, 10000);
   try {
     for (const f of ['app', 'auth', 'firestore']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${FB_VER}/firebase-${f}-compat.js`);
     firebase.initializeApp(FIREBASE_CONFIG);
@@ -4690,7 +4706,7 @@ async function acctInit() {
     $('bAcct').hidden = false; $('bEditor').hidden = true;
     ACCT.auth.getRedirectResult().catch(e => acctMsg(e));
     ACCT.auth.onAuthStateChanged(u => acctUser(u));
-  } catch (e) { ACCT.on = false; }
+  } catch (e) { ACCT.on = false; bootDone(); }
 }
 const ERRS = {
   'auth/invalid-email': 'Adresse e-mail invalide.', 'auth/missing-password': 'Entre un mot de passe.',
@@ -4708,7 +4724,7 @@ function acctMsg(e, ok) {
 }
 async function acctUser(u) {
   ACCT.user = u; ACCT.pseudo = null; ACCT.known = true;
-  if (!u) { acctRender(); if (ACCT.pending) acctOpen('login'); return; }
+  if (!u) { acctRender(); bootDone(); if (ACCT.pending) acctOpen('login'); return; }
   try {
     const ref = ACCT.db.collection('users').doc(u.uid), snap = await ref.get(), d = snap.exists ? snap.data() : {};
     ACCT.pseudo = d.pseudo || null;
@@ -4721,7 +4737,7 @@ async function acctUser(u) {
     if (ACCT.pseudo) acctPushBoard(false);
   } catch (e) { console.warn(e); }
   if (!acctEl.hidden && ACCT.view !== 'board') ACCT.view = ACCT.pseudo ? 'me' : 'pseudo';
-  acctRender();
+  acctRender(); bootDone();
   if (!ACCT.pseudo) acctOpen('pseudo');
   else acctResume();
 }
