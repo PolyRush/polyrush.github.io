@@ -255,7 +255,11 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .acct-google{gap:10px}
 .acct-google img{width:18px;height:18px}
 .board-btn{margin-left:auto}
-#acct{z-index:50}
+#acct{z-index:50;animation:acctFade .22s ease-out both}
+#acct .acct-card{animation:acctIn .42s var(--ease-pop) both}
+@keyframes acctFade{from{background:rgba(17,17,17,0)}}
+@keyframes acctIn{from{opacity:0;transform:translateY(26px) scale(.94)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){#acct,#acct .acct-card{animation:none}}
 .acct-card{position:relative;width:min(380px,100%);display:grid;gap:12px;padding:22px 20px 16px;font-family:var(--font-ui);color:var(--ink)}
 .acct-card.busy{opacity:.7;pointer-events:none}
 .acct-card h2{margin:0 30px 0 0;font:italic 900 24px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
@@ -4675,10 +4679,19 @@ async function setPseudo(p) {
 
 /* Fenêtre du compte : connexion / création, pseudo, profil, classement */
 function acctOpen(view) { ACCT.view = view || (ACCT.user ? (ACCT.pseudo ? 'me' : 'pseudo') : 'login'); acctEl.hidden = false; acctRender(); const f = acctCard.querySelector('input, button.primary'); if (f) setTimeout(() => f.focus(), 30); }
-function acctClose() { acctEl.hidden = true; ACCT.pending = null; if (UI.mode === 'menu') focusScreen(); else canvas.focus(); }
+function acctClose() { acctEl.hidden = true; ACCT.busy = false; acctCard.classList.remove('busy'); ACCT.pending = null; if (UI.mode === 'menu') focusScreen(); else canvas.focus(); }
 function mkEl(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 function field(type, ph, ac) { const i = mkEl('input'); i.type = type; i.placeholder = ph; i.autocomplete = ac; i.spellcheck = false; return i; }
-async function acctDo(fn) { if (ACCT.busy) return; ACCT.busy = true; acctMsg(''); acctCard.classList.add('busy'); try { await fn(); } catch (e) { acctMsg(e); } ACCT.busy = false; acctCard.classList.remove('busy'); }
+// Une action en cours grise la fenêtre ; jamais plus de 15 s (une fenêtre Google fermée peut mettre du temps à être signalée)
+async function acctDo(fn, light) {
+  if (ACCT.busy) return;
+  const tok = ACCT.busy = {}; acctMsg('');
+  if (!light) acctCard.classList.add('busy');
+  const done = () => { if (ACCT.busy === tok) { ACCT.busy = false; acctCard.classList.remove('busy'); } };
+  const t = setTimeout(done, 15000);
+  try { await fn(); } catch (e) { if (ACCT.busy === tok) acctMsg(e); }
+  clearTimeout(t); done();
+}
 function acctRender() {
   const b = $('bAcct');
   b.querySelector('.av b').textContent = ACCT.pseudo ? ACCT.pseudo[0].toUpperCase() : '';
@@ -4708,11 +4721,13 @@ function acctRender() {
     const g = mkEl('button', 'ed-btn acct-google');
     const gi = mkEl('img'); gi.src = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg'; gi.alt = ''; gi.width = gi.height = 18;
     g.append(gi, document.createTextNode('Continuer avec Google'));
-    g.addEventListener('click', () => acctDo(async () => {
+    // Google : la fenêtre reste utilisable pendant que la fenêtre de connexion de Google est ouverte
+    g.addEventListener('click', () => { ACCT.busy = false; acctDo(async () => {
       const prov = new firebase.auth.GoogleAuthProvider();
-      try { await ACCT.auth.signInWithPopup(prov); }
+      acctMsg('Connexion avec Google…', true);
+      try { await ACCT.auth.signInWithPopup(prov); acctMsg(''); }
       catch (e) { if (e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')) await ACCT.auth.signInWithRedirect(prov); else throw e; }
-    }));
+    }, true); });
     c.appendChild(g);
   } else if (v === 'pseudo') {
     c.appendChild(mkEl('h2', null, ACCT.pseudo ? 'Changer de pseudo' : 'Choisis ton pseudo'));
