@@ -241,10 +241,19 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .seg button{font:800 12px/1 var(--font-ui);padding:9px 4px;border:0;border-left:2px solid var(--ink);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
 .seg button:first-child{border-left:0}
 /* Comptes */
-.acct-chip{justify-self:start;display:inline-flex;align-items:center;gap:10px;padding:6px 16px 6px 6px;border:2.5px solid var(--ink);border-radius:999px;background:var(--card);color:var(--ink);font:800 14px/1 var(--font-ui);cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .12s,box-shadow .12s}
-.acct-chip:hover,.acct-chip:focus-visible{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink);outline:none}
-.acct-chip .av,.acct-me .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--lock-bg2);color:var(--ink);font:900 14px/1 var(--font-display);border:2px solid var(--ink)}
-.acct-chip.in .av,.acct-me .av{background:var(--red);color:#fff}
+.acct-chip{justify-self:start;display:inline-flex;align-items:center;gap:12px;min-width:230px;padding:7px 14px 7px 7px;border:2.5px solid var(--ink);border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;box-shadow:4px 4px 0 var(--ink);transition:transform .12s,box-shadow .12s;text-align:left}
+.acct-chip:hover,.acct-chip:focus-visible{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);outline:none}
+.acct-chip .av{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:var(--ink);color:#fff;flex:none}
+.acct-chip .av svg{width:22px;height:22px} .acct-chip .av b{display:none;font:italic 900 19px/1 var(--font-display)}
+.acct-chip.in .av{background:var(--red)} .acct-chip.in .av svg{display:none} .acct-chip.in .av b{display:block}
+.acct-chip .tx{display:grid;gap:4px;flex:1;min-width:0}
+.acct-chip .nm{font:italic 900 16px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acct-chip .sub{font:700 11px/1 var(--font-ui);color:var(--muted)}
+.acct-chip .go{width:18px;height:18px;flex:none;color:var(--muted)}
+.acct-me .av{width:46px;height:46px;border-radius:10px;display:grid;place-items:center;background:var(--red);color:#fff;font:italic 900 20px/1 var(--font-display);border:2px solid var(--ink)}
+.acct-need{margin:0;padding:9px 11px;border-radius:8px;background:var(--paper);border:2px dashed var(--ink);font:700 13px/1.35 var(--font-ui)}
+.acct-google{gap:10px}
+.acct-google img{width:18px;height:18px}
 .board-btn{margin-left:auto}
 #acct{z-index:50}
 .acct-card{position:relative;width:min(380px,100%);display:grid;gap:12px;padding:22px 20px 16px;font-family:var(--font-ui);color:var(--ink)}
@@ -260,7 +269,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .acct-or::before,.acct-or::after{content:"";flex:1;height:2px;background:var(--lock-bg2)}
 .acct-p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
 .acct-msg{margin:0;min-height:16px;font:700 12.5px/1.35 var(--font-ui);color:var(--red-deep)} .acct-msg.ok{color:var(--go)}
-.acct-me{display:flex;align-items:center;gap:12px} .acct-me .av{width:46px;height:46px;font-size:20px}
+.acct-me{display:flex;align-items:center;gap:12px}
 .acct-me div{display:grid;gap:4px} .acct-me b{font:900 20px/1 var(--font-display)} .acct-me span{font-size:12.5px;color:var(--muted)}
 .acct-row{display:flex;gap:10px} .acct-row .ed-btn{flex:1}
 .acct-lv{display:flex;flex-wrap:wrap;gap:6px}
@@ -368,7 +377,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
         <button id="bTrain" class="mbtn stag" style="--i:4"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span><span class="tx">Entraînement</span></button>
         <button id="bEditor" class="mbtn stag" style="--i:5"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="12.5" width="8" height="8"/><rect x="12.5" y="3.5" width="8" height="8"/><path d="M12.5 16.5h8M16.5 12.5v8"/></svg></span><span class="tx">Éditeur</span></button>
       </nav>
-      <button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av">?</span><span class="nm">Se connecter</span></button>
+      <button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5"/></svg><b></b></span><span class="tx"><span class="nm">Se connecter</span><span class="sub">Compte</span></span><svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
   </section>
   <section id="scrEditor" class="screen" aria-label="Éditeur">
@@ -4576,8 +4585,8 @@ function acctMsg(e, ok) {
   el.classList.toggle('ok', !!ok);
 }
 async function acctUser(u) {
-  ACCT.user = u; ACCT.pseudo = null;
-  if (!u) { acctRender(); return; }
+  ACCT.user = u; ACCT.pseudo = null; ACCT.known = true;
+  if (!u) { acctRender(); if (ACCT.pending) acctOpen('login'); return; }
   try {
     const ref = ACCT.db.collection('users').doc(u.uid), snap = await ref.get(), d = snap.exists ? snap.data() : {};
     ACCT.pseudo = d.pseudo || null;
@@ -4592,6 +4601,7 @@ async function acctUser(u) {
   if (!acctEl.hidden && ACCT.view !== 'board') ACCT.view = ACCT.pseudo ? 'me' : 'pseudo';
   acctRender();
   if (!ACCT.pseudo) acctOpen('pseudo');
+  else acctResume();
 }
 // Met au classement les records de ce compte qui battent ce qui y est déjà (force : réécrit le pseudo partout)
 async function acctPushBoard(force) {
@@ -4665,14 +4675,15 @@ async function setPseudo(p) {
 
 /* Fenêtre du compte : connexion / création, pseudo, profil, classement */
 function acctOpen(view) { ACCT.view = view || (ACCT.user ? (ACCT.pseudo ? 'me' : 'pseudo') : 'login'); acctEl.hidden = false; acctRender(); const f = acctCard.querySelector('input, button.primary'); if (f) setTimeout(() => f.focus(), 30); }
-function acctClose() { acctEl.hidden = true; if (UI.mode === 'menu') focusScreen(); else canvas.focus(); }
+function acctClose() { acctEl.hidden = true; ACCT.pending = null; if (UI.mode === 'menu') focusScreen(); else canvas.focus(); }
 function mkEl(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
 function field(type, ph, ac) { const i = mkEl('input'); i.type = type; i.placeholder = ph; i.autocomplete = ac; i.spellcheck = false; return i; }
 async function acctDo(fn) { if (ACCT.busy) return; ACCT.busy = true; acctMsg(''); acctCard.classList.add('busy'); try { await fn(); } catch (e) { acctMsg(e); } ACCT.busy = false; acctCard.classList.remove('busy'); }
 function acctRender() {
   const b = $('bAcct');
-  b.querySelector('.av').textContent = ACCT.pseudo ? ACCT.pseudo[0].toUpperCase() : '?';
+  b.querySelector('.av b').textContent = ACCT.pseudo ? ACCT.pseudo[0].toUpperCase() : '';
   b.querySelector('.nm').textContent = ACCT.user ? (ACCT.pseudo || 'Choisir un pseudo') : 'Se connecter';
+  b.querySelector('.sub').textContent = ACCT.user ? 'Mon compte' : 'E-mail ou Google';
   b.classList.toggle('in', !!ACCT.user);
   if (acctEl.hidden) return;
   const c = acctCard; c.textContent = '';
@@ -4680,6 +4691,7 @@ function acctRender() {
   const v = ACCT.view;
   if (v === 'login') {
     c.appendChild(mkEl('h2', null, 'Compte'));
+    if (ACCT.pending) c.appendChild(mkEl('p', 'acct-need', 'Connecte-toi pour jouer : tes records et ta place au classement sont gardés sur ton compte.'));
     const seg = mkEl('div', 'seg'), t1 = mkEl('button', ACCT.tab === 'in' ? 'on' : '', 'Connexion'), t2 = mkEl('button', ACCT.tab === 'up' ? 'on' : '', 'Créer un compte');
     t1.addEventListener('click', () => { ACCT.tab = 'in'; acctRender(); }); t2.addEventListener('click', () => { ACCT.tab = 'up'; acctRender(); });
     seg.append(t1, t2); c.appendChild(seg);
@@ -4694,7 +4706,9 @@ function acctRender() {
       c.appendChild(fg);
     }
     c.appendChild(mkEl('div', 'acct-or', 'ou'));
-    const g = mkEl('button', 'ed-btn acct-google', 'Continuer avec Google');
+    const g = mkEl('button', 'ed-btn acct-google');
+    const gi = mkEl('img'); gi.src = 'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg'; gi.alt = ''; gi.width = gi.height = 18;
+    g.append(gi, document.createTextNode('Continuer avec Google'));
     g.addEventListener('click', () => acctDo(async () => {
       const prov = new firebase.auth.GoogleAuthProvider();
       try { await ACCT.auth.signInWithPopup(prov); }
@@ -4710,11 +4724,11 @@ function acctRender() {
     f.addEventListener('submit', e => { e.preventDefault(); acctDo(async () => {
       const p = ps.value.trim();
       if (!PSEUDO_RE.test(p)) throw '3 à 16 caractères : lettres, chiffres, _ - . (sans espace).';
-      await setPseudo(p); ACCT.view = 'me'; acctRender(); toast('Pseudo : ' + p, 1300);
+      await setPseudo(p); ACCT.view = 'me'; acctRender(); toast('Pseudo : ' + p, 1300); acctResume();
     }); });
     c.appendChild(f);
   } else if (v === 'me') {
-    const h = mkEl('div', 'acct-me'), av = mkEl('span', 'av', (ACCT.pseudo || '?')[0].toUpperCase()), nm = mkEl('div');
+    const h = mkEl('div', 'acct-me'), av = mkEl('span', 'av', (ACCT.pseudo || ' ')[0].toUpperCase()), nm = mkEl('div');
     nm.append(mkEl('b', null, ACCT.pseudo || 'Sans pseudo'), mkEl('span', null, ACCT.user ? (ACCT.user.email || '') : ''));
     h.append(av, nm); c.appendChild(h);
     const done = Object.keys(records).filter(k => records[k] && boardOK(+k)).length;
@@ -4739,6 +4753,22 @@ function acctRender() {
   }
   c.appendChild(mkEl('p', 'acct-msg'));
 }
+// Jouer demande un compte (sur le site public) : un clic sur Niveaux, Entraînement ou Éditeur ouvre la connexion,
+// puis reprend tout seul une fois connecté avec un pseudo.
+function acctReady() { return ACCT.user && ACCT.pseudo; }
+function acctResume() {
+  if (!ACCT.pending || !acctReady()) return;
+  const id = ACCT.pending; ACCT.pending = null;
+  acctEl.hidden = true;
+  setTimeout(() => $(id).click(), 60);
+}
+for (const id of ['bLevels', 'bTrain', 'bEditor']) $(id).addEventListener('click', e => {
+  if (!ACCT.on || acctReady()) return;
+  e.stopImmediatePropagation(); e.preventDefault();
+  ACCT.pending = id;
+  if (ACCT.known) acctOpen(ACCT.user ? 'pseudo' : 'login');
+  else toast('Connexion…', 900);
+}, true);
 acctEl.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') acctClose(); });
 acctEl.addEventListener('keyup', e => e.stopPropagation());
 acctEl.addEventListener('mousedown', e => { if (e.target === acctEl) acctClose(); });
