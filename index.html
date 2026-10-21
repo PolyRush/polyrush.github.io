@@ -240,6 +240,41 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:2px solid var(--ink);border-radius:8px;overflow:hidden}
 .seg button{font:800 12px/1 var(--font-ui);padding:9px 4px;border:0;border-left:2px solid var(--ink);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
 .seg button:first-child{border-left:0}
+/* Comptes */
+.acct-chip{justify-self:start;display:inline-flex;align-items:center;gap:10px;padding:6px 16px 6px 6px;border:2.5px solid var(--ink);border-radius:999px;background:var(--card);color:var(--ink);font:800 14px/1 var(--font-ui);cursor:pointer;box-shadow:3px 3px 0 var(--ink);transition:transform .12s,box-shadow .12s}
+.acct-chip:hover,.acct-chip:focus-visible{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink);outline:none}
+.acct-chip .av,.acct-me .av{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--lock-bg2);color:var(--ink);font:900 14px/1 var(--font-display);border:2px solid var(--ink)}
+.acct-chip.in .av,.acct-me .av{background:var(--red);color:#fff}
+.board-btn{margin-left:auto}
+#acct{z-index:50}
+.acct-card{position:relative;width:min(380px,100%);display:grid;gap:12px;padding:22px 20px 16px;font-family:var(--font-ui);color:var(--ink)}
+.acct-card.busy{opacity:.7;pointer-events:none}
+.acct-card h2{margin:0 30px 0 0;font:italic 900 24px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
+.acct-x{position:absolute;top:10px;right:10px;width:32px;height:32px;border:2px solid var(--ink);border-radius:8px;background:var(--card);font:800 20px/1 var(--font-ui);cursor:pointer;color:var(--ink)}
+.acct-form{display:grid;gap:10px}
+.acct-form input{width:100%;box-sizing:border-box;font:600 15px/1.2 var(--font-ui);padding:11px 12px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);user-select:text;-webkit-user-select:text}
+.acct-form input:focus{outline:3px solid rgba(240,68,58,.35);outline-offset:0}
+.acct-card .ed-btn{width:100%;padding:11px 12px;font-size:14px}
+.acct-link{justify-self:start;background:none;border:0;padding:0;font:700 12.5px/1 var(--font-ui);color:var(--muted);text-decoration:underline;cursor:pointer}
+.acct-or{display:flex;align-items:center;gap:10px;color:var(--muted);font:700 12px/1 var(--font-ui)}
+.acct-or::before,.acct-or::after{content:"";flex:1;height:2px;background:var(--lock-bg2)}
+.acct-p{margin:0;color:var(--muted);font-size:13px;line-height:1.45}
+.acct-msg{margin:0;min-height:16px;font:700 12.5px/1.35 var(--font-ui);color:var(--red-deep)} .acct-msg.ok{color:var(--go)}
+.acct-me{display:flex;align-items:center;gap:12px} .acct-me .av{width:46px;height:46px;font-size:20px}
+.acct-me div{display:grid;gap:4px} .acct-me b{font:900 20px/1 var(--font-display)} .acct-me span{font-size:12.5px;color:var(--muted)}
+.acct-row{display:flex;gap:10px} .acct-row .ed-btn{flex:1}
+.acct-lv{display:flex;flex-wrap:wrap;gap:6px}
+.acct-empty{margin:4px 0;color:var(--muted);font-size:13px}
+.board{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.board li{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:8px;padding:7px 10px;border:2px solid var(--lock-bg2);border-radius:8px;font:700 14px/1 var(--font-ui)}
+.board li .rk{font:800 13px/1 var(--font-num);color:var(--muted)} .board li .tm{font:800 13.5px/1 var(--font-num);font-variant-numeric:tabular-nums}
+.board li .ps{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.board li:first-child .rk{color:var(--red)}
+.board li.me{border-color:var(--ink);background:var(--paper)}
+.fin-board{width:100%;display:grid;gap:8px}
+.fin-board .fb-h{font:800 11.5px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.fin-board .ed-btn{width:100%}
+#finish.show .fin-board{animation:rise .45s var(--ease-out) 1s backwards}
 .marquee{position:fixed;left:0;top:0;z-index:55;pointer-events:none;border:2px dashed var(--red);background:rgba(240,68,58,.08);border-radius:3px}
 .rot-tip{position:fixed;left:0;top:0;z-index:60;pointer-events:none;padding:5px 9px;border:2px solid var(--ink);border-radius:7px;color:#fff;font:800 12px/1 var(--font-num);box-shadow:2px 2px 0 var(--ink);white-space:nowrap}
 #edRoom{grid-auto-flow:row;grid-template-columns:repeat(3,1fr)}
@@ -312,6 +347,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     <div id="finRec" class="rec" hidden>Nouveau record</div>
     <div id="finTime" class="ftime">0,000</div>
     <div id="finDelta" class="delta" hidden></div>
+    <div id="finBoard" class="fin-board" hidden></div>
     <div class="fin-act">
       <button id="finRetry" class="mbtn small primary"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></span><span class="tx">Rejouer</span></button>
       <button id="finQuit" class="mbtn small"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="tx">Quitter</span></button>
@@ -332,6 +368,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
         <button id="bTrain" class="mbtn stag" style="--i:4"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span><span class="tx">Entraînement</span></button>
         <button id="bEditor" class="mbtn stag" style="--i:5"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="12.5" width="8" height="8"/><rect x="12.5" y="3.5" width="8" height="8"/><path d="M12.5 16.5h8M16.5 12.5v8"/></svg></span><span class="tx">Éditeur</span></button>
       </nav>
+      <button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av">?</span><span class="nm">Se connecter</span></button>
     </div>
   </section>
   <section id="scrEditor" class="screen" aria-label="Éditeur">
@@ -349,6 +386,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
       <header class="lv-head stag" style="--i:0">
         <button id="bBack" class="back" aria-label="Retour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
         <h2>Niveaux</h2>
+        <button id="bBoard" class="ed-btn board-btn" hidden>Classement</button>
       </header>
       <div id="lvGrid" class="grid"></div>
     </div>
@@ -451,6 +489,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
   </div>
 </div>
 
+<div id="acct" class="ed-overlay" hidden><div class="acct-card card" role="dialog" aria-label="Compte"></div></div>
 <div id="wipe" aria-hidden="true"><i class="w1"></i><i class="w2"><span class="wlogo">Poly <span>Rush</span></span></i></div>
 <button id="gear" class="card" aria-label="Réglages" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 <div id="menu" class="card" hidden role="dialog" aria-label="Réglages">
@@ -2979,7 +3018,7 @@ function disarmReset() { clearTimeout(resetArmed); resetArmed = 0; resetBtn.clas
 resetBtn.addEventListener('click', () => {
   if (!resetArmed) { resetBtn.classList.add('armed'); resetBtn.textContent = 'Confirmer : tout effacer'; resetArmed = setTimeout(disarmReset, 3500); return; }
   clearTimeout(resetArmed); resetArmed = 0;
-  records = {}; saveRecords(); buildLevelGrid();
+  records = {}; saveRecords(); buildLevelGrid(); acctReset();
   resetBtn.classList.remove('armed'); resetBtn.textContent = 'Scores effacés';
   setTimeout(() => { if (!resetArmed) resetBtn.textContent = 'Réinitialiser les scores'; }, 1600);
 });
@@ -3340,6 +3379,7 @@ function onFinish() {
   tMain.textContent = fmtT(ms); timerEl.className = 'card done';
   winflash.classList.remove('go'); void winflash.offsetWidth; winflash.classList.add('go');
   if (W && W.onFinish) W.onFinish();
+  acctFinish(LEVEL, ms, better);
   if (shiftlock) setShiftlock(false);
   endRmb(); unlockPointer();
   const tok = ++finToken;
@@ -4492,12 +4532,226 @@ function frame(now) {
   if (pendingFinish) { pendingFinish = false; onFinish(); }
   render(acc / DT, fdt);
 }
+/* ---------- Comptes (Firebase) ----------
+   Connexion par e-mail ou par Google, pseudo unique, records retrouvés sur tous les appareils et classement
+   par niveau officiel. Actif seulement sur le site public (pas dans l'aperçu claude.ai) et si la config est remplie. */
+const FIREBASE_CONFIG = {        // projet Firebase « polyrush-f6359 » (ces valeurs sont publiques par nature)
+  apiKey: 'AIzaSyA3iUHExtHX2eeJqMEPcx_dHcHIn6BEZgI',
+  authDomain: 'polyrush-f6359.firebaseapp.com',
+  projectId: 'polyrush-f6359',
+  storageBucket: 'polyrush-f6359.firebasestorage.app',
+  messagingSenderId: '927651607682',
+  appId: '1:927651607682:web:facfe1470c0f8cfbe9b09b'
+};
+const FB_VER = '10.12.2';
+const ACCT = { on: false, auth: null, db: null, user: null, pseudo: null, view: 'login', tab: 'in', boardLv: 1, busy: false };
+const acctEl = $('acct'), acctCard = acctEl.querySelector('.acct-card');
+const acctAllowed = () => !!FIREBASE_CONFIG && !/(^|\.)claude\.ai$|claudeusercontent|anthropic/.test(location.hostname);
+const boardOK = n => !!BUILTIN[n] && !CUSTOM[n];             // seulement les niveaux officiels, non modifiés
+const PSEUDO_RE = /^[A-Za-z0-9_.-]{3,16}$/;
+function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
+async function acctInit() {
+  if (!acctAllowed()) return;
+  try {
+    for (const f of ['app', 'auth', 'firestore']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${FB_VER}/firebase-${f}-compat.js`);
+    firebase.initializeApp(FIREBASE_CONFIG);
+    ACCT.auth = firebase.auth(); ACCT.db = firebase.firestore(); ACCT.on = true;
+    $('bAcct').hidden = false; $('bBoard').hidden = false;
+    ACCT.auth.getRedirectResult().catch(e => acctMsg(e));
+    ACCT.auth.onAuthStateChanged(u => acctUser(u));
+  } catch (e) { ACCT.on = false; }
+}
+const ERRS = {
+  'auth/invalid-email': 'Adresse e-mail invalide.', 'auth/missing-password': 'Entre un mot de passe.',
+  'auth/weak-password': 'Mot de passe trop court (6 caractères minimum).', 'auth/email-already-in-use': 'Un compte existe déjà avec cette adresse.',
+  'auth/invalid-credential': 'E-mail ou mot de passe incorrect.', 'auth/wrong-password': 'E-mail ou mot de passe incorrect.', 'auth/user-not-found': 'Aucun compte avec cette adresse.',
+  'auth/too-many-requests': 'Trop d’essais : réessaie dans quelques minutes.', 'auth/network-request-failed': 'Pas de connexion au serveur.',
+  'auth/popup-closed-by-user': 'Fenêtre Google fermée.', 'auth/cancelled-popup-request': '', 'auth/unauthorized-domain': 'Ce site n’est pas autorisé dans Firebase (domaines autorisés).',
+  'pseudo-pris': 'Ce pseudo est déjà pris.', 'permission-denied': 'Accès refusé par le serveur.'
+};
+function acctMsg(e, ok) {
+  const el = acctCard.querySelector('.acct-msg'); if (!el) return;
+  const code = e && (e.code || e.message) || '';
+  el.textContent = typeof e === 'string' ? e : (ERRS[code] ?? ('Erreur : ' + code));
+  el.classList.toggle('ok', !!ok);
+}
+async function acctUser(u) {
+  ACCT.user = u; ACCT.pseudo = null;
+  if (!u) { acctRender(); return; }
+  try {
+    const ref = ACCT.db.collection('users').doc(u.uid), snap = await ref.get(), d = snap.exists ? snap.data() : {};
+    ACCT.pseudo = d.pseudo || null;
+    // Records : le meilleur temps de chaque côté (ce navigateur et le compte)
+    const cloud = d.records || {}; let push = !snap.exists;
+    for (const k in cloud) { const v = Math.round(+cloud[k]); if (v > 0 && (!records[k] || v < records[k])) records[k] = v; }
+    for (const k in records) if (!cloud[k] || records[k] < cloud[k]) push = true;
+    saveRecords(); buildLevelGrid();
+    if (push) await ref.set({ records: { ...records }, maj: Date.now() }, { merge: true });
+    if (ACCT.pseudo) acctPushBoard(false);
+  } catch (e) { console.warn(e); }
+  if (!acctEl.hidden && ACCT.view !== 'board') ACCT.view = ACCT.pseudo ? 'me' : 'pseudo';
+  acctRender();
+  if (!ACCT.pseudo) acctOpen('pseudo');
+}
+// Met au classement les records de ce compte qui battent ce qui y est déjà (force : réécrit le pseudo partout)
+async function acctPushBoard(force) {
+  if (!ACCT.user || !ACCT.pseudo) return;
+  const uid = ACCT.user.uid;
+  await Promise.all(Object.keys(records).filter(k => boardOK(+k) && records[k] > 0).map(async k => {
+    const ref = ACCT.db.collection('scores').doc(k).collection('runs').doc(uid);
+    try { const s = await ref.get(); if (force || !s.exists || records[k] < s.data().ms) await ref.set({ pseudo: ACCT.pseudo, ms: Math.round(records[k]), at: Date.now() }); } catch (e) { console.warn(e); }
+  }));
+}
+async function acctSubmit(n, ms) {
+  if (!ACCT.user) return;
+  const uid = ACCT.user.uid;
+  try { await ACCT.db.collection('users').doc(uid).set({ records: { [n]: ms }, maj: Date.now() }, { merge: true }); } catch (e) { console.warn(e); }
+  if (ACCT.pseudo && boardOK(n)) {
+    try { await ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(uid).set({ pseudo: ACCT.pseudo, ms: Math.round(ms), at: Date.now() }); } catch (e) { console.warn(e); }
+  }
+}
+async function acctTop(n, k = 10) {
+  const snap = await ACCT.db.collection('scores').doc(String(n)).collection('runs').orderBy('ms').limit(k).get();
+  return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+}
+function boardList(rows, el) {
+  el.textContent = '';
+  if (!rows.length) { const p = document.createElement('p'); p.className = 'acct-empty'; p.textContent = 'Personne n’a encore de temps ici.'; el.appendChild(p); return; }
+  const ol = document.createElement('ol'); ol.className = 'board';
+  rows.forEach((r, i) => {
+    const li = document.createElement('li'); if (ACCT.user && r.uid === ACCT.user.uid) li.className = 'me';
+    const a = document.createElement('span'); a.className = 'rk'; a.textContent = i + 1;
+    const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
+    const c = document.createElement('span'); c.className = 'tm'; c.textContent = fmtT(r.ms) + ' s';
+    li.append(a, b, c); ol.appendChild(li);
+  });
+  el.appendChild(ol);
+}
+// Écran de fin : on enregistre le temps, puis on montre le haut du classement du niveau
+async function acctFinish(n, ms, better) {
+  const fb = $('finBoard');
+  fb.hidden = true;
+  if (!ACCT.on || ED.test || !boardOK(n)) return;
+  fb.hidden = false; fb.textContent = '';
+  const h = document.createElement('div'); h.className = 'fb-h'; h.textContent = 'Classement'; fb.appendChild(h);
+  const box = document.createElement('div'); box.className = 'fb-l'; box.textContent = '…'; fb.appendChild(box);
+  if (!ACCT.user) {
+    const b = document.createElement('button'); b.className = 'ed-btn'; b.textContent = 'Se connecter pour y apparaître';
+    b.addEventListener('click', () => acctOpen('login')); fb.appendChild(b);
+  }
+  try { if (better) await acctSubmit(n, ms); boardList(await acctTop(n, 5), box); }
+  catch (e) { box.textContent = 'Classement indisponible.'; }
+}
+function acctReset() {
+  if (!ACCT.user) return;
+  const uid = ACCT.user.uid;
+  ACCT.db.collection('users').doc(uid).update({ records: {}, maj: Date.now() }).catch(() => {});
+  for (const k of Object.keys(BUILTIN)) ACCT.db.collection('scores').doc(k).collection('runs').doc(uid).delete().catch(() => {});
+}
+async function setPseudo(p) {
+  const low = p.toLowerCase(), uid = ACCT.user.uid, db = ACCT.db;
+  const pref = db.collection('pseudos').doc(low), uref = db.collection('users').doc(uid);
+  await db.runTransaction(async tx => {
+    const ps = await tx.get(pref), us = await tx.get(uref);
+    if (ps.exists && ps.data().uid !== uid) throw { code: 'pseudo-pris' };
+    const old = us.exists ? us.data().pseudo : null;
+    if (old && old.toLowerCase() !== low) tx.delete(db.collection('pseudos').doc(old.toLowerCase()));
+    if (!ps.exists) tx.set(pref, { uid, pseudo: p });
+    tx.set(uref, { pseudo: p }, { merge: true });
+  });
+  ACCT.pseudo = p;
+  acctPushBoard(true);
+}
+
+/* Fenêtre du compte : connexion / création, pseudo, profil, classement */
+function acctOpen(view) { ACCT.view = view || (ACCT.user ? (ACCT.pseudo ? 'me' : 'pseudo') : 'login'); acctEl.hidden = false; acctRender(); const f = acctCard.querySelector('input, button.primary'); if (f) setTimeout(() => f.focus(), 30); }
+function acctClose() { acctEl.hidden = true; if (UI.mode === 'menu') focusScreen(); else canvas.focus(); }
+function mkEl(tag, cls, txt) { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; }
+function field(type, ph, ac) { const i = mkEl('input'); i.type = type; i.placeholder = ph; i.autocomplete = ac; i.spellcheck = false; return i; }
+async function acctDo(fn) { if (ACCT.busy) return; ACCT.busy = true; acctMsg(''); acctCard.classList.add('busy'); try { await fn(); } catch (e) { acctMsg(e); } ACCT.busy = false; acctCard.classList.remove('busy'); }
+function acctRender() {
+  const b = $('bAcct');
+  b.querySelector('.av').textContent = ACCT.pseudo ? ACCT.pseudo[0].toUpperCase() : '?';
+  b.querySelector('.nm').textContent = ACCT.user ? (ACCT.pseudo || 'Choisir un pseudo') : 'Se connecter';
+  b.classList.toggle('in', !!ACCT.user);
+  if (acctEl.hidden) return;
+  const c = acctCard; c.textContent = '';
+  const x = mkEl('button', 'acct-x', '×'); x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', acctClose); c.appendChild(x);
+  const v = ACCT.view;
+  if (v === 'login') {
+    c.appendChild(mkEl('h2', null, 'Compte'));
+    const seg = mkEl('div', 'seg'), t1 = mkEl('button', ACCT.tab === 'in' ? 'on' : '', 'Connexion'), t2 = mkEl('button', ACCT.tab === 'up' ? 'on' : '', 'Créer un compte');
+    t1.addEventListener('click', () => { ACCT.tab = 'in'; acctRender(); }); t2.addEventListener('click', () => { ACCT.tab = 'up'; acctRender(); });
+    seg.append(t1, t2); c.appendChild(seg);
+    const f = mkEl('form', 'acct-form'), em = field('email', 'Adresse e-mail', 'email'), pw = field('password', ACCT.tab === 'up' ? 'Mot de passe (6 caractères min.)' : 'Mot de passe', ACCT.tab === 'up' ? 'new-password' : 'current-password');
+    const go = mkEl('button', 'ed-btn primary', ACCT.tab === 'up' ? 'Créer mon compte' : 'Se connecter'); go.type = 'submit';
+    f.append(em, pw, go);
+    f.addEventListener('submit', e => { e.preventDefault(); acctDo(() => ACCT.tab === 'up' ? ACCT.auth.createUserWithEmailAndPassword(em.value.trim(), pw.value) : ACCT.auth.signInWithEmailAndPassword(em.value.trim(), pw.value)); });
+    c.appendChild(f);
+    if (ACCT.tab === 'in') {
+      const fg = mkEl('button', 'acct-link', 'Mot de passe oublié ?');
+      fg.addEventListener('click', () => acctDo(async () => { if (!em.value.trim()) throw 'Entre d’abord ton adresse e-mail.'; await ACCT.auth.sendPasswordResetEmail(em.value.trim()); acctMsg('E-mail de réinitialisation envoyé.', true); }));
+      c.appendChild(fg);
+    }
+    c.appendChild(mkEl('div', 'acct-or', 'ou'));
+    const g = mkEl('button', 'ed-btn acct-google', 'Continuer avec Google');
+    g.addEventListener('click', () => acctDo(async () => {
+      const prov = new firebase.auth.GoogleAuthProvider();
+      try { await ACCT.auth.signInWithPopup(prov); }
+      catch (e) { if (e && (e.code === 'auth/popup-blocked' || e.code === 'auth/operation-not-supported-in-this-environment')) await ACCT.auth.signInWithRedirect(prov); else throw e; }
+    }));
+    c.appendChild(g);
+  } else if (v === 'pseudo') {
+    c.appendChild(mkEl('h2', null, ACCT.pseudo ? 'Changer de pseudo' : 'Choisis ton pseudo'));
+    c.appendChild(mkEl('p', 'acct-p', 'C’est le nom affiché au classement. 3 à 16 caractères : lettres, chiffres, _ - .'));
+    const f = mkEl('form', 'acct-form'), ps = field('text', 'Pseudo', 'nickname'); ps.maxLength = 16; ps.value = ACCT.pseudo || '';
+    const go = mkEl('button', 'ed-btn primary', 'Valider'); go.type = 'submit';
+    f.append(ps, go);
+    f.addEventListener('submit', e => { e.preventDefault(); acctDo(async () => {
+      const p = ps.value.trim();
+      if (!PSEUDO_RE.test(p)) throw '3 à 16 caractères : lettres, chiffres, _ - . (sans espace).';
+      await setPseudo(p); ACCT.view = 'me'; acctRender(); toast('Pseudo : ' + p, 1300);
+    }); });
+    c.appendChild(f);
+  } else if (v === 'me') {
+    const h = mkEl('div', 'acct-me'), av = mkEl('span', 'av', (ACCT.pseudo || '?')[0].toUpperCase()), nm = mkEl('div');
+    nm.append(mkEl('b', null, ACCT.pseudo || 'Sans pseudo'), mkEl('span', null, ACCT.user ? (ACCT.user.email || '') : ''));
+    h.append(av, nm); c.appendChild(h);
+    const done = Object.keys(records).filter(k => records[k] && boardOK(+k)).length;
+    c.appendChild(mkEl('p', 'acct-p', `${done} niveau${done > 1 ? 'x' : ''} terminé${done > 1 ? 's' : ''} · tes records sont gardés sur ton compte.`));
+    const row = mkEl('div', 'acct-row'), ch = mkEl('button', 'ed-btn', 'Changer de pseudo'), out = mkEl('button', 'ed-btn danger', 'Se déconnecter');
+    ch.addEventListener('click', () => { ACCT.view = 'pseudo'; acctRender(); });
+    out.addEventListener('click', () => acctDo(async () => { await ACCT.auth.signOut(); records = {}; saveRecords(); buildLevelGrid(); ACCT.view = 'login'; acctRender(); }));
+    row.append(ch, out); c.appendChild(row);
+  } else if (v === 'board') {
+    c.appendChild(mkEl('h2', null, 'Classement'));
+    const chips = mkEl('div', 'chips acct-lv');
+    for (const k of Object.keys(BUILTIN).map(Number).sort((a, b) => a - b)) {
+      const bt = mkEl('button', k === ACCT.boardLv ? 'on' : '', String(k));
+      bt.addEventListener('click', () => { ACCT.boardLv = k; acctRender(); });
+      chips.appendChild(bt);
+    }
+    c.appendChild(chips);
+    const box = mkEl('div', 'fb-l', '…'); c.appendChild(box);
+    const lv = ACCT.boardLv;
+    acctTop(lv, 10).then(r => { if (ACCT.view === 'board' && ACCT.boardLv === lv) boardList(r, box); }).catch(() => { box.textContent = 'Classement indisponible.'; });
+    if (!ACCT.user) { const b = mkEl('button', 'ed-btn', 'Se connecter pour y apparaître'); b.addEventListener('click', () => acctOpen('login')); c.appendChild(b); }
+  }
+  c.appendChild(mkEl('p', 'acct-msg'));
+}
+acctEl.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Escape') acctClose(); });
+acctEl.addEventListener('keyup', e => e.stopPropagation());
+acctEl.addEventListener('mousedown', e => { if (e.target === acctEl) acctClose(); });
+$('bAcct').addEventListener('click', () => acctOpen());
+$('bBoard').addEventListener('click', () => { ACCT.boardLv = Math.max(1, Math.min(...Object.keys(BUILTIN).map(Number).filter(k => !records[k]), Object.keys(BUILTIN).length)); acctOpen('board'); });
+
 slEl.hidden = true;
 buildLevelGrid(); buildEditorGrid();
 loadMap('level1');
 resetRun();
 showScreen('title');
 requestAnimationFrame(frame);
+acctInit();
 })();
 </script>
 

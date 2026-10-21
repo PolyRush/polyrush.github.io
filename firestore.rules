@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+    match /pseudos/{name} {
+      allow read: if true;
+      allow create: if request.auth != null && request.resource.data.uid == request.auth.uid
+        && name == request.resource.data.pseudo.lower() && name.matches('^[a-z0-9_.-]{3,16}$');
+      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+    }
+    match /scores/{level}/runs/{uid} {
+      allow read: if true;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.ms is int && request.resource.data.ms >= 1000 && request.resource.data.ms < 3600000
+        && request.resource.data.pseudo is string && request.resource.data.pseudo.size() <= 16;
+      allow delete: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
