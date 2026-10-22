@@ -10,6 +10,11 @@ service cloud.firestore {
         && name == request.resource.data.pseudo.lower() && name.matches('^[a-z0-9_.-]{3,16}$');
       allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
     }
+    match /ghosts/{level}/runs/{uid} {
+      allow read: if request.auth != null && request.auth.token.email == 'alexandre.tricot16@gmail.com' && request.auth.token.email_verified == true;
+      allow create, update: if request.auth != null && request.auth.uid == uid
+        && request.resource.data.d is string && request.resource.data.d.size() < 900000;
+    }
     match /scores/{level}/runs/{uid} {
       allow read: if true;
       allow create, update: if request.auth != null && request.auth.uid == uid

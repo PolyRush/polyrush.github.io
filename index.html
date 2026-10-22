@@ -240,6 +240,17 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;border:2px solid var(--ink);border-radius:8px;overflow:hidden}
 .seg button{font:800 12px/1 var(--font-ui);padding:9px 4px;border:0;border-left:2px solid var(--ink);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
 .seg button:first-child{border-left:0}
+/* Replay d'un fantôme (admin) */
+#repBar{position:fixed;left:50%;bottom:calc(5vh + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:24;display:flex;align-items:center;gap:12px;padding:10px 16px;font:800 13px/1 var(--font-ui);white-space:nowrap}
+#repBar i{width:10px;height:10px;border-radius:50%;background:var(--red);animation:repBlink 1s steps(2) infinite}
+#repBar b{font:italic 900 16px/1 var(--font-display);text-transform:uppercase}
+#repBar #repHint{color:var(--muted);font-weight:700;font-size:12px}
+#repBar.end i{animation:none;background:var(--ink)}
+@keyframes repBlink{50%{opacity:.2}}
+.board li .rp{width:26px;height:26px;margin-left:8px;border:2px solid var(--ink);border-radius:7px;background:var(--card);color:var(--ink);cursor:pointer;display:grid;place-items:center;padding:0}
+.board li .rp svg{width:11px;height:11px}
+.board li .rp:hover,.board li .rp:focus-visible{background:var(--ink);color:#fff;outline:none}
+.pv-list .board li.adm{grid-template-columns:30px 1fr auto auto}
 /* Chargement : tant que le jeu et le compte ne sont pas prêts */
 #boot{position:fixed;inset:0;z-index:70;display:grid;place-items:center;background:var(--paper);transition:opacity .45s ease,visibility 0s .45s}
 #boot.done{opacity:0;visibility:hidden;pointer-events:none}
@@ -409,6 +420,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 <button id="backBtn" class="card" hidden aria-label="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Menu</button>
 <div id="hud" hidden><div id="timer" class="card ready" role="timer" aria-live="off"><i></i><span id="tMain">0,000</span></div></div>
 <div id="winflash"></div>
+<div id="repBar" class="card" hidden><i></i><b>Replay</b><span id="repWho"></span><span id="repHint">Échap : quitter · R : revoir</span></div>
 <div id="finish" hidden>
   <div class="fin-card" role="dialog" aria-label="Arrivée">
     <div id="finRec" class="rec" hidden>Nouveau record</div>
@@ -3048,9 +3060,11 @@ function render(a, fdt) {
     blob.visible = true; blob.position.set(cx, gy + 0.03, cz); blob.scale.setScalar(k); blob.material.opacity = 0.22 * k;
   } else blob.visible = false;
   if (UI.mode === 'menu') menuCamera(fdt);
+  else if (UI.mode === 'replay') { camera.position.copy(RP.cp); camera.quaternion.copy(RP.cq); ch.root.visible = !RP.fp; }
   else {
     updateCamera(fdt, cx, y, cz);
     if (fly) flyCamera(fdt);
+    if (UI.mode === 'play' && run.state === 'run') recSample(worldTicks - 1 + a, cx, cy, cz, qa);
   }
   // Caméra à l'intérieur d'un bloc (en shiftlock, le décalage d'épaule peut l'y mettre) :
   // un bloc ne se voit que de l'extérieur, on le masque.
@@ -3065,7 +3079,7 @@ function render(a, fdt) {
   if (sunFollow) { sun.position.set(cx + 40, y + 80, cz + 25); sun.target.position.set(cx, y, cz); }
   timeU.value = tw;
   if (W) for (const f of W.ticks) f(fdt, tw);
-  updateTimer(a);
+  if (UI.mode === 'replay') replayHud(); else updateTimer(a);
   renderer.render(scene, camera);
 }
 
@@ -3177,11 +3191,13 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape') {
     if (!menu.hidden) { openMenu(false); if (UI.mode === 'menu') focusScreen(); return; }
     if (UI.mode === 'menu') { if (UI.screen === 'level') showScreen('levels', true); else if (UI.screen !== 'title') showScreen('title', true); return; }
+    if (UI.mode === 'replay') { stopReplay(); return; }
     if (!fly) openMenu(true);
     return;
   }
   if (!menu.hidden) return;
   if (UI.mode === 'menu') { menuNav(e); return; }
+  if (UI.mode === 'replay') { if (e.code === 'KeyR' && !e.repeat) replayRestart(); return; }
   if (fly) { if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); return; }
   const k = KEYMAP[e.code];
   if (k) { input[k] = 1; e.preventDefault(); return; }
@@ -3410,6 +3426,7 @@ function startTraining() {
 }
 function quitToMenu() {
   if (UI.busy || UI.mode === 'menu') return;
+  if (UI.mode === 'replay') { stopReplay(); return; }
   if (ED.test) { backToEditor(); return; }
   wipe(() => {
     exitEditor();
@@ -3442,6 +3459,86 @@ function menuCamera(fdt) {
   camera.position.set(-15 + 6 * Math.sin(t * 0.061), 19 + 1.2 * Math.sin(t * 0.093), 10 + 4 * Math.sin(t * 0.037));
   _ml.set(10 + 5 * Math.sin(t * 0.05 + 1), 6, camera.position.z - 60);
   camera.lookAt(_ml);
+}
+
+/* ---------- Fantômes : enregistrement de chaque course, replay pour l'admin ----------
+   Pendant une course, ~30 fois par seconde : position et orientation du perso, position et orientation de la caméra
+   (exactement ce que le joueur voyait), et l'état utile à l'animation. Un nouveau record envoie la course au serveur ;
+   l'admin la rejoue à l'identique, plateformes mobiles comprises (elles suivent le même temps). */
+let REC = null, RP = { on: false };
+const R100 = v => Math.round(v * 100), R1e4 = v => Math.round(v * 10000);
+function recSample(tk, x, y, z, q, force) {
+  if (!REC) REC = { t0: run.start - 1, rows: [], last: -1e9 };
+  if (!force && tk - REC.last < 3.9) return;
+  REC.last = tk;
+  const c = camera.position, cq = camera.quaternion;
+  const fl = (P.grounded ? 1 : 0) | (P.touch ? 2 : 0) | (P.climb ? 4 : 0) | (P.coyote > 0 ? 8 : 0) | (P.jumpT > 0 ? 16 : 0) | (cam.fp ? 32 : 0);
+  REC.rows.push([Math.round((tk - REC.t0) * 10), R100(x), R100(y), R100(z), R1e4(q.w), R1e4(q.x), R1e4(q.y), R1e4(q.z),
+    R100(c.x), R100(c.y), R100(c.z), R1e4(cq.w), R1e4(cq.x), R1e4(cq.y), R1e4(cq.z), fl, Math.round(P.moveSpeed * 10), Math.round(P.vy * 10)].join(','));
+  if (REC.rows.length > 30000) REC.rows.length = 30000;     // plafond : ~16 min de course
+}
+async function uploadGhost(n, ms) {
+  const d = REC.rows.join(';');
+  if (d.length > 900000) return;                           // trop long pour un document
+  try { await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(ACCT.user.uid).set({ pseudo: ACCT.pseudo || '', ms, t0: REC.t0, d, v: 1, at: Date.now() }); }
+  catch (e) { console.warn(e); }
+}
+async function watchGhost(n, uid, pseudo) {
+  if (UI.busy) return;
+  let g;
+  try { const doc = await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(uid).get(); g = doc.exists ? doc.data() : null; }
+  catch (e) { toast('Replay inaccessible (règles Firestore ?)', 1800); return; }
+  if (!g || !g.d) { toast('Pas de replay enregistré pour ce temps', 1600); return; }
+  const s = g.d.split(';').map(r => r.split(',').map(Number));
+  if (s.length < 2) { toast('Replay trop court', 1400); return; }
+  wipe(() => {
+    if (MAP !== 'level' + n) loadMap('level' + n);
+    hideScreens(); UI.mode = 'replay'; restart();
+    RP = { on: true, n, s, i: 0, t: 0, end: s[s.length - 1][0] / 10, t0: g.t0 || 0, who: g.pseudo || pseudo || '?', ms: g.ms, done: false,
+      cp: new THREE.Vector3(), cq: new THREE.Quaternion(), fp: false, touch: true, vy: 0 };
+    replayFrame(0);
+    hudEl.hidden = false; backBtn.hidden = false;
+    $('repWho').textContent = RP.who + ' · ' + fmtT(RP.ms) + ' s'; $('repBar').classList.remove('end'); $('repBar').hidden = false;
+  });
+}
+const _ra = new THREE.Quaternion(), _rb = new THREE.Quaternion();
+function replayFrame(fdt) {
+  if (!RP.on) return;
+  RP.t = Math.min(RP.t + fdt / DT, RP.end);
+  const s = RP.s;
+  while (RP.i < s.length - 2 && s[RP.i + 1][0] / 10 <= RP.t) RP.i++;
+  const A = s[RP.i], B = s[Math.min(RP.i + 1, s.length - 1)], ta = A[0] / 10, tb = B[0] / 10;
+  const k = tb > ta ? clamp((RP.t - ta) / (tb - ta), 0, 1) : 0, L = (j, d) => (A[j] + (B[j] - A[j]) * k) / d;
+  P.x = P.px = L(1, 100); P.y = P.py = L(2, 100); P.z = P.pz = L(3, 100);
+  _ra.set(A[5], A[6], A[7], A[4]).normalize(); _rb.set(B[5], B[6], B[7], B[4]).normalize(); _ra.slerp(_rb, k);
+  P.q = { w: _ra.w, x: _ra.x, y: _ra.y, z: _ra.z }; P.pq = { ...P.q };
+  RP.cp.set(L(8, 100), L(9, 100), L(10, 100));
+  _ra.set(A[12], A[13], A[14], A[11]).normalize(); _rb.set(B[12], B[13], B[14], B[11]).normalize(); RP.cq.copy(_ra.slerp(_rb, k));
+  const F = (k < 0.5 ? A : B)[15];
+  const touch = !!(F & 2);
+  if (touch && !RP.touch) { P.landed = true; P.landVy = RP.vy; }   // atterrissage : la même petite flexion
+  RP.touch = touch; RP.vy = L(17, 10);
+  P.grounded = !!(F & 1); P.touch = touch; P.climb = !!(F & 4); P.coyote = F & 8 ? 0.05 : 0; P.jumpT = F & 16 ? 0.05 : 0; RP.fp = !!(F & 32);
+  P.moveSpeed = L(16, 10); P.vy = RP.vy; P.lastVy = RP.vy;
+  // Le monde au même instant : plateformes mobiles à la même position
+  const T = RP.t0 + RP.t;
+  worldTicks = Math.floor(T);
+  for (const b of kin) { b.move(b, T * DT); b.pc.x = b.c.x; b.pc.y = b.c.y; b.pc.z = b.c.z; b.pyaw = b.yaw; b.cs = Math.cos(b.yaw); b.sn = Math.sin(b.yaw); }
+  if (RP.t >= RP.end && !RP.done) { RP.done = true; $('repBar').classList.add('end'); }
+}
+function replayHud() { const ms = RP.t * DT * 1000; tMain.textContent = fmtT(RP.done ? RP.ms : ms); timerEl.className = RP.done ? 'card done' : 'card run'; }
+function replayRestart() { if (!RP.on) return; RP.t = 0; RP.i = 0; RP.done = false; RP.touch = true; $('repBar').classList.remove('end'); }
+function stopReplay() {
+  if (UI.busy) return;
+  const n = RP.n;
+  wipe(() => {
+    RP = { on: false }; $('repBar').hidden = true;
+    hideGameHud(); UI.mode = 'menu'; ch.root.visible = true;
+    restart(); clearInput();
+    uiEl.classList.add('on');
+    if (PV && PV.n === n) PV.snap = true; else setupPreview(n);
+    openLevelUI(n);
+  });
 }
 
 /* ---------- Fiche d'un niveau : le niveau en fond, le classement à côté, « Jouer » ---------- */
@@ -3481,13 +3578,14 @@ function previewCamera(fdt) {
   PV.snap = false;
   camera.position.lerp(_pc, k); camera.quaternion.slerp(_pq, k);
 }
+function openLevelUI(n) {
+  $('pvTitle').textContent = 'Niveau ' + String(n).padStart(2, '0'); $('pvNum').textContent = String(n).padStart(2, '0');
+  const rv = $('pvRec'); rv.textContent = records[n] ? fmtT(records[n]) : '—'; rv.classList.toggle('s', !!records[n]);
+  pvBoard(n); showScreen('level');
+}
 function openLevel(n) {
   if (UI.busy || !getBuilder(n)) return;
-  const show = () => {
-    $('pvTitle').textContent = 'Niveau ' + String(n).padStart(2, '0'); $('pvNum').textContent = String(n).padStart(2, '0');
-    const rv = $('pvRec'); rv.textContent = records[n] ? fmtT(records[n]) : '—'; rv.classList.toggle('s', !!records[n]);
-    pvBoard(n); showScreen('level');
-  };
+  const show = () => openLevelUI(n);
   if (MAP === 'level' + n && PV && PV.n === n) { show(); return; }
   wipe(() => { loadMap('level' + n); setupPreview(n); show(); });
 }
@@ -3499,14 +3597,14 @@ async function pvBoard(n) {
   try {
     const rows = await acctTop(n, 10);
     if (!PV || PV.n !== n) return;
-    boardList(rows, list);
+    boardList(rows, list, n);
   } catch (e) { list.textContent = 'Classement indisponible.'; }
 }
 $('bBackLv').addEventListener('click', () => { if (!UI.busy) showScreen('levels', true); });
 $('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
 
 function resetRun() {
-  finToken++; pendingFinish = false;
+  finToken++; pendingFinish = false; REC = null;
   finishEl.hidden = true; finishEl.classList.remove('show');
   run.state = LEVEL && UI.mode === 'play' ? 'ready' : 'off';
   run.shown = ''; timerEl.className = 'card ready'; tMain.textContent = fmtT(0);
@@ -3522,6 +3620,7 @@ function updateTimer(a) {
 }
 function onFinish() {
   const ms = Math.round((run.end - run.start) * DT * 1000);
+  if (REC) { qa.set(P.q.x, P.q.y, P.q.z, P.q.w); recSample(run.end, P.x, P.y, P.z, qa, true); }
   // Un essai depuis l'éditeur ne compte pas comme record.
   const prev = ED.test ? 0 : records[LEVEL], better = !ED.test && (!prev || ms < prev);
   if (better) { records[LEVEL] = ms; saveRecords(); }
@@ -4676,6 +4775,7 @@ function frame(now) {
   acc += fdt;
   let n = 0;
   if (UI.mode === 'edit') acc = 0;
+  if (UI.mode === 'replay') { replayFrame(fdt); acc = 0; }
   while (acc >= DT && n < 30) { step(); acc -= DT; n++; }
   if (n >= 30) acc = 0;
   if (pendingFinish) { pendingFinish = false; onFinish(); }
@@ -4707,7 +4807,6 @@ const bootEl = $('boot');
 function bootDone() { bootEl.classList.add('done'); }
 async function acctInit() {
   if (!acctAllowed()) { bootDone(); return; }
-  $('bootTxt').textContent = 'Connexion au compte…';
   setTimeout(bootDone, 10000);
   try {
     for (const f of ['app', 'auth', 'firestore']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${FB_VER}/firebase-${f}-compat.js`);
@@ -4746,10 +4845,11 @@ async function acctUser(u) {
     if (push) await ref.set({ records: { ...records }, maj: Date.now() }, { merge: true });
     if (ACCT.pseudo) acctPushBoard(false);
   } catch (e) { console.warn(e); }
-  if (!acctEl.hidden && ACCT.view !== 'board') ACCT.view = ACCT.pseudo ? 'me' : 'pseudo';
+  // Connecté avec un pseudo : la fenêtre de connexion se ferme d'elle-même (le profil ne s'ouvre que sur demande)
+  const wasLogin = !acctEl.hidden && ACCT.view === 'login';
   acctRender(); bootDone();
   if (!ACCT.pseudo) acctOpen('pseudo');
-  else acctResume();
+  else { if (wasLogin && !ACCT.pending) acctClose(); acctResume(); }
 }
 // Met au classement les records de ce compte qui battent ce qui y est déjà (force : réécrit le pseudo partout)
 async function acctPushBoard(force) {
@@ -4772,7 +4872,7 @@ async function acctTop(n, k = 10) {
   const snap = await ACCT.db.collection('scores').doc(String(n)).collection('runs').orderBy('ms').limit(k).get();
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
-function boardList(rows, el) {
+function boardList(rows, el, lv) {
   el.textContent = '';
   if (!rows.length) { const p = document.createElement('p'); p.className = 'acct-empty'; p.textContent = 'Personne n’a encore de temps ici.'; el.appendChild(p); return; }
   const ol = document.createElement('ol'); ol.className = 'board';
@@ -4781,7 +4881,14 @@ function boardList(rows, el) {
     const a = document.createElement('span'); a.className = 'rk'; a.textContent = i + 1;
     const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
     const c = document.createElement('span'); c.className = 'tm'; c.textContent = fmtT(r.ms) + ' s';
-    li.append(a, b, c); ol.appendChild(li);
+    li.append(a, b, c);
+    if (lv && isAdmin()) {                                  // l'admin peut revoir la course de chacun
+      const p = document.createElement('button'); p.className = 'rp'; p.title = 'Voir le replay de ' + (r.pseudo || '?'); p.setAttribute('aria-label', p.title);
+      p.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
+      p.addEventListener('click', () => watchGhost(lv, r.uid, r.pseudo));
+      li.classList.add('adm'); li.appendChild(p);
+    }
+    ol.appendChild(li);
   });
   el.appendChild(ol);
 }
@@ -4797,6 +4904,7 @@ async function acctFinish(n, ms, better) {
     const b = document.createElement('button'); b.className = 'ed-btn'; b.textContent = 'Se connecter pour y apparaître';
     b.addEventListener('click', () => acctOpen('login')); fb.appendChild(b);
   }
+  if (better && ACCT.user && REC && REC.rows.length > 1) uploadGhost(n, ms);
   try { if (better) await acctSubmit(n, ms); boardList(await acctTop(n, 5), box); }
   catch (e) { box.textContent = 'Classement indisponible.'; }
 }
@@ -4883,7 +4991,9 @@ function acctRender() {
     f.addEventListener('submit', e => { e.preventDefault(); acctDo(async () => {
       const p = ps.value.trim();
       if (!PSEUDO_RE.test(p)) throw '3 à 16 caractères : lettres, chiffres, _ - . (sans espace).';
-      await setPseudo(p); ACCT.view = 'me'; acctRender(); toast('Pseudo : ' + p, 1300); acctResume();
+      const first = !ACCT.pseudo;
+      await setPseudo(p); toast('Pseudo : ' + p, 1300);
+      if (first || ACCT.pending) { if (!ACCT.pending) acctClose(); acctResume(); } else { ACCT.view = 'me'; acctRender(); }
     }); });
     c.appendChild(f);
   } else if (v === 'me') {
