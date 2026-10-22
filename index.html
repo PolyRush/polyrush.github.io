@@ -58,7 +58,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 #joy{position:fixed;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:2px solid var(--line);background:rgba(255,255,255,.35);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:var(--key);border:2px solid var(--line)}
 #gear,#menu{z-index:40}
-#toast{z-index:16} #flash{z-index:14}
+#toast{z-index:56} #flash{z-index:14}   /* le message passe au-dessus des menus (et de leur flou) */
 .close + .close{margin-top:-6px}
 .close.danger{background:var(--card);color:var(--red-deep);border-color:var(--red-deep);transition:background .2s,color .2s}
 .close.danger.armed{background:var(--red);color:#fff;border-color:var(--ink)}
@@ -3479,16 +3479,16 @@ function recSample(tk, x, y, z, q, force) {
 }
 async function uploadGhost(n, ms) {
   const d = REC.rows.join(';');
-  if (d.length > 900000) return;                           // trop long pour un document
-  try { await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(ACCT.user.uid).set({ pseudo: ACCT.pseudo || '', ms, t0: REC.t0, d, v: 1, at: Date.now() }); }
-  catch (e) { console.warn(e); }
+  if (d.length > 900000) return false;                     // trop long pour un document
+  try { await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(ACCT.user.uid).set({ pseudo: ACCT.pseudo || '', ms, t0: REC.t0, d, v: 1, at: Date.now() }); return true; }
+  catch (e) { console.warn(e); return false; }
 }
 async function watchGhost(n, uid, pseudo) {
   if (UI.busy) return;
   let g;
   try { const doc = await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(uid).get(); g = doc.exists ? doc.data() : null; }
-  catch (e) { toast('Replay inaccessible (règles Firestore ?)', 1800); return; }
-  if (!g || !g.d) { toast('Pas de replay enregistré pour ce temps', 1600); return; }
+  catch (e) { toast(e && e.code === 'permission-denied' ? 'Replay bloqué : ajoute la règle « ghosts » dans Firestore' : 'Replay inaccessible', 2600); return; }
+  if (!g || !g.d) { toast('Pas de replay pour ce temps', 1800); return; }
   const s = g.d.split(';').map(r => r.split(',').map(Number));
   if (s.length < 2) { toast('Replay trop court', 1400); return; }
   wipe(() => {
@@ -4857,15 +4857,19 @@ async function acctPushBoard(force) {
   const uid = ACCT.user.uid;
   await Promise.all(Object.keys(records).filter(k => boardOK(+k) && records[k] > 0).map(async k => {
     const ref = ACCT.db.collection('scores').doc(k).collection('runs').doc(uid);
-    try { const s = await ref.get(); if (force || !s.exists || records[k] < s.data().ms) await ref.set({ pseudo: ACCT.pseudo, ms: Math.round(records[k]), at: Date.now() }); } catch (e) { console.warn(e); }
+    try {
+      const s = await ref.get();
+      if (!s.exists || records[k] < s.data().ms) await ref.set({ pseudo: ACCT.pseudo, ms: Math.round(records[k]), at: Date.now(), ghost: false });
+      else if (force) await ref.set({ pseudo: ACCT.pseudo }, { merge: true });      // nouveau pseudo : le replay reste
+    } catch (e) { console.warn(e); }
   }));
 }
-async function acctSubmit(n, ms) {
+async function acctSubmit(n, ms, ghost) {
   if (!ACCT.user) return;
   const uid = ACCT.user.uid;
   try { await ACCT.db.collection('users').doc(uid).set({ records: { [n]: ms }, maj: Date.now() }, { merge: true }); } catch (e) { console.warn(e); }
   if (ACCT.pseudo && boardOK(n)) {
-    try { await ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(uid).set({ pseudo: ACCT.pseudo, ms: Math.round(ms), at: Date.now() }); } catch (e) { console.warn(e); }
+    try { await ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(uid).set({ pseudo: ACCT.pseudo, ms: Math.round(ms), at: Date.now(), ghost: !!ghost }); } catch (e) { console.warn(e); }
   }
 }
 async function acctTop(n, k = 10) {
@@ -4882,7 +4886,7 @@ function boardList(rows, el, lv) {
     const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
     const c = document.createElement('span'); c.className = 'tm'; c.textContent = fmtT(r.ms) + ' s';
     li.append(a, b, c);
-    if (lv && isAdmin()) {                                  // l'admin peut revoir la course de chacun
+    if (lv && isAdmin() && r.ghost) {                       // l'admin peut revoir la course de chacun (si elle a un replay)
       const p = document.createElement('button'); p.className = 'rp'; p.title = 'Voir le replay de ' + (r.pseudo || '?'); p.setAttribute('aria-label', p.title);
       p.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
       p.addEventListener('click', () => watchGhost(lv, r.uid, r.pseudo));
@@ -4904,8 +4908,12 @@ async function acctFinish(n, ms, better) {
     const b = document.createElement('button'); b.className = 'ed-btn'; b.textContent = 'Se connecter pour y apparaître';
     b.addEventListener('click', () => acctOpen('login')); fb.appendChild(b);
   }
-  if (better && ACCT.user && REC && REC.rows.length > 1) uploadGhost(n, ms);
-  try { if (better) await acctSubmit(n, ms); boardList(await acctTop(n, 5), box); }
+  try {
+    let gh = false;
+    if (better && ACCT.user && REC && REC.rows.length > 1) gh = await uploadGhost(n, ms);   // d'abord le replay, puis le temps (qui le signale)
+    if (better) await acctSubmit(n, ms, gh);
+    boardList(await acctTop(n, 5), box);
+  }
   catch (e) { box.textContent = 'Classement indisponible.'; }
 }
 function acctReset() {
