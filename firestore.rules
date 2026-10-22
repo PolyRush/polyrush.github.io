@@ -18,7 +18,9 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
     match /ghosts/{level}/runs/{uid} {
-      allow read, delete: if isAdmin();
+      allow read: if isAdmin() || (request.auth != null
+        && get(/databases/$(database)/documents/meta/board).data.get('replays', false) == true);
+      allow delete: if isAdmin();
       allow create, update: if request.auth != null && request.auth.uid == uid
         && request.resource.data.d is string && request.resource.data.d.size() < 900000;
     }

@@ -262,8 +262,12 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 #repEnd.show .rec{animation:recPop .65s var(--ease-pop) .5s backwards}
 #repEnd.show .fin-act{animation:rise .45s var(--ease-out) .8s backwards}
 .rep-who{font:italic 900 24px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em;margin-top:6px}
-.board li .rp{width:26px;height:26px;margin-left:8px;border:2px solid var(--ink);border-radius:7px;background:var(--card);color:var(--ink);cursor:pointer;display:grid;place-items:center;padding:0}
-.board li .rp svg{width:11px;height:11px}
+.board li .rp{height:26px;margin-left:8px;border:2px solid var(--ink);border-radius:7px;background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:0 8px 0 6px;font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.04em}
+.board li .rp svg{width:10px;height:10px}
+.acct-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 12px;border:2px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);font:800 13.5px/1 var(--font-ui);cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.acct-toggle i{position:relative;flex:none;width:40px;height:22px;border-radius:99px;background:var(--lock-bg2);border:2px solid var(--ink);transition:background .2s}
+.acct-toggle i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .2s var(--ease-pop),background .2s}
+.acct-toggle.on i{background:var(--go)} .acct-toggle.on i::after{transform:translateX(18px);background:#fff}
 .board li .rp:hover,.board li .rp:focus-visible{background:var(--ink);color:#fff;outline:none}
 .pv-list .board li.adm{grid-template-columns:30px 1fr auto auto}
 /* Chargement : tant que le jeu et le compte ne sont pas prêts */
@@ -3514,7 +3518,7 @@ async function watchGhost(n, uid, pseudo) {
   if (UI.busy) return;
   let g;
   try { const doc = await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(uid).get(); g = doc.exists ? doc.data() : null; }
-  catch (e) { toast(e && e.code === 'permission-denied' ? 'Replay bloqué : ajoute la règle « ghosts » dans Firestore' : 'Replay inaccessible', 2600); return; }
+  catch (e) { toast(e && e.code === 'permission-denied' && isAdmin() ? 'Replay bloqué : mets à jour les règles Firestore' : 'Replay indisponible', 2600); return; }
   if (!g || !g.d) { toast('Pas de replay pour ce temps', 1800); return; }
   const s = g.d.split(';').map(r => r.split(',').map(Number));
   if (s.length < 2) { toast('Replay trop court', 1400); return; }
@@ -3674,6 +3678,7 @@ async function pvBoard(n) {
   if (card.hidden) return;
   list.textContent = '…';
   try {
+    if (ACCT.user && !isAdmin()) { try { const m = await ACCT.db.collection('meta').doc('board').get(); ACCT.replays = m.exists && m.data().replays === true; } catch (e) {} }
     const rows = await acctTop(n, 10);
     if (!PV || PV.n !== n) return;
     boardList(rows, list, n);
@@ -4879,6 +4884,7 @@ const boardOK = n => !!BUILTIN[n] && !CUSTOM[n];             // seulement les ni
 const PSEUDO_RE = /^[A-Za-z0-9_.-]{3,16}$/;
 // L'éditeur n'est ouvert qu'à l'auteur du jeu (adresse vérifiée : Google, ou e-mail confirmé)
 const EDITOR_ADMIN = 'alexandre.tricot16@gmail.com';
+const canWatch = () => isAdmin() || !!(ACCT.user && ACCT.replays);
 const isAdmin = () => !!(ACCT.user && ACCT.user.emailVerified && (ACCT.user.email || '').toLowerCase() === EDITOR_ADMIN);
 function loadScript(src) { return new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); }); }
 // Écran de chargement : retiré dès que le compte est connu (ou tout de suite sans comptes ; 10 s au plus)
@@ -4920,6 +4926,7 @@ async function acctUser(u) {
     let cloud = d.records || {};
     try {
       const m = await ACCT.db.collection('meta').doc('board').get(), reset = m.exists ? +m.data().reset || 0 : 0;
+      ACCT.replays = m.exists && m.data().replays === true;
       if (reset && (+d.seen || 0) < reset) {
         records = {}; cloud = {};
         await ref.set({ records: {}, seen: reset, maj: Date.now() }, { merge: true });
@@ -4990,9 +4997,9 @@ function boardList(rows, el, lv) {
     const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
     const c = document.createElement('span'); c.className = 'tm'; c.textContent = fmtT(r.ms) + ' s';
     li.append(a, b, c);
-    if (lv && isAdmin() && r.ghost) {                       // l'admin peut revoir la course de chacun (si elle a un replay)
+    if (lv && canWatch() && r.ghost) {                      // replay de la course (admin, ou tout le monde si l'admin l'a ouvert)
       const p = document.createElement('button'); p.className = 'rp'; p.title = 'Voir le replay de ' + (r.pseudo || '?'); p.setAttribute('aria-label', p.title);
-      p.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>';
+      p.innerHTML = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg>Replay';
       p.addEventListener('click', () => watchGhost(lv, r.uid, r.pseudo));
       li.classList.add('adm'); li.appendChild(p);
     }
@@ -5133,6 +5140,16 @@ function acctRender() {
         clearTimeout(armed); armed = 0;
         acctDo(async () => { const k = await adminResetAll(); acctRender(); acctMsg(`Classement remis à zéro (${k} temps effacés).`, true); });
       });
+      // Replays : visibles par tous les joueurs, ou seulement par l'admin
+      const tg = mkEl('button', 'acct-toggle' + (ACCT.replays ? ' on' : ''));
+      tg.setAttribute('role', 'switch'); tg.setAttribute('aria-checked', String(!!ACCT.replays));
+      tg.append(mkEl('span', null, 'Replays visibles par tous'), mkEl('i'));
+      tg.addEventListener('click', () => acctDo(async () => {
+        const v = !ACCT.replays;
+        await ACCT.db.collection('meta').doc('board').set({ replays: v }, { merge: true });
+        ACCT.replays = v; acctRender(); acctMsg(v ? 'Tout le monde peut voir les replays.' : 'Les replays ne sont visibles que par toi.', true);
+      }));
+      c.appendChild(tg);
       c.appendChild(rs);
     }
   } else if (v === 'board') {
