@@ -4837,8 +4837,18 @@ async function acctUser(u) {
   try {
     const ref = ACCT.db.collection('users').doc(u.uid), snap = await ref.get(), d = snap.exists ? snap.data() : {};
     ACCT.pseudo = d.pseudo || null;
+    // Remise à zéro générale par l'admin : les records d'avant ne comptent plus (ni ici, ni sur le compte)
+    let cloud = d.records || {};
+    try {
+      const m = await ACCT.db.collection('meta').doc('board').get(), reset = m.exists ? +m.data().reset || 0 : 0;
+      if (reset && (+d.seen || 0) < reset) {
+        records = {}; cloud = {};
+        await ref.set({ records: {}, seen: reset, maj: Date.now() }, { merge: true });
+        await ref.update({ records: {} }).catch(() => {});
+      }
+    } catch (e) { console.warn(e); }
     // Records : le meilleur temps de chaque côté (ce navigateur et le compte)
-    const cloud = d.records || {}; let push = !snap.exists;
+    let push = !snap.exists;
     for (const k in cloud) { const v = Math.round(+cloud[k]); if (v > 0 && (!records[k] || v < records[k])) records[k] = v; }
     for (const k in records) if (!cloud[k] || records[k] < cloud[k]) push = true;
     saveRecords(); buildLevelGrid();
@@ -4850,6 +4860,21 @@ async function acctUser(u) {
   acctRender(); bootDone();
   if (!ACCT.pseudo) acctOpen('pseudo');
   else { if (wasLogin && !ACCT.pending) acctClose(); acctResume(); }
+}
+async function adminResetAll() {
+  const db = ACCT.db, now = Date.now();
+  await db.collection('meta').doc('board').set({ reset: now });   // d'abord : plus personne ne renvoie ses anciens temps
+  let k = 0;
+  for (const n of Object.keys(BUILTIN)) for (const col of ['scores', 'ghosts']) {
+    try {
+      const snap = await db.collection(col).doc(n).collection('runs').get();
+      await Promise.all(snap.docs.map(x => db.collection(col).doc(n).collection('runs').doc(x.id).delete()));
+      if (col === 'scores') k += snap.docs.length;
+    } catch (e) { console.warn(e); }
+  }
+  records = {}; saveRecords(); buildLevelGrid();
+  try { await db.collection('users').doc(ACCT.user.uid).set({ records: {}, seen: now, maj: now }, { merge: true }); await db.collection('users').doc(ACCT.user.uid).update({ records: {} }); } catch (e) { console.warn(e); }
+  return k;
 }
 // Met au classement les records de ce compte qui battent ce qui y est déjà (force : réécrit le pseudo partout)
 async function acctPushBoard(force) {
@@ -5019,6 +5044,18 @@ function acctRender() {
     ch.addEventListener('click', () => { ACCT.view = 'pseudo'; acctRender(); });
     out.addEventListener('click', () => acctDo(async () => { await ACCT.auth.signOut(); records = {}; saveRecords(); buildLevelGrid(); ACCT.view = 'login'; acctRender(); }));
     row.append(ch, out); c.appendChild(row);
+    if (isAdmin()) {
+      // Admin : vider le classement de tous les niveaux (et les replays) ; chaque joueur repart de zéro à sa prochaine connexion
+      c.appendChild(mkEl('div', 'acct-sec', 'Admin'));
+      const rs = mkEl('button', 'ed-btn danger', 'Réinitialiser tous les scores');
+      let armed = 0;
+      rs.addEventListener('click', () => {
+        if (!armed) { rs.textContent = 'Confirmer : tout effacer pour tout le monde ?'; rs.classList.add('armed'); armed = setTimeout(() => { armed = 0; rs.textContent = 'Réinitialiser tous les scores'; rs.classList.remove('armed'); }, 4000); return; }
+        clearTimeout(armed); armed = 0;
+        acctDo(async () => { const k = await adminResetAll(); acctRender(); acctMsg(`Classement remis à zéro (${k} temps effacés).`, true); });
+      });
+      c.appendChild(rs);
+    }
   } else if (v === 'board') {
     c.appendChild(mkEl('h2', null, 'Classement'));
     const chips = mkEl('div', 'chips acct-lv');
