@@ -3528,16 +3528,16 @@ async function watchGhost(n, uid, pseudo) {
     $('repWho').textContent = RP.who + ' · ' + fmtT(RP.ms) + ' s'; $('repBar').classList.remove('end'); $('repBar').hidden = false;
   });
 }
-// Le perso du replay est un fantôme : bleuté, translucide, contour léger, qui respire doucement
-const ghostBody = toon(0xd6efff, { transparent: true, opacity: 0.5, depthWrite: false, emissive: new THREE.Color(0x8fd0ff), emissiveIntensity: 0.45 });
-const ghostHull = new THREE.MeshBasicMaterial({ color: 0x3d9be0, side: THREE.BackSide, transparent: true, opacity: 0.35, depthWrite: false });
+// Le perso du replay est un fantôme : rouge, translucide, contour léger, qui respire doucement
+const ghostBody = toon(0xffc9c4, { transparent: true, opacity: 0.5, depthWrite: false, emissive: new THREE.Color(0xf0443a), emissiveIntensity: 0.4 });
+const ghostHull = new THREE.MeshBasicMaterial({ color: 0xc4271f, side: THREE.BackSide, transparent: true, opacity: 0.35, depthWrite: false });
 function setGhostLook(on) {
   ch.root.traverse(o => {
     if (!o.isMesh) return;
     if (on) { if (!o.userData.mat0) o.userData.mat0 = o.material; o.material = o.userData.mat0 === hullMat ? ghostHull : ghostBody; o.renderOrder = 3; }
     else if (o.userData.mat0) { o.material = o.userData.mat0; o.renderOrder = 0; }
   });
-  blob.material.color.set(on ? 0x3d9be0 : C.ink);
+  blob.material.color.set(on ? 0xc4271f : C.ink);
 }
 const _ra = new THREE.Quaternion(), _rb = new THREE.Quaternion();
 function replayFrame(fdt) {
