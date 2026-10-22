@@ -3520,13 +3520,24 @@ async function watchGhost(n, uid, pseudo) {
   if (s.length < 2) { toast('Replay trop court', 1400); return; }
   wipe(() => {
     if (MAP !== 'level' + n) loadMap('level' + n);
-    hideScreens(); UI.mode = 'replay'; restart();
+    hideScreens(); UI.mode = 'replay'; restart(); setGhostLook(true);
     RP = { on: true, n, s, i: 0, t: 0, end: s[s.length - 1][0] / 10, t0: g.t0 || 0, who: g.pseudo || pseudo || '?', ms: g.ms, done: false,
       cp: new THREE.Vector3(), cq: new THREE.Quaternion(), fp: false, touch: true, vy: 0, hold: Infinity, intro: false };   // en pause jusqu'à la fin de la transition
     replayFrame(0);
     hudEl.hidden = false; backBtn.hidden = false;
     $('repWho').textContent = RP.who + ' · ' + fmtT(RP.ms) + ' s'; $('repBar').classList.remove('end'); $('repBar').hidden = false;
   });
+}
+// Le perso du replay est un fantôme : bleuté, translucide, contour léger, qui respire doucement
+const ghostBody = toon(0xd6efff, { transparent: true, opacity: 0.5, depthWrite: false, emissive: new THREE.Color(0x8fd0ff), emissiveIntensity: 0.45 });
+const ghostHull = new THREE.MeshBasicMaterial({ color: 0x3d9be0, side: THREE.BackSide, transparent: true, opacity: 0.35, depthWrite: false });
+function setGhostLook(on) {
+  ch.root.traverse(o => {
+    if (!o.isMesh) return;
+    if (on) { if (!o.userData.mat0) o.userData.mat0 = o.material; o.material = o.userData.mat0 === hullMat ? ghostHull : ghostBody; o.renderOrder = 3; }
+    else if (o.userData.mat0) { o.material = o.userData.mat0; o.renderOrder = 0; }
+  });
+  blob.material.color.set(on ? 0x3d9be0 : C.ink);
 }
 const _ra = new THREE.Quaternion(), _rb = new THREE.Quaternion();
 function replayFrame(fdt) {
@@ -3549,6 +3560,8 @@ function replayFrame(fdt) {
   RP.touch = touch; RP.vy = L(17, 10);
   P.grounded = !!(F & 1); P.touch = touch; P.climb = !!(F & 4); P.coyote = F & 8 ? 0.05 : 0; P.jumpT = F & 16 ? 0.05 : 0; RP.fp = !!(F & 32);
   P.moveSpeed = L(16, 10); P.vy = RP.vy; P.lastVy = RP.vy;
+  if (RP.hold > 0 || RP.done) { P.moveSpeed = 0; P.vy = 0; P.grounded = P.touch = true; P.jumpT = 0; }   // à l'arrêt : il ne marche pas sur place
+  ghostBody.opacity = 0.42 + 0.1 * Math.sin(performance.now() / 380); ghostHull.opacity = ghostBody.opacity * 0.7;
   // Le monde au même instant : plateformes mobiles à la même position
   const T = RP.t0 + RP.t;
   worldTicks = Math.floor(T);
@@ -3590,7 +3603,7 @@ function stopReplay() {
   if (UI.busy) return;
   const n = RP.n;
   wipe(() => {
-    RP = { on: false }; $('repBar').hidden = true; $('repIntro').hidden = true; $('repEnd').hidden = true; $('repEnd').classList.remove('show');
+    RP = { on: false }; setGhostLook(false); $('repBar').hidden = true; $('repIntro').hidden = true; $('repEnd').hidden = true; $('repEnd').classList.remove('show');
     hideGameHud(); UI.mode = 'menu'; ch.root.visible = true;
     restart(); clearInput();
     uiEl.classList.add('on');
