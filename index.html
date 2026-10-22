@@ -424,12 +424,12 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 </style>
 
 <canvas id="game" tabindex="0" aria-label="Bac à sable physique en 3D"></canvas>
-<div id="sl" class="card"><i></i><span>Verrou caméra · Maj</span></div>
+<div id="sl" class="card"><i></i><span>Camera lock</span></div>
 <div id="cross" hidden></div>
 <div id="toast" class="card" style="opacity:0"></div>
 <div id="flash"></div>
 <button id="bJump" class="tbtn" hidden>Sauter</button>
-<button id="bSL" class="tbtn" hidden>Verrou<br>caméra</button>
+<button id="bSL" class="tbtn" hidden>Camera<br>lock</button>
 <div id="joy" hidden><i></i></div>
 
 <button id="backBtn" class="card" hidden aria-label="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Menu</button>
@@ -447,7 +447,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     </div>
   </div>
 </div>
-<div id="repBar" class="card" hidden><i></i><b>Replay</b><span id="repWho"></span><span id="repHint">Échap : quitter · R : revoir</span></div>
+<div id="repBar" class="card" hidden><i></i><b>Replay</b><span id="repWho"></span></div>
 <div id="finish" hidden>
   <div class="fin-card" role="dialog" aria-label="Arrivée">
     <div id="finRec" class="rec" hidden>Nouveau record</div>
@@ -510,7 +510,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
         <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b></div>
       </div>
     </div>
-    <button id="bPlay" class="pv-play stag" style="--i:2"><span>Jouer</span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg><kbd>Entrée</kbd></button>
+    <button id="bPlay" class="pv-play stag" style="--i:2"><span>Jouer</span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg></button>
   </section>
 </div>
 
@@ -621,7 +621,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     <input id="sens" type="range" min="0.2" max="3" step="0.05" value="1">
   </div>
   <div class="row">
-    <span class="lab">Touche du verrou caméra</span>
+    <span class="lab">Touche du camera lock</span>
     <button id="slBind" class="bind">Maj</button>
     <p id="slHint" class="hint">Clique puis appuie sur une touche. Échap pour annuler.</p>
   </div>
@@ -3121,7 +3121,7 @@ const menuClose = $('menuClose'), resetBtn = $('resetScores'), backBtn = $('back
 const fmt2 = v => v.toFixed(2).replace('.', ',') + '×';
 function showSettings() {
   sensIn.value = settings.sens; sensOut.textContent = fmt2(settings.sens);
-  slBind.textContent = settings.slLabel; slEl.lastChild.textContent = 'Verrou caméra · ' + settings.slLabel;
+  slBind.textContent = settings.slLabel;
 }
 showSettings();
 let binding = false;
@@ -3560,7 +3560,13 @@ function replayFrame(fdt) {
   RP.touch = touch; RP.vy = L(17, 10);
   P.grounded = !!(F & 1); P.touch = touch; P.climb = !!(F & 4); P.coyote = F & 8 ? 0.05 : 0; P.jumpT = F & 16 ? 0.05 : 0; RP.fp = !!(F & 32);
   // Le verrou caméra du joueur, comme il l'avait (et le viseur qui va avec)
-  const lockOn = !!(F & 64); slEl.hidden = false; slEl.classList.toggle('on', lockOn); crossEl.hidden = !(lockOn || RP.fp);
+  let lockOn = !!(F & 64);
+  if (!lockOn && !RP.fp) {                                  // anciens replays : caméra décalée sur l'épaule = camera lock
+    const e = new THREE.Euler().setFromQuaternion(RP.cq, 'YXZ'), cyw = e.y;
+    const lat = (RP.cp.x - P.x) * Math.cos(cyw) - (RP.cp.z - P.z) * Math.sin(cyw);
+    lockOn = lat > 1.1;
+  }
+  slEl.hidden = false; slEl.classList.toggle('on', lockOn); crossEl.hidden = !(lockOn || RP.fp);
   P.moveSpeed = L(16, 10); P.vy = RP.vy; P.lastVy = RP.vy;
   if (RP.hold > 0 || RP.done) { P.moveSpeed = 0; P.vy = 0; P.grounded = P.touch = true; P.jumpT = 0; }   // à l'arrêt : il ne marche pas sur place
   ghostBody.opacity = 0.42 + 0.1 * Math.sin(performance.now() / 380); ghostHull.opacity = ghostBody.opacity * 0.7;
