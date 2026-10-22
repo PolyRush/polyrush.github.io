@@ -3518,7 +3518,11 @@ async function watchGhost(n, uid, pseudo) {
   if (UI.busy) return;
   let g;
   try { const doc = await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(uid).get(); g = doc.exists ? doc.data() : null; }
-  catch (e) { toast(e && e.code === 'permission-denied' && isAdmin() ? 'Replay bloqué : mets à jour les règles Firestore' : 'Replay indisponible', 2600); return; }
+  catch (e) {
+    const code = e && e.code || '';
+    toast(code === 'permission-denied' ? 'Replay bloqué par le serveur (règles Firestore)' : 'Replay indisponible' + (code ? ' (' + code + ')' : ''), 3000);
+    return;
+  }
   if (!g || !g.d) { toast('Pas de replay pour ce temps', 1800); return; }
   const s = g.d.split(';').map(r => r.split(',').map(Number));
   if (s.length < 2) { toast('Replay trop court', 1400); return; }
