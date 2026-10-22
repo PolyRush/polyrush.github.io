@@ -424,12 +424,12 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 </style>
 
 <canvas id="game" tabindex="0" aria-label="Bac à sable physique en 3D"></canvas>
-<div id="sl" class="card"><i></i><span>Shiftlock · Maj</span></div>
+<div id="sl" class="card"><i></i><span>Verrou caméra · Maj</span></div>
 <div id="cross" hidden></div>
 <div id="toast" class="card" style="opacity:0"></div>
 <div id="flash"></div>
 <button id="bJump" class="tbtn" hidden>Sauter</button>
-<button id="bSL" class="tbtn" hidden>Shift<br>lock</button>
+<button id="bSL" class="tbtn" hidden>Verrou<br>caméra</button>
 <div id="joy" hidden><i></i></div>
 
 <button id="backBtn" class="card" hidden aria-label="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Menu</button>
@@ -621,7 +621,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
     <input id="sens" type="range" min="0.2" max="3" step="0.05" value="1">
   </div>
   <div class="row">
-    <span class="lab">Touche du shiftlock</span>
+    <span class="lab">Touche du verrou caméra</span>
     <button id="slBind" class="bind">Maj</button>
     <p id="slHint" class="hint">Clique puis appuie sur une touche. Échap pour annuler.</p>
   </div>
@@ -3121,7 +3121,7 @@ const menuClose = $('menuClose'), resetBtn = $('resetScores'), backBtn = $('back
 const fmt2 = v => v.toFixed(2).replace('.', ',') + '×';
 function showSettings() {
   sensIn.value = settings.sens; sensOut.textContent = fmt2(settings.sens);
-  slBind.textContent = settings.slLabel; slEl.lastChild.textContent = 'Shiftlock · ' + settings.slLabel;
+  slBind.textContent = settings.slLabel; slEl.lastChild.textContent = 'Verrou caméra · ' + settings.slLabel;
 }
 showSettings();
 let binding = false;
@@ -3499,7 +3499,7 @@ function recSample(tk, x, y, z, q, force) {
   if (!force && tk - REC.last < 3.9) return;
   REC.last = tk;
   const c = camera.position, cq = camera.quaternion;
-  const fl = (P.grounded ? 1 : 0) | (P.touch ? 2 : 0) | (P.climb ? 4 : 0) | (P.coyote > 0 ? 8 : 0) | (P.jumpT > 0 ? 16 : 0) | (cam.fp ? 32 : 0);
+  const fl = (P.grounded ? 1 : 0) | (P.touch ? 2 : 0) | (P.climb ? 4 : 0) | (P.coyote > 0 ? 8 : 0) | (P.jumpT > 0 ? 16 : 0) | (cam.fp ? 32 : 0) | (shiftlock ? 64 : 0);
   REC.rows.push([Math.round((tk - REC.t0) * 10), R100(x), R100(y), R100(z), R1e4(q.w), R1e4(q.x), R1e4(q.y), R1e4(q.z),
     R100(c.x), R100(c.y), R100(c.z), R1e4(cq.w), R1e4(cq.x), R1e4(cq.y), R1e4(cq.z), fl, Math.round(P.moveSpeed * 10), Math.round(P.vy * 10)].join(','));
   if (REC.rows.length > 30000) REC.rows.length = 30000;     // plafond : ~16 min de course
@@ -3559,6 +3559,8 @@ function replayFrame(fdt) {
   if (touch && !RP.touch) { P.landed = true; P.landVy = RP.vy; }   // atterrissage : la même petite flexion
   RP.touch = touch; RP.vy = L(17, 10);
   P.grounded = !!(F & 1); P.touch = touch; P.climb = !!(F & 4); P.coyote = F & 8 ? 0.05 : 0; P.jumpT = F & 16 ? 0.05 : 0; RP.fp = !!(F & 32);
+  // Le verrou caméra du joueur, comme il l'avait (et le viseur qui va avec)
+  const lockOn = !!(F & 64); slEl.hidden = false; slEl.classList.toggle('on', lockOn); crossEl.hidden = !(lockOn || RP.fp);
   P.moveSpeed = L(16, 10); P.vy = RP.vy; P.lastVy = RP.vy;
   if (RP.hold > 0 || RP.done) { P.moveSpeed = 0; P.vy = 0; P.grounded = P.touch = true; P.jumpT = 0; }   // à l'arrêt : il ne marche pas sur place
   ghostBody.opacity = 0.42 + 0.1 * Math.sin(performance.now() / 380); ghostHull.opacity = ghostBody.opacity * 0.7;
@@ -3603,7 +3605,7 @@ function stopReplay() {
   if (UI.busy) return;
   const n = RP.n;
   wipe(() => {
-    RP = { on: false }; setGhostLook(false); $('repBar').hidden = true; $('repIntro').hidden = true; $('repEnd').hidden = true; $('repEnd').classList.remove('show');
+    RP = { on: false }; setGhostLook(false); slEl.classList.toggle('on', shiftlock); $('repBar').hidden = true; $('repIntro').hidden = true; $('repEnd').hidden = true; $('repEnd').classList.remove('show');
     hideGameHud(); UI.mode = 'menu'; ch.root.visible = true;
     restart(); clearInput();
     uiEl.classList.add('on');

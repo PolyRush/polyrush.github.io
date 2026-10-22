@@ -12,7 +12,7 @@ Jeu de parkour 3D dans le navigateur, façon obby Roblox : un parcours brut dans
 | ← → | Tourner la caméra |
 | Espace | Sauter |
 | Clic droit + souris | Tourner la caméra |
-| Maj | Shiftlock |
+| Maj | Verrou caméra (le perso suit la caméra) |
 | Molette, I / O | Zoom (à fond : première personne) |
 | R | Recommencer |
 
