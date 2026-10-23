@@ -2766,6 +2766,7 @@ function step() {
     if (contacts[i].B.finish && run.state === 'run') finishRun();   // un pied qui frôle l'arrivée compte aussi
   }
   if (P.touch && !wasTouch) { P.landed = true; P.landVy = P.lastVy; }   // même un seul pas au sol doit se voir
+  if (REC && (P.grounded || P.touch || P.climb)) REC.acc = 1;   // un appui, même très bref, entre deux images du replay
 
   // Sortie des pénétrations : même règle que les impulsions, appliquée aux positions.
   // Un appui décentré fait donc pivoter le corps (il penche) ; il ne se tasse jamais.
@@ -3565,7 +3566,8 @@ function recSample(tk, x, y, z, q, force) {
   if (force && tk <= REC.last && REC.rows.length) REC.rows.pop();   // la dernière image remplace celle du même instant
   REC.last = tk;
   const c = camera.position, cq = camera.quaternion;
-  const fl = (P.grounded ? 1 : 0) | (P.touch ? 2 : 0) | (P.climb ? 4 : 0) | (P.coyote > 0 ? 8 : 0) | (P.jumpT > 0 ? 16 : 0) | (cam.fp ? 32 : 0) | (shiftlock ? 64 : 0);
+  const fl = (P.grounded ? 1 : 0) | (P.touch ? 2 : 0) | (P.climb ? 4 : 0) | (P.coyote > 0 ? 8 : 0) | (P.jumpT > 0 ? 16 : 0) | (cam.fp ? 32 : 0) | (shiftlock ? 64 : 0) | (REC.acc ? 128 : 0);
+  REC.acc = 0;
   REC.rows.push([Math.round((tk - REC.t0) * 10), R100(x), R100(y), R100(z), R1e4(q.w), R1e4(q.x), R1e4(q.y), R1e4(q.z),
     R100(c.x), R100(c.y), R100(c.z), R1e4(cq.w), R1e4(cq.x), R1e4(cq.y), R1e4(cq.z), fl, Math.round(P.moveSpeed * 10), Math.round(P.vy * 10)].join(','));
   if (REC.rows.length > 30000) REC.rows.length = 30000;     // plafond : ~16 min de course
@@ -3844,7 +3846,14 @@ function validateGhost(g, n) {
     const r = s[i], x = r[1] / 100, y = r[2] / 100, z = r[3] / 100, F = r[15], tk = r[0] / 10;
     if (F & 1) { gro++; if (!support(x, y - COM_H, z, tk)) noGround++; }
     if (F & 4 && !bar(x, y, z)) noBar++;
-    const air = !(F & 1) && !(F & 2) && !(F & 4);
+    // En l'air = aucun appui à cette image, ni entre les deux (bit 128), ni de rebond visible : une vitesse qui
+    // repart d'un coup vers le haut veut dire qu'on a pris appui (wall hop, petit saut sur un rebord)
+    let kick = false;
+    if (i >= 2) {
+      const p = s[i - 1], q = s[i - 2], d1 = T(r) - T(p), d0 = T(p) - T(q);
+      if (d1 > 0 && d0 > 0) kick = (r[2] - p[2]) / 100 / d1 - (p[2] - q[2]) / 100 / d0 > 25;
+    }
+    const air = !(F & 1) && !(F & 2) && !(F & 4) && !(F & 128) && !kick;
     if (air) { if (air0 < 0) { air0 = T(r); airMax = y; } airMax = Math.max(airMax, y); }
     if ((!air || i === s.length - 1) && air0 >= 0) {
       const D = T(r) - air0, need = 0.25 * CFG.gravity * Math.max(0, D - 0.6) ** 2;
