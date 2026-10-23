@@ -4,6 +4,15 @@ service cloud.firestore {
     function isAdmin() {
       return request.auth != null && request.auth.token.email == 'alexandre.tricot16@gmail.com' && request.auth.token.email_verified == true;
     }
+    function banned() {
+      return exists(/databases/$(database)/documents/meta/bans)
+        && request.auth.uid in get(/databases/$(database)/documents/meta/bans).data.get('uids', []);
+    }
+    // le pseudo envoyé doit être celui que ce compte a réservé
+    function ownsPseudo(p) {
+      return p is string && p.size() >= 3 && p.size() <= 16
+        && get(/databases/$(database)/documents/pseudos/$(p.lower())).data.uid == request.auth.uid;
+    }
     match /users/{uid} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
@@ -17,18 +26,27 @@ service cloud.firestore {
       allow read: if true;
       allow write: if isAdmin();
     }
+    // replay d'un temps : envoyé par son auteur seulement, cohérent avec le temps annoncé
     match /ghosts/{level}/runs/{uid} {
       allow read: if isAdmin() || (request.auth != null
         && get(/databases/$(database)/documents/meta/board).data.get('replays', false) == true);
       allow delete: if isAdmin();
-      allow create, update: if request.auth != null && request.auth.uid == uid
-        && request.resource.data.d is string && request.resource.data.d.size() < 900000;
+      allow create, update: if request.auth != null && request.auth.uid == uid && !banned()
+        && request.resource.data.keys().hasOnly(['pseudo', 'ms', 't0', 'd', 'v', 'at'])
+        && request.resource.data.ms is int && request.resource.data.ms >= 1000 && request.resource.data.ms < 3600000
+        && request.resource.data.d is string && request.resource.data.d.size() < 900000
+        && request.resource.data.d.size() >= request.resource.data.ms
+        && ownsPseudo(request.resource.data.pseudo);
     }
+    // un temps n'entre au classement qu'avec son replay (même temps), sous son vrai pseudo, si on n'est pas banni
     match /scores/{level}/runs/{uid} {
       allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == uid
+      allow create, update: if request.auth != null && request.auth.uid == uid && !banned()
+        && request.resource.data.keys().hasOnly(['pseudo', 'ms', 'at', 'ghost'])
         && request.resource.data.ms is int && request.resource.data.ms >= 1000 && request.resource.data.ms < 3600000
-        && request.resource.data.pseudo is string && request.resource.data.pseudo.size() <= 16;
+        && request.resource.data.ghost == true
+        && ownsPseudo(request.resource.data.pseudo)
+        && get(/databases/$(database)/documents/ghosts/$(level)/runs/$(uid)).data.ms == request.resource.data.ms;
       allow delete: if (request.auth != null && request.auth.uid == uid) || isAdmin();
     }
   }

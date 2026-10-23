@@ -318,6 +318,14 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .pv-list .board li:nth-child(2) .rk,.pv-list .board li:nth-child(3) .rk{background:var(--ink);color:#fff}
 .pv-list .board li.me{background:rgba(240,68,58,.14);box-shadow:inset 3px 0 0 var(--red)}
 .pv-list .acct-empty{padding:8px 6px;margin:0}
+.pv-list .board li.aud{cursor:pointer}
+.pv-list .board li.sus .ps::after{content:" ⚠";color:var(--red-deep)}
+.pv-list .board li.sus{box-shadow:inset 3px 0 0 var(--red-deep)}
+.pv-admin{display:grid;gap:8px;margin-top:8px;padding:10px;border-radius:12px;background:rgba(255,255,255,.7);border:1.5px solid rgba(17,17,17,.12)}
+.pv-admin .pa-h{display:flex;justify-content:space-between;align-items:baseline;font:800 14px/1 var(--font-ui)} .pv-admin .pa-h span{font:800 13px/1 var(--font-num)}
+.pv-admin .pa-bad{margin:0;padding-left:18px;color:var(--red-deep);font:700 12px/1.45 var(--font-ui)}
+.pv-admin .pa-ok{margin:0;color:var(--go);font:700 12px/1.3 var(--font-ui)}
+.pv-admin .ed-btn{flex:1;padding:8px;font-size:12px}
 .pv-mine{display:flex;justify-content:space-between;align-items:center;margin-top:6px;padding:12px 12px 10px;border-top:1.5px solid rgba(17,17,17,.1)}
 .pv-mine span{font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
 .pv-mine b{font:800 22px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
@@ -510,6 +518,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
         <div id="pvBoard" hidden>
           <div class="pv-bh"><span>Classement</span><span class="sub">Top 10</span></div>
           <div id="pvList" class="pv-list"></div>
+          <div id="pvAdmin" class="pv-admin" hidden></div>
         </div>
         <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b></div>
       </div>
@@ -672,6 +681,7 @@ const CFG = {
   climbJumpPush: 28,                       // saut depuis une prise : élan arrière de 1,75 × la vitesse de course
   climbJumpAccel: 115, climbJumpCtl: 0.4   // … puis 0,4 s où la marche ne change la vitesse que de 115 studs/s²
 };
+Object.freeze(CFG);   // réglages de la physique : figés
 const COM_H = 2.6;                         // centre de masse au-dessus des pieds
 const MASS = 1;
 const IB = { x: 2.6, y: 0.3, z: 2.77 };    // inertie d'une boîte 1,6 × 5,54 × 1 (les bras ne comptent pas)
@@ -2076,7 +2086,8 @@ function buildCustom(n, data) {
     } else if (q.b.type === 'mobile') {
       // Aller-retour en douceur entre A et B ; « vitesse » est la vitesse moyenne sur le trajet
       const A = q.b.pos, Cm = q.b.chemin, L = Math.hypot(...Cm), w = L > 0.01 ? Math.PI * q.b.vitesse / L : 0;
-      box(A[0], A[1], A[2], ...q.b.taille, { stripe: true, ...rotOpts(q.b), move: (b, t) => { const k = (1 - Math.cos(w * t)) / 2; b.c.x = A[0] + Cm[0] * k; b.c.y = A[1] + Cm[1] * k; b.c.z = A[2] + Cm[2] * k; } });
+      const mbx = box(A[0], A[1], A[2], ...q.b.taille, { stripe: true, ...rotOpts(q.b), move: (b, t) => { const k = (1 - Math.cos(w * t)) / 2; b.c.x = A[0] + Cm[0] * k; b.c.y = A[1] + Cm[1] * k; b.c.z = A[2] + Cm[2] * k; } });
+      mbx.peak = q.b.vitesse * Math.PI / 2;            // vitesse max sur le trajet (pour l'anti-triche)
     } else if (q.b.type === 'tapis') {
       // Il entraîne vers son -Z local (la flèche), à l'horizontale ; les rayures défilent dans son repère.
       const ro = rotOpts(q.b), dir = new THREE.Vector3(0, 0, -1).applyEuler(new THREE.Euler(ro.pitch, ro.yaw, ro.roll, 'YXZ'));
@@ -3501,6 +3512,7 @@ const R100 = v => Math.round(v * 100), R1e4 = v => Math.round(v * 10000);
 function recSample(tk, x, y, z, q, force) {
   if (!REC) REC = { t0: run.start - 1, rows: [], last: -1e9 };
   if (!force && tk - REC.last < 3.9) return;
+  if (force && tk <= REC.last && REC.rows.length) REC.rows.pop();   // la dernière image remplace celle du même instant
   REC.last = tk;
   const c = camera.position, cq = camera.quaternion;
   const fl = (P.grounded ? 1 : 0) | (P.touch ? 2 : 0) | (P.climb ? 4 : 0) | (P.coyote > 0 ? 8 : 0) | (P.jumpT > 0 ? 16 : 0) | (cam.fp ? 32 : 0) | (shiftlock ? 64 : 0);
@@ -3686,7 +3698,156 @@ async function pvBoard(n) {
     const rows = await acctTop(n, 10);
     if (!PV || PV.n !== n) return;
     boardList(rows, list, n);
+    if (isAdmin()) adminAudit(n, rows, list);
   } catch (e) { list.textContent = 'Classement indisponible.'; }
+}
+
+/* ---------- Anti-triche ----------
+   Côté serveur (règles Firestore) : un temps n'est accepté qu'avec un replay du même temps, envoyé par son auteur,
+   sous un pseudo qui est vraiment le sien, et pas s'il est banni. Côté admin : chaque replay du top 10 est vérifié
+   (durée = temps annoncé, départ sur le départ, arrivée sur l'arrivée, pas de trou, pas de vitesse ni de saut
+   impossibles, pas de téléportation). Les temps suspects sont signalés ; l'admin peut les effacer ou bannir. */
+function levelLimits() {
+  let belt = 0, mob = 0;
+  for (const b of belts) belt = Math.max(belt, Math.hypot(b.sx || 0, b.sz ?? b.speed ?? 0));
+  for (const b of kin) if (b.peak) mob = Math.max(mob, b.peak);
+  const fin = solids.find(b => b.finish);
+  return {
+    vh: CFG.climbJumpPush * 1.2 + belt + mob + 6,                     // vitesse horizontale max, sur un instant (studs/s)
+    vs: CFG.speed * 1.25 + belt + mob + 2,                          // vitesse moyenne max sur une seconde (on ne court pas plus vite que ça)
+    vu: CFG.jumpV + mob + 8,                                         // montée max (studs/s)
+    fin
+  };
+}
+function validateGhost(g, n) {
+  const bad = [];
+  if (!g || typeof g.d !== 'string') return ['Pas de replay : temps invérifiable'];
+  const s = g.d.split(';').map(r => r.split(',').map(Number));
+  if (s.length < 2 || s.some(r => r.length < 18 || r.some(v => !Number.isFinite(v)))) return ['Replay illisible'];
+  const T = r => r[0] / 10 * DT, dur = T(s[s.length - 1]) * 1000;
+  if (Math.abs(dur - g.ms) > 60) bad.push(`Durée du replay (${fmtT(dur)} s) ≠ temps annoncé (${fmtT(g.ms)} s)`);
+  if (s.length < (dur / 1000) * 12) bad.push('Trop peu d’images enregistrées');
+  const L = levelLimits();
+  const p0 = s[0], dx0 = p0[1] / 100 - SPAWN.x, dz0 = p0[3] / 100 - SPAWN.z;
+  if (Math.hypot(dx0, dz0) > 4.5 || Math.abs(p0[2] / 100 - (SPAWN.y + COM_H)) > 4) bad.push('Ne part pas du départ');
+  if (L.fin) {
+    const e = s[s.length - 1], x = e[1] / 100, y = e[2] / 100, z = e[3] / 100, f = L.fin;
+    const out = Math.abs(x - f.c.x) > f.h.x + 2 || Math.abs(z - f.c.z) > f.h.z + 2 || y < f.c.y + f.h.y - 1 || y > f.c.y + f.h.y + 9;
+    if (out) bad.push('Ne finit pas sur l’arrivée');
+  }
+  let gap = 0, fast = 0, tp = 0, up = 0, vmaxSeen = 0;
+  for (let i = 1; i < s.length; i++) {
+    const a = s[i - 1], b = s[i], dt = T(b) - T(a);
+    if (dt < 0) { bad.push('Images dans le désordre'); break; }
+    if (dt === 0) continue;
+    gap = Math.max(gap, dt);
+    const h = Math.hypot(b[1] - a[1], b[3] - a[3]) / 100, v = (b[2] - a[2]) / 100;
+    const vh = h / dt; vmaxSeen = Math.max(vmaxSeen, vh);
+    if (h > L.vh * dt * 3 + 3 || Math.abs(v) > 60 * dt + 6) tp++;
+    else if (vh > L.vh) fast++;
+    if (v / dt > L.vu) up++;
+  }
+  // Moyenne sur ~1 s : un replay accéléré ou une vitesse modifiée dépasse forcément la course normale
+  let sus = 0, best = 0;
+  for (let i = 0, j = 0; i < s.length; i++) {
+    while (j < s.length - 1 && T(s[j]) - T(s[i]) < 1) j++;
+    const dt = T(s[j]) - T(s[i]); if (dt < 0.9) break;
+    let d = 0; for (let k = i + 1; k <= j; k++) d += Math.hypot(s[k][1] - s[k - 1][1], s[k][3] - s[k - 1][3]) / 100;
+    const v = d / dt; best = Math.max(best, v); if (v > L.vs) sus++;
+  }
+  if (sus > 3) bad.push(`Vitesse impossible (${best.toFixed(1)} studs/s en moyenne, max ${L.vs.toFixed(0)})`);
+  // Traverser un bloc : le centre du perso (et le milieu entre deux images) ne doit jamais être dans un bloc fixe
+  const inside = (x, y, z) => {
+    for (const B of solids) {
+      if (B.kin || B.finish) continue;
+      const dx = x - B.c.x, dy = y - B.c.y, dz = z - B.c.z;
+      if (Math.abs(dy) > B.ey || Math.abs(dx) > B.rad || Math.abs(dz) > B.rad) continue;
+      let lx, ly, lz;
+      if (B.tilt) { const Lc = toLocal(B, x, y, z); lx = Lc[0]; ly = Lc[1]; lz = Lc[2]; } else { lx = dx * B.cs - dz * B.sn; ly = dy; lz = dx * B.sn + dz * B.cs; }
+      if (Math.abs(lx) < B.h.x - 0.35 && Math.abs(ly) < B.h.y - 0.35 && Math.abs(lz) < B.h.z - 0.35) return true;
+    }
+    return false;
+  };
+  let clip = 0;
+  for (let i = 0; i < s.length; i++) {
+    const a = s[i]; if (inside(a[1] / 100, a[2] / 100, a[3] / 100)) clip++;
+    const b = s[i + 1]; if (b && inside((a[1] + b[1]) / 200, (a[2] + b[2]) / 200, (a[3] + b[3]) / 200)) clip++;
+  }
+  if (clip > 2) bad.push(`Traverse des blocs (${clip}×)`);
+  // Appuis : « au sol » seulement s'il y a un sol sous les pieds ; « accroché » seulement près d'un barreau ;
+  // en l'air, on retombe (la pesanteur n'attend pas)
+  const t0 = +g.t0 || 0;
+  const support = (x, fy, z, tk) => {
+    for (const B of solids) {
+      if (B.kin) { B.move(B, (t0 + tk) * DT); B.cs = Math.cos(B.yaw); B.sn = Math.sin(B.yaw); }
+      if (!nearXZ(B, x, z, 1.2)) continue;
+      if (B.tilt) { if (rayHit(x, fy + 1.4, z, 0, -1, 0, B, 3, _rh)) return true; continue; }
+      const top = B.c.y + B.h.y; if (top < fy - 1.3 || top > fy + 1.3) continue;
+      const dx = x - B.c.x, dz = z - B.c.z;
+      if (Math.abs(dx * B.cs - dz * B.sn) <= B.h.x + 1 && Math.abs(dx * B.sn + dz * B.cs) <= B.h.z + 1) return true;
+    }
+    return false;
+  };
+  const bar = (x, y, z) => solids.some(B => !B.tilt && B.h.y * 2 < CFG.climbThick + 0.01 && nearXZ(B, x, z, 2.5) && Math.abs(B.c.y - y) < 5);
+  let noGround = 0, gro = 0, noBar = 0, air0 = -1, airMax = -1e9, floaty = 0;
+  for (let i = 0; i < s.length; i++) {
+    const r = s[i], x = r[1] / 100, y = r[2] / 100, z = r[3] / 100, F = r[15], tk = r[0] / 10;
+    if (F & 1) { gro++; if (!support(x, y - COM_H, z, tk)) noGround++; }
+    if (F & 4 && !bar(x, y, z)) noBar++;
+    const air = !(F & 1) && !(F & 2) && !(F & 4);
+    if (air) { if (air0 < 0) { air0 = T(r); airMax = y; } airMax = Math.max(airMax, y); }
+    if ((!air || i === s.length - 1) && air0 >= 0) {
+      const D = T(r) - air0, need = 0.25 * CFG.gravity * Math.max(0, D - 0.6) ** 2;
+      if (D > 0.9 && airMax - y < need) floaty++;
+      air0 = -1;
+    }
+  }
+  if (noGround > Math.max(6, gro * 0.05)) bad.push(`Marche dans le vide (${noGround}×)`);
+  if (noBar > 6) bad.push(`S'accroche à rien (${noBar}×)`);
+  if (floaty) bad.push('Reste en l’air sans retomber');
+  if (gap > 0.6) bad.push(`Trou de ${gap.toFixed(1)} s dans l’enregistrement`);
+  if (tp) bad.push(`Téléportation (${tp}×)`);
+  if (fast > 2) bad.push(`Vitesse impossible (jusqu’à ${vmaxSeen.toFixed(0)} studs/s)`);
+  if (up > 2) bad.push('Montée impossible (saut trop haut)');
+  return bad;
+}
+async function adminAudit(n, rows, list) {
+  const db = ACCT.db, lis = [...list.querySelectorAll('li')];
+  const box = $('pvAdmin'); box.hidden = true; box.textContent = '';
+  rows.forEach(async (r, i) => {
+    const li = lis[i]; if (!li) return;
+    let g = null;
+    try { const d = await db.collection('ghosts').doc(String(n)).collection('runs').doc(r.uid).get(); g = d.exists ? d.data() : null; } catch (e) {}
+    if (!PV || PV.n !== n || MAP !== 'level' + n) return;
+    const bad = validateGhost(g, n);
+    li.classList.toggle('sus', bad.length > 0); li.classList.add('aud');
+    li.title = bad.length ? '⚠ ' + bad.join(' · ') : 'Replay vérifié';
+    li.onclick = e => { if (e.target.closest('.rp')) return; adminPanel(n, r, bad); };
+  });
+}
+function adminPanel(n, r, bad) {
+  const box = $('pvAdmin'); box.hidden = false; box.textContent = '';
+  const h = mkEl('div', 'pa-h'); h.append(mkEl('b', null, r.pseudo || '?'), mkEl('span', null, fmtT(r.ms) + ' s')); box.appendChild(h);
+  if (bad.length) { const ul = mkEl('ul', 'pa-bad'); for (const t of bad) ul.appendChild(mkEl('li', null, t)); box.appendChild(ul); }
+  else box.appendChild(mkEl('p', 'pa-ok', 'Replay vérifié : rien de suspect.'));
+  const row = mkEl('div', 'acct-row'), del = mkEl('button', 'ed-btn', 'Effacer ce temps'), ban = mkEl('button', 'ed-btn danger', 'Bannir le joueur');
+  del.addEventListener('click', async () => { await adminDelete(n, r.uid); toast('Temps effacé', 1200); pvBoard(n); });
+  let armed = 0;
+  ban.addEventListener('click', async () => {
+    if (!armed) { ban.textContent = 'Confirmer le bannissement ?'; armed = setTimeout(() => { armed = 0; ban.textContent = 'Bannir le joueur'; }, 3500); return; }
+    clearTimeout(armed);
+    await adminBan(r.uid); toast((r.pseudo || 'Joueur') + ' banni', 1500); pvBoard(n);
+  });
+  row.append(del, ban); box.appendChild(row);
+}
+async function adminDelete(n, uid) {
+  const db = ACCT.db;
+  for (const col of ['scores', 'ghosts']) { try { await db.collection(col).doc(String(n)).collection('runs').doc(uid).delete(); } catch (e) { console.warn(e); } }
+}
+async function adminBan(uid) {
+  const ref = ACCT.db.collection('meta').doc('bans');
+  try { const d = await ref.get(), uids = d.exists && Array.isArray(d.data().uids) ? d.data().uids : []; if (!uids.includes(uid)) uids.push(uid); await ref.set({ uids }); } catch (e) { console.warn(e); }
+  for (const k of Object.keys(BUILTIN)) await adminDelete(k, uid);
 }
 $('bBackLv').addEventListener('click', () => { if (!UI.busy) showScreen('levels', true); });
 $('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
@@ -4974,8 +5135,8 @@ async function acctPushBoard(force) {
     const ref = ACCT.db.collection('scores').doc(k).collection('runs').doc(uid);
     try {
       const s = await ref.get();
-      if (!s.exists || records[k] < s.data().ms) await ref.set({ pseudo: ACCT.pseudo, ms: Math.round(records[k]), at: Date.now(), ghost: false });
-      else if (force) await ref.set({ pseudo: ACCT.pseudo }, { merge: true });      // nouveau pseudo : le replay reste
+      // Un temps n'entre au classement qu'avec son replay (envoyé à l'arrivée) : ici on ne fait que suivre un changement de pseudo
+      if (force && s.exists) await ref.set({ pseudo: ACCT.pseudo }, { merge: true });
     } catch (e) { console.warn(e); }
   }));
 }
@@ -4983,8 +5144,8 @@ async function acctSubmit(n, ms, ghost) {
   if (!ACCT.user) return;
   const uid = ACCT.user.uid;
   try { await ACCT.db.collection('users').doc(uid).set({ records: { [n]: ms }, maj: Date.now() }, { merge: true }); } catch (e) { console.warn(e); }
-  if (ACCT.pseudo && boardOK(n)) {
-    try { await ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(uid).set({ pseudo: ACCT.pseudo, ms: Math.round(ms), at: Date.now(), ghost: !!ghost }); } catch (e) { console.warn(e); }
+  if (ACCT.pseudo && boardOK(n) && ghost) {
+    try { await ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(uid).set({ pseudo: ACCT.pseudo, ms: Math.round(ms), at: Date.now(), ghost: true }); } catch (e) { console.warn(e); }
   }
 }
 async function acctTop(n, k = 10) {
