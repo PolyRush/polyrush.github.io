@@ -298,6 +298,8 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 /* Écran de présentation : le niveau est flouté derrière, un grand numéro en filigrane */
 #ui.pvmode .veil{background:linear-gradient(90deg,rgba(247,247,247,.9) 0%,rgba(247,247,247,.66) 40%,rgba(247,247,247,.24) 72%,rgba(247,247,247,.14) 100%);
   -webkit-backdrop-filter:blur(4px) saturate(.92);backdrop-filter:blur(4px) saturate(.92)}
+body.lowfx #ui .veil,body.lowfx .pv-glass,body.lowfx #repIntro{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 #ui.pvmode::after{content:"";position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 160px rgba(17,17,17,.16)}
 .pv-num{position:absolute;right:max(16px,5vw);top:46%;transform:translateY(-50%);pointer-events:none;user-select:none;
   font:italic 900 clamp(180px,32vw,500px)/.8 var(--font-display);letter-spacing:-.07em;color:rgba(255,255,255,.35);-webkit-text-stroke:3px rgba(17,17,17,.2)}
@@ -724,6 +726,9 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPrefere
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
+// Dans les salles, le soleil et les blocs ne bougent pas : l'ombre est calculée une fois, pas à chaque image.
+renderer.shadowMap.autoUpdate = false;
+let shadowDirty = true;
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xeef1f4);
 scene.fog = new THREE.Fog(0xeef1f4, 170, 520);
@@ -910,27 +915,52 @@ function unionGrid(boxes, grow) {
   const at = (c) => (c[0] < 0 || c[1] < 0 || c[2] < 0 || c[0] >= n[0] || c[1] >= n[1] || c[2] >= n[2]) ? 0 : cell[id(c[0], c[1], c[2])];
   return { A, n, at };
 }
-// Surface de l'union : un quadrilatère par face de case exposée (grille conforme : pas de jointure en T, donc pas de fissure).
+// Surface de l'union. Les faces exposées d'une même tranche et d'un même bloc sont réunies en grands rectangles
+// (bien moins de triangles qu'une case par face). Pour ne laisser aucune fissure, chaque rectangle garde sur son
+// pourtour un sommet à chaque ligne de la grille (ses voisins ont les mêmes) et se triangule en éventail depuis
+// son centre : pas de jointure en T, donc pas de point noir entre deux faces.
 function unionFaces(G, boxes, out, withColor) {
   const { A, n, at } = G, col = new THREE.Color(), c = [0, 0, 0], d = [0, 0, 0];
   for (let a = 0; a < 3; a++) {
-    const u = (a + 1) % 3, v = (a + 2) % 3;
-    for (c[0] = 0; c[0] < n[0]; c[0]++) for (c[1] = 0; c[1] < n[1]; c[1]++) for (c[2] = 0; c[2] < n[2]; c[2]++) {
-      const m = at(c); if (!m) continue;
-      for (const sg of [1, -1]) {
-        d[0] = c[0]; d[1] = c[1]; d[2] = c[2]; d[a] += sg;
-        if (at(d)) continue;
-        const p = A[a][c[a] + (sg > 0 ? 1 : 0)], u0 = A[u][c[u]], u1 = A[u][c[u] + 1], v0 = A[v][c[v]], v1 = A[v][c[v] + 1];
-        const corners = sg > 0 ? [[u0, v0], [u1, v0], [u1, v1], [u0, v1]] : [[u0, v0], [u0, v1], [u1, v1], [u1, v0]];
-        const base = out.pos.length / 3, B = boxes[m - 1];
+    const u = (a + 1) % 3, v = (a + 2) % 3, nu = n[u], nv = n[v];
+    if (!nu || !nv) continue;
+    const mask = new Int32Array(nu * nv);
+    for (let layer = 0; layer < n[a]; layer++) for (const sg of [1, -1]) {
+      let any = false;
+      for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+        c[a] = layer; c[u] = i; c[v] = j;
+        const m = at(c); let val = 0;
+        if (m) { d[0] = c[0]; d[1] = c[1]; d[2] = c[2]; d[a] += sg; if (!at(d)) val = m; }
+        mask[i * nv + j] = val; if (val) any = true;
+      }
+      if (!any) continue;
+      const p = A[a][layer + (sg > 0 ? 1 : 0)];
+      for (let i = 0; i < nu; i++) for (let j = 0; j < nv; j++) {
+        const m = mask[i * nv + j]; if (!m) continue;
+        let j1 = j + 1; while (j1 < nv && mask[i * nv + j1] === m) j1++;
+        let i1 = i + 1;
+        grow: while (i1 < nu) { for (let jj = j; jj < j1; jj++) if (mask[i1 * nv + jj] !== m) break grow; i1++; }
+        for (let ii = i; ii < i1; ii++) for (let jj = j; jj < j1; jj++) mask[ii * nv + jj] = 0;
+        // pourtour (sens direct vu depuis la normale), un sommet par ligne de grille
+        const loop = [];
+        for (let k = i; k <= i1; k++) loop.push(k, j);
+        for (let k = j + 1; k <= j1; k++) loop.push(i1, k);
+        for (let k = i1 - 1; k >= i; k--) loop.push(k, j1);
+        for (let k = j1 - 1; k > j; k--) loop.push(i, k);
+        const cnt = loop.length / 2, B = boxes[m - 1], base = out.pos.length / 3;
         if (withColor) col.set(B.color);
-        for (const [pu, pv] of corners) {
+        const put = (pu, pv) => {
           const w = [0, 0, 0]; w[a] = p; w[u] = pu; w[v] = pv; out.pos.push(w[0], w[1], w[2]);
-          const nn = [0, 0, 0]; nn[a] = sg; out.nrm && out.nrm.push(nn[0], nn[1], nn[2]);
+          if (out.nrm) { const nn = [0, 0, 0]; nn[a] = sg; out.nrm.push(nn[0], nn[1], nn[2]); }
           if (withColor) out.col.push(col.r, col.g, col.b);
           out.bid.push(B.b.bid);
+        };
+        put((A[u][i] + A[u][i1]) / 2, (A[v][j] + A[v][j1]) / 2);       // centre de l'éventail
+        for (let k = 0; k < cnt; k++) put(A[u][loop[2 * k]], A[v][loop[2 * k + 1]]);
+        for (let k = 0; k < cnt; k++) {
+          const k1 = (k + 1) % cnt;
+          if (sg > 0) out.idx.push(base, base + 1 + k, base + 1 + k1); else out.idx.push(base, base + 1 + k1, base + 1 + k);
         }
-        out.idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
       }
     }
   }
@@ -1268,7 +1298,7 @@ function lightShaft(h, top, mat) {
   const m = new THREE.Mesh(g, mat);
   m.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); m.renderOrder = 2;
   W.add(m);
-  const n = Math.round(clamp(w * d * 0.4 * (top - bot) / 32, 30, 140)), seed = new Float32Array(n * 4);
+  const n = Math.round(clamp(w * d * 0.3 * (top - bot) / 32, 20, 90)), seed = new Float32Array(n * 4);
   for (let i = 0; i < n * 4; i++) seed[i] = Math.random();
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
@@ -2107,7 +2137,7 @@ function setRamp(v) { toonRamp.image = { data: new Uint8Array(v), width: v.lengt
 const _ax = new THREE.Vector3(), _ay = new THREE.Vector3(), _up = new THREE.Vector3(0, 0, -1), _cn = new THREE.Vector3();
 let curEnv = null;
 function setEnv(env) {
-  curEnv = env;
+  curEnv = env; shadowDirty = true;
   const cave = !!env;
   setRamp(cave ? RAMP.cave : RAMP.day);
   scene.background.set(cave ? 0xf8f8f8 : 0xeef1f4);
@@ -3079,7 +3109,7 @@ function beltScroll(bt, t) {
   bt.tex.offset.set(((-t * vx / STRIPE) % 1 + 1) % 1, ((t * vz / STRIPE) % 1 + 1) % 1);
 }
 function render(a, fdt) {
-  if (UI.mode === 'edit') { editorFrame(fdt); timeU.value += fdt; renderer.render(scene, camera); return; }
+  if (UI.mode === 'edit') { editorFrame(fdt); timeU.value += fdt; renderer.shadowMap.needsUpdate = true; renderer.render(scene, camera); return; }
   if (!rotTip.hidden) rotTip.hidden = true;
   if (!marquee.hidden) marquee.hidden = true;
   qa.set(P.pq.x, P.pq.y, P.pq.z, P.pq.w); qb.set(P.q.x, P.q.y, P.q.z, P.q.w); qa.slerp(qb, a);
@@ -3122,6 +3152,8 @@ function render(a, fdt) {
   timeU.value = tw;
   if (W) for (const f of W.ticks) f(fdt, tw);
   if (UI.mode === 'replay') replayHud(); else updateTimer(a);
+  // L'ombre ne se recalcule que si quelque chose qui la porte bouge : soleil qui suit (dehors), éditeur, blocs mobiles
+  if (shadowDirty || sunFollow || kin.length) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
   renderer.render(scene, camera);
 }
 
@@ -3329,6 +3361,24 @@ bJump.addEventListener('pointerdown', e => { e.preventDefault(); if (!playing())
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => bJump.addEventListener(ev, () => { input.jumpHeld = false; }));
 bSL.addEventListener('click', () => { if (playing()) setShiftlock(!shiftlock); });
 
+// Résolution adaptative : si les images dépassent ~18,5 ms en moyenne, on baisse un peu la définition (jusqu'à 0,6×) ;
+// si tout est fluide pendant un moment, on remonte. Le jeu vise 60 images/s sur un PC moyen.
+const DPR_MAX = Math.min(devicePixelRatio || 1, 1.5), PERF = { dpr: DPR_MAX, ema: 1 / 60, slow: 0, fast: 0, cool: 2 };
+function perfTick(fdt) {
+  if (document.hidden || fdt <= 0 || fdt > 0.2) return;
+  PERF.ema += (fdt - PERF.ema) * 0.05;
+  PERF.cool -= fdt;
+  if (PERF.cool > 0) return;
+  if (PERF.ema > 0.0185) { PERF.slow += fdt; PERF.fast = 0; } else if (PERF.ema < 0.0172) { PERF.fast += fdt; PERF.slow = 0; } else { PERF.slow = PERF.fast = 0; }
+  let next = PERF.dpr;
+  if (PERF.slow > 1.2 && PERF.dpr > 0.6) next = Math.max(0.6, PERF.dpr - 0.15);
+  else if (PERF.fast > 6 && PERF.dpr < DPR_MAX) next = Math.min(DPR_MAX, PERF.dpr + 0.1);
+  if (next !== PERF.dpr) {
+    PERF.dpr = Math.round(next * 100) / 100; PERF.slow = PERF.fast = 0; PERF.cool = 2.5;
+    renderer.setPixelRatio(PERF.dpr); resize();
+    document.body.classList.toggle('lowfx', PERF.dpr < 0.95);   // effets de flou des menus coupés
+  }
+}
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / Math.max(1, innerHeight);
@@ -3430,7 +3480,7 @@ $('finRetry').addEventListener('click', e => { e.currentTarget.blur(); if (playi
 
 // Volet : rouge puis blanc couvrent l'écran, on change de carte dessous, puis ils repartent.
 function wipe(mid) {
-  UI.busy = true; wipeEl.className = 'in';
+  UI.busy = true; wipeEl.className = 'in'; PERF.cool = 3;   // un chargement n'est pas un ralentissement
   setTimeout(() => {
     try { mid(); renderer.compile(scene, camera); } catch (err) { console.error(err); }
     acc = 0; last = performance.now();
@@ -5019,6 +5069,7 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   let fdt = (now - last) / 1000; last = now;
+  perfTick(fdt);
   if (fdt > 0.25) fdt = 0.25;
   if (fdt < 0) fdt = 0;
   acc += fdt;
