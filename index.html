@@ -432,6 +432,40 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
   .mbtn{--h:62px;font-size:20px}
   #timer{font-size:22px}
 }
+/* ---------- Responsive en hauteur : tout tient dans l'écran, sinon ça défile depuis le haut (jamais coupé) ---------- */
+.screen{justify-content:safe center}
+.logo{font-size:clamp(48px,min(12vw,15.5vh),150px)}
+.col{gap:clamp(16px,4.2vh,56px)}
+.nav{gap:clamp(9px,1.7vh,16px)}
+.mbtn{--h:clamp(46px,9.4vh,70px);font-size:clamp(17px,3.3vh,23px)}
+.mbtn .ic svg{width:clamp(19px,3.4vh,24px);height:clamp(19px,3.4vh,24px)}
+.acct-chip{padding-block:clamp(4px,1vh,7px)}
+.acct-chip .av{width:clamp(32px,6vh,40px);height:clamp(32px,6vh,40px)}
+.grid{max-width:min(640px,max(290px,calc((100dvh - 190px) * 2.2 + 40px)))}
+.lv-head h2{font-size:clamp(30px,min(5vw,8vh),52px)}
+.ed-overlay,#edModal{grid-template-columns:minmax(0,1fr);justify-items:center;overflow-y:auto;padding-block:16px}
+.ed-overlay > *{min-width:0}
+.acct-card{max-width:100%;overflow-wrap:anywhere}
+@media (max-height:560px){
+  #finish{bottom:calc(10px + env(safe-area-inset-bottom,0px))}
+  .fin-card{gap:8px;padding:20px 20px 16px}
+}
+/* paysage très bas (téléphone couché, petite fenêtre) : logo à gauche, menu à droite */
+@media (max-height:520px) and (min-width:600px){
+  .col{grid-template-columns:auto minmax(240px,380px);align-items:center;column-gap:clamp(24px,5vw,64px);row-gap:12px;max-width:none;width:auto}
+  .col .logo{grid-row:1 / span 2;font-size:clamp(44px,min(9vw,22vh),110px)}
+  .col .nav,.col .acct-chip{grid-column:2}
+  .mbtn{--h:clamp(40px,11vh,56px);font-size:clamp(15px,4.2vh,20px)}
+  .back{width:44px;height:44px}
+  .lv-head{gap:14px}
+}
+@media (max-height:520px) and (min-width:600px){
+  .fin-card{width:min(680px,100%);grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:26px;row-gap:10px;justify-items:stretch;align-items:center;padding:24px 22px 18px}
+  .fin-card .ftime{grid-column:1;grid-row:1;justify-self:center;align-self:end}
+  .fin-card .delta{grid-column:1;grid-row:2;justify-self:center;align-self:start}
+  .fin-card .fin-board{grid-column:2;grid-row:1}
+  .fin-card .fin-act{grid-column:2;grid-row:2}
+}
 @media (prefers-reduced-motion:reduce){
   #toast,#flash{transition:none}
   .logo b,.speed i,.screen.show .stag,.screen.show .tile,.rec::after{animation:none}
