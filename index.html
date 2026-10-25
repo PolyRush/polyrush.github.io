@@ -320,6 +320,9 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-list .board li:nth-child(2) .rk,.pv-list .board li:nth-child(3) .rk{background:var(--ink);color:#fff}
 .pv-list .board li.me{background:rgba(240,68,58,.14);box-shadow:inset 3px 0 0 var(--red)}
 .pv-list .acct-empty{padding:8px 6px;margin:0}
+.pv-week{display:grid;gap:8px;margin-top:6px;padding:12px 12px 4px;border-top:1.5px solid rgba(17,17,17,.1)}
+.pv-week p{margin:0;font:700 12px/1.4 var(--font-ui);color:var(--muted)}
+.pv-week .ed-btn{width:100%;padding:9px}
 .pv-list .board li.aud{cursor:pointer}
 .pv-list .board li.sus .ps::after{content:" ⚠";color:var(--red-deep)}
 .pv-list .board li.sus{box-shadow:inset 3px 0 0 var(--red-deep)}
@@ -487,6 +490,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
         <button id="bLevels" class="mbtn primary stag" style="--i:3"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg></span><span class="tx">Niveaux</span><span id="prog" class="meta">0/10</span></button>
         <button id="bTrain" class="mbtn stag" style="--i:4"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span><span class="tx">Entraînement</span></button>
         <button id="bEditor" class="mbtn stag" style="--i:5"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="12.5" width="8" height="8"/><rect x="12.5" y="3.5" width="8" height="8"/><path d="M12.5 16.5h8M16.5 12.5v8"/></svg></span><span class="tx">Éditeur</span></button>
+        <button id="bWeekly" class="mbtn stag" style="--i:6" hidden><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tx">Semaine</span><span id="weekTag" class="meta"></span></button>
       </nav>
       <button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5"/></svg><b></b></span><span class="tx"><span class="nm">Se connecter</span></span><svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
@@ -523,6 +527,11 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
           <div id="pvAdmin" class="pv-admin" hidden></div>
         </div>
         <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b></div>
+        <div id="pvWeek" class="pv-week" hidden>
+          <p id="pvWeekInfo"></p>
+          <button id="bReroll" class="ed-btn">Reroll</button>
+          <button id="bWeekPub" class="acct-toggle"><span>Visible par tous</span><i></i></button>
+        </div>
       </div>
     </div>
     <button id="bPlay" class="pv-play stag" style="--i:2"><span>Jouer</span><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg></button>
@@ -2052,6 +2061,7 @@ const BUILTIN = { 1: buildLevel1, 2: buildLevel2 };
 for (const n in OFFICIAL) BUILTIN[n] = () => buildCustom(+n, officialLevel(n));
 // Niveau jouable : intégré (1 à 3) ou construit dans l'éditeur (4 à 10, avec un départ et une arrivée).
 function getBuilder(n) {
+  if (n === WEEKLY_N) { const W = WEEKLY_TRY || WEEKLY; return W ? () => buildCustom(n, W.data) : null; }
   if (ED.test && ED.n === n && ED.draft) return () => buildCustom(n, ED.draft);   // essai depuis l'éditeur : le brouillon, pas la version enregistrée
   return customPlayable(n) ? () => buildCustom(n) : (BUILTIN[n] || null);
 }
@@ -3265,7 +3275,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'Escape') {
     if (!menu.hidden) { openMenu(false); if (UI.mode === 'menu') focusScreen(); return; }
-    if (UI.mode === 'menu') { if (UI.screen === 'level') showScreen('levels', true); else if (UI.screen !== 'title') showScreen('title', true); return; }
+    if (UI.mode === 'menu') { if (UI.screen === 'level') showScreen(PV && PV.n === WEEKLY_N ? 'title' : 'levels', true); else if (UI.screen !== 'title') showScreen('title', true); return; }
     if (UI.mode === 'replay') { stopReplay(); return; }
     if (!fly) openMenu(true);
     return;
@@ -3429,7 +3439,7 @@ function buildLevelGrid() {
     }
     g.appendChild(b);
   }
-  $('prog').textContent = Object.keys(records).filter(k => records[k]).length + '/10';
+  $('prog').textContent = Object.keys(records).filter(k => +k >= 1 && +k <= 10 && records[k]).length + '/10';
 }
 function screenItems() {
   if (UI.screen === 'level') return [$('bBackLv'), $('bPlay')];
@@ -3575,13 +3585,13 @@ function recSample(tk, x, y, z, q, force) {
 async function uploadGhost(n, ms) {
   const d = REC.rows.join(';');
   if (d.length > 900000) return false;                     // trop long pour un document
-  try { await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(ACCT.user.uid).set({ pseudo: ACCT.pseudo || '', ms, t0: REC.t0, d, v: 1, at: Date.now() }); return true; }
+  try { await ACCT.db.collection('ghosts').doc(bkey(n)).collection('runs').doc(ACCT.user.uid).set({ pseudo: ACCT.pseudo || '', ms, t0: REC.t0, d, v: 1, at: Date.now() }); return true; }
   catch (e) { console.warn(e); return false; }
 }
 async function watchGhost(n, uid, pseudo) {
   if (UI.busy) return;
   let g;
-  try { const doc = await ACCT.db.collection('ghosts').doc(String(n)).collection('runs').doc(uid).get(); g = doc.exists ? doc.data() : null; }
+  try { const doc = await ACCT.db.collection('ghosts').doc(bkey(n)).collection('runs').doc(uid).get(); g = doc.exists ? doc.data() : null; }
   catch (e) {
     const code = e && e.code || '';
     toast(code === 'permission-denied' ? 'Replay bloqué par le serveur (règles Firestore)' : 'Replay indisponible' + (code ? ' (' + code + ')' : ''), 3000);
@@ -3692,6 +3702,376 @@ function stopReplay() {
   });
 }
 
+/* ---------- Niveau de la semaine : générateur ----------
+   Pas d'IA : un générateur procédural à partir de « pièces » éprouvées (sauts, escaliers, poutres, zigzags, chutes,
+   échelles de barreaux, tapis), posées en serpentin sur plusieurs allées à des hauteurs différentes, sur des piliers
+   qui plongent dans le vide (le style des niveaux officiels). Chaque niveau est vérifié en vrai : un robot le parcourt
+   avec la physique du jeu (chemin principal), puis tente chaque raccourci ; ce qui ne passe pas est retiré ou rejeté.
+   Les raccourcis ne sont jamais signalés : un saut en contrebas vers l'allée suivante, une corniche discrète, une
+   échelle sur le flanc d'un pilier. */
+const WEEKLY_N = 100;
+let WEEKLY = null;                       // { id, data, created, pub, seed }
+function rng(seed) {
+  let a = seed >>> 0;
+  return () => { a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+// Portée d'un saut lancé à pleine vitesse, pour une différence de hauteur dh (positive = plus haut)
+function jumpReach(dh) {
+  const g = CFG.gravity, v = CFG.jumpV, disc = v * v - 2 * g * dh;
+  if (disc < 0) return 0;
+  return CFG.speed * (v + Math.sqrt(disc)) / g - 1.2;
+}
+function genWeekly(seed, opt = {}) {
+  const R = rng(seed), rnd = (a, b) => a + (b - a) * R(), ri = (a, b) => Math.floor(a + (b - a + 1) * R());
+  const pick = a => a[Math.floor(R() * a.length)];
+  const blocs = [], pads = [], wps = [];
+  const FLOOR = -45;
+  let cx = 0, cz = 0, top = 0, f = [1, 0], s = 0, lat = 0, laneZ = 0;
+  const rv = () => [-f[1], f[0]];
+  const P = (a, l) => { const r = rv(); return [cx + f[0] * a + r[0] * l, cz + f[1] * a + r[1] * l]; };
+  const rect = (a0, a1, l0, l1) => { const p = P(a0, l0), q = P(a1, l1); return [Math.min(p[0], q[0]), Math.max(p[0], q[0]), Math.min(p[1], q[1]), Math.max(p[1], q[1])]; };
+  const put = (x0, x1, y0, y1, z0, z1, type = 'bloc', extra) => {
+    const b = { type, pos: [(x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2], taille: [x1 - x0, y1 - y0, z1 - z0], ...(extra || {}) };
+    blocs.push(b); return b;
+  };
+  const yawOf = () => Math.round(Math.atan2(-f[0], -f[1]) * 180 / Math.PI);
+  // Plateforme : dessus à la hauteur t ; un pilier jusqu'au vide (ou une simple dalle si « float »)
+  const pad = (a0, a1, l0, l1, t, o = {}) => {
+    const [x0, x1, z0, z1] = rect(a0, a1, l0, l1);
+    const b = put(x0, x1, o.float ? t - 1 : FLOOR, t, z0, z1);
+    const p = { x0, x1, z0, z1, top: t, s: s + (a0 + a1) / 2, b, lane: laneZ, kind: o.kind || 'pad' };
+    pads.push(p); return p;
+  };
+  let mod = 'start';
+  const wp = (a, l, o) => { const [x, z] = P(a, l); wps.push({ x: +x.toFixed(2), z: +z.toFixed(2), m: mod, ...(o || {}) }); };
+  const moveTo = (a, l) => { const [x, z] = P(a, l); cx = x; cz = z; s += a; lat += l; };
+  const latOK = l => Math.abs(lat + l) <= 3.5;
+
+  // ----- Pièces -----
+  const M = {
+    gap() {                                                   // saut simple, un peu plus haut ou plus bas
+      const dh = pick([-2, -1, 0, 0, 1, 1.5]), g = +(Math.min(jumpReach(dh) * 0.62, rnd(3, 5))).toFixed(1);
+      const len = ri(5, 8), w = ri(4, 6), dl = latOK(0) ? pick([-1, 0, 0, 1]) : -Math.sign(lat);
+      wp(-0.6, 0, { jump: 1, r: 0.6 });
+      top += dh; pad(g, g + len, dl - w / 2, dl + w / 2, top);
+      wp(g + len / 2, dl); moveTo(g + len, dl);
+    },
+    stairs() {                                                // escalier (on le monte ou le descend en marchant)
+      const n = ri(3, 6), up = top < 18 && R() < 0.65 ? 1 : -1, w = ri(4, 5);
+      for (let i = 0; i < n; i++) pad(i * 2.5, (i + 1) * 2.5, -w / 2, w / 2, top + up * (i + 1));
+      top += up * n; wp(n * 2.5 - 1, 0); moveTo(n * 2.5, 0);
+    },
+    beam() {                                                  // poutre étroite, parfois bordée d'un muret
+      const len = ri(10, 18), w = pick([2, 2, 2.5]);
+      pad(0, len, -w / 2, w / 2, top, { kind: 'beam' });
+      if (R() < 0.4) { const sd = pick([-1, 1]), [x0, x1, z0, z1] = rect(2, len - 2, sd * (w / 2 + 0.5) - 0.5, sd * (w / 2 + 0.5) + 0.5); put(x0, x1, FLOOR, top + 3.5, z0, z1); }
+      wp(len - 1, 0); moveTo(len, 0);
+    },
+    zigzag() {                                                // petites plateformes en quinconce
+      const k = ri(3, 4); let cur = 0;
+      for (let i = 0; i < k; i++) {
+        const want = (i % 2 ? 2.5 : -2.5) * (lat > 0 ? -1 : 1), nl = latOK(want) ? want : -want, g = +rnd(2.6, 3.4).toFixed(1);
+        wp(-0.5, 0, { jump: 1, r: 0.6 });
+        pad(g, g + 3, nl - 1.5, nl + 1.5, top, { float: R() < 0.5, kind: 'small' });
+        wp(g + 1.5, nl); moveTo(g + 3, nl); cur++;
+      }
+    },
+    drop() {                                                  // on se laisse tomber sur une plateforme plus bas
+      const dh = ri(5, 10); if (top - dh < -12) return M.gap();
+      const len = ri(7, 9), w = ri(5, 6);
+      top -= dh; pad(1, 1 + len, -w / 2, w / 2, top);
+      wp(1 + len / 2, 0); moveTo(1 + len, 0);
+    },
+    ladder() {                                                // mur à barreaux : on grimpe jusqu'au palier
+      const h = ri(7, 10); if (top + h > 26) return M.stairs();
+      const dl = ri(5, 8);
+      pad(0, 3, -2.5, 2.5, top);                              // petit palier devant le mur
+      const deck = pad(3, 3 + dl, -2.5, 2.5, top + h);        // le palier du haut (son pilier fait le mur)
+      // barreaux fins et séparés (une vraie échelle), le dernier juste sous le bord du palier pour passer dessus
+      for (let y = top + h - 0.75; y > top + 1.2; y -= 1.7) {
+        const [x0, x1, z0, z1] = rect(2.4, 3, -1.6, 1.6); put(x0, x1, y - 0.25, y + 0.25, z0, z1);
+      }
+      wp(1.6, 0); wp(5, 0, { y: top + h }); top += h; deck.kind = 'deck';
+      wp(3 + dl - 1, 0); moveTo(3 + dl, 0);
+    },
+    belt() {                                                  // tapis roulant dans le sens de la course : il fait gagner du temps
+      const len = ri(12, 18), v = ri(8, 12);
+      const [x0, x1, z0, z1] = rect(0, len, -2, 2);
+      put(x0, x1, FLOOR, top - 1, z0, z1);
+      const t = put(x0, x1, top - 1, top, z0, z1, 'tapis', { vitesse: v, rotation: [0, yawOf(), 0] });
+      // un tapis tourné de 90° garde sa taille locale (largeur x, longueur z)
+      if (Math.abs(f[0]) > 0.5) t.taille = [4, 1, len];
+      pads.push({ x0, x1, z0, z1, top, s: s + len / 2, b: t, lane: laneZ, kind: 'belt' });
+      pad(len, len + 6, -2.5, 2.5, top);                       // on ressort du tapis lancé : une piste pour se poser
+      wp(len + 5, 0); moveTo(len + 6, 0);
+    }
+  };
+  const corner = (g) => {                                     // grande dalle d'angle (on tourne dessus)
+    if (g >= 2) wp(-0.6, 0, { jump: 1, r: 0.6 });
+    const p = pad(g, g + 7, -3.5, 3.5, top, { kind: 'corner' });
+    wp(g + 3.5, 0); moveTo(g + 3.5, 0); return p;
+  };
+  const turn = (nf) => { f = nf; moveTo(3.5, 0); lat = 0; };
+
+  // ----- Départ -----
+  put(-4, 4, FLOOR, -1, -4, 4);
+  blocs.push({ type: 'depart', pos: [0, -0.5, 0], taille: [8, 1, 8], rotation: [0, -90, 0] });
+  pads.push({ x0: -4, x1: 4, z0: -4, z1: 4, top: 0, s: 0, lane: 0, kind: 'start' });
+  cx = 4; cz = 0; s = 4;
+
+  // ----- Allées en serpentin -----
+  const legs = opt.legs || ri(4, 5), weights = [['gap', 4], ['stairs', 2], ['beam', 2], ['zigzag', 2], ['drop', 1.4], ['ladder', 1.3], ['belt', 1.2]];
+  const choose = (last) => {
+    let tot = 0; for (const [k, w] of weights) if (k !== last) tot += w;
+    let x = R() * tot; for (const [k, w] of weights) { if (k === last) continue; x -= w; if (x <= 0) return k; } return 'gap';
+  };
+  let last = '';
+  for (let leg = 0; leg < legs; leg++) {
+    const L = rnd(48, 66), a0 = s;
+    while (s - a0 < L) { const k = choose(last); last = k; mod = k; M[k](); }
+    if (leg === legs - 1) break;
+    // angle, puis liaison vers l'allée suivante (on part vers le nord), puis angle, demi-tour
+    corner(+rnd(2.5, 4).toFixed(1));
+    const back = [-f[0], -f[1]];
+    turn([0, -1]); laneZ -= 1;
+    // liaison vers le nord : assez longue pour que les allées restent loin l'une de l'autre (pas de raccourci partout),
+    // et souvent un changement de hauteur (c'est ce qui rend possibles les raccourcis cachés entre allées)
+    const link = pick(['beam', 'stairs', 'drop', 'drop', 'gap']); mod = link;
+    if (link === 'beam') { const len = ri(7, 10), w = 2.5; pad(0, len, -w / 2, w / 2, top, { kind: 'beam' }); wp(len - 1, 0); moveTo(len, 0); }
+    let walkOff = false;
+    if (link === 'drop') {
+      const len = ri(7, 9); pad(0, len, -2, 2, top); wp(len - 1, 0); moveTo(len, 0);
+      const dh = Math.min(ri(6, 10), top + 12);
+      if (dh >= 4) { top -= dh; walkOff = true; }              // trop bas pour descendre encore : simple saut à plat
+    } else M[link]();
+    corner(walkOff ? +rnd(0.5, 1.5).toFixed(1) : +rnd(2.5, 4).toFixed(1));
+    turn(back);
+    last = '';
+  }
+  // ----- Arrivée -----
+  wp(-0.6, 0, { jump: 1, r: 0.6 });
+  const g = 3.5;
+  const [x0, x1, z0, z1] = rect(g, g + 8, -4, 4);
+  put(x0, x1, FLOOR, top - 1, z0, z1);
+  blocs.push({ type: 'arrivee', pos: [(x0 + x1) / 2, top - 0.5, (z0 + z1) / 2], taille: [8, 1, 8] });
+  wp(g + 4, 0);
+
+  // ----- Salle autour du parcours -----
+  let X0 = Infinity, X1 = -Infinity, Z0 = Infinity, Z1 = -Infinity, TOP = 0;
+  for (const b of blocs) { X0 = Math.min(X0, b.pos[0] - b.taille[0] / 2); X1 = Math.max(X1, b.pos[0] + b.taille[0] / 2); Z0 = Math.min(Z0, b.pos[2] - b.taille[2] / 2); Z1 = Math.max(Z1, b.pos[2] + b.taille[2] / 2); TOP = Math.max(TOP, b.pos[1] + b.taille[1] / 2); }
+  const salle = { x0: Math.floor(X0 - 12), x1: Math.ceil(X1 + 12), z0: Math.floor(Z0 - 12), z1: Math.ceil(Z1 + 12), h: Math.max(50, Math.ceil(TOP + 32)), bas: -60 };
+  return { blocs, salle, fond: 'vide', grille: 1, wps, pads, seed };
+}
+
+// Raccourcis possibles : deux plateformes éloignées sur le parcours mais proches dans l'espace (allées voisines)
+function weeklyShortcuts(G) {
+  const out = [];
+  const gapXZ = (a, b) => Math.hypot(Math.max(0, a.x0 - b.x1, b.x0 - a.x1), Math.max(0, a.z0 - b.z1, b.z0 - a.z1));
+  for (const a of G.pads) for (const b of G.pads) {
+    if (b.s - a.s < 30 || a.kind === 'belt' || b.kind === 'belt' || a.kind === 'small') continue;
+    const dh = b.top - a.top, g = gapXZ(a, b);
+    if (dh <= 1 && dh >= -14 && g >= 2 && g <= jumpReach(dh) * 0.82) out.push({ a, b, g, dh, gain: b.s - a.s, kind: 'jump' });
+    else if (dh <= 0.5 && dh >= -12 && g > jumpReach(dh) * 0.82 && g <= jumpReach(dh) * 0.72 + 3.6) out.push({ a, b, g, dh, gain: b.s - a.s, kind: 'ledge' });
+  }
+  // les plus intéressants d'abord : un vrai gain, sans sauter la moitié du niveau
+  const score = c => c.gain >= 40 && c.gain <= 130 ? 1000 + c.gain : c.gain;
+  out.sort((p, q) => score(q) - score(p));
+  return out;
+}
+
+// Robot de vérification : suit une liste de points avec la vraie physique du jeu (comme un joueur au clavier).
+// Renvoie { ok, i, t } : ok si tous les points ont été atteints, t le temps (en secondes de jeu).
+function botRun(wps, maxSec, from, floorY) {
+  const saveSL = shiftlock, saveFP = cam.fp;
+  shiftlock = false; cam.fp = false;
+  if (from) { CHECK = { x: from.x, y: from.y, z: from.z, yaw: from.yaw || 0 }; respawn(false); }
+  for (const k in input) input[k] = typeof input[k] === 'boolean' ? false : 0;
+  const N = Math.round(maxSec / DT), lowY = floorY ?? -30;
+  let i = 0, k = 0, ok = false;
+  for (; k < N; k++) {
+    const w = wps[i], fy = P.y - COM_H;
+    if (!w) { ok = true; break; }
+    const dx = w.x - P.x, dz = w.z - P.z;
+    if (Math.hypot(dx, dz) < (w.r || 1.2) && (w.y === undefined || fy > w.y - 0.6) && (w.air || P.grounded || P.climb)) {
+      if (w.jump) P.jumpBuf = CFG.buffer;
+      input.jumpHeld = false; i++; k--; continue;
+    }
+    cam.yaw = Math.atan2(-dx, -dz); input.fwd = 1;
+    step();
+    if (P.y - COM_H < lowY) break;
+  }
+  input.fwd = 0; input.jumpHeld = false;
+  shiftlock = saveSL; cam.fp = saveFP;
+  return { ok, i, t: k * DT };
+}
+// Fabrique et vérifie un niveau de la semaine. Essaie plusieurs graines si besoin.
+let WEEKLY_TRY = null, WEEKLY_DBG = null;                    // niveau en cours de vérification (lu par getBuilder)
+async function makeWeekly(onStep) {
+  const mode = UI.mode;
+  for (let attempt = 0; attempt < 12; attempt++) {
+    const seed = (Math.random() * 2 ** 31) >>> 0;
+    if (onStep) onStep(attempt);
+    await new Promise(r => setTimeout(r, 20));
+    const G = genWeekly(seed);
+    const res = weeklyCheck(G);
+    if (res && (res.shortcuts.length || attempt >= 7)) { UI.mode = mode; return res; }   // on veut au moins un raccourci caché
+  }
+  UI.mode = mode;
+  return null;
+}
+function weeklyBuild(G) {
+  WEEKLY_TRY = { id: 'try', data: cleanLevel({ blocs: G.blocs, salle: G.salle, fond: 'vide', grille: 1, maj: 0 }) };
+  loadMap('level' + WEEKLY_N);
+}
+function weeklyCheck(G) {
+  const mode = UI.mode;
+  UI.mode = 'play';
+  try {
+    // 1) le chemin principal, du départ à l'arrivée, d'une traite
+    weeklyBuild(G);
+    restart(); run.state = 'ready';
+    const main = botRun(G.wps, 80, null, -20);
+    const done = run.state === 'done', t = done ? (run.end - run.start) * DT : 0;
+    pendingFinish = false;
+    WEEKLY_DBG = { stage: 'main', ok: main.ok, done, t, i: main.i, wp: G.wps[main.i], pos: [P.x, P.y - COM_H, P.z].map(v => +v.toFixed(1)), n: G.wps.length };
+    if (!main.ok || !done || t < 22 || t > 42) return null;
+    // 2) les raccourcis : on garde ceux que le robot réussit (2 au plus, éloignés l'un de l'autre)
+    const kept = [], cands = weeklyShortcuts(G).slice(0, 14);
+    for (const c of cands) {
+      if (kept.length >= 2) break;
+      if (kept.some(k => Math.abs(k.a.s - c.a.s) < 40 || Math.abs(k.b.s - c.b.s) < 40)) continue;
+      const added = c.kind === 'ledge' ? addLedge(G, c) : [];
+      if (c.kind === 'ledge' && !added) continue;
+      weeklyBuild(G);
+      if (shortcutRun(c)) kept.push(c);
+      else for (const b of added) G.blocs.splice(G.blocs.indexOf(b), 1);
+    }
+    // 3) avec les raccourcis en place, le chemin principal doit toujours passer
+    weeklyBuild(G);
+    restart(); run.state = 'ready';
+    const again = botRun(G.wps, 80, null, -20), done2 = run.state === 'done', t2 = done2 ? (run.end - run.start) * DT : 0;
+    pendingFinish = false;
+    if (!again.ok || !done2) return null;
+    return { G, t: t2, shortcuts: kept.map(c => ({ gain: Math.round(c.gain), kind: c.kind, dh: c.dh })) };
+  } finally {
+    UI.mode = mode;
+    WEEKLY_TRY = null;
+    pendingFinish = false;
+  }
+}
+// Corniche discrète qui rapproche deux allées (même blanc, même style : rien ne la signale)
+function addLedge(G, c) {
+  const { a, b } = c, ax = (a.x0 + a.x1) / 2, az = (a.z0 + a.z1) / 2;
+  const dx = Math.max(0, b.x0 - a.x1, a.x0 - b.x1), dz = Math.max(0, b.z0 - a.z1, a.z0 - b.z1);
+  const want = jumpReach(c.dh) * 0.72, need = c.g - want; if (need <= 0.5 || need > 3.6) return null;
+  let box;
+  if (dz >= dx) {                                         // les allées sont séparées en z : corniche sur le bord de b, côté a
+    const cxm = clamp(ax, b.x0 + 1, b.x1 - 1), toward = az > b.z1 ? 1 : -1;
+    const z0 = toward > 0 ? b.z1 : b.z0 - need, z1 = toward > 0 ? b.z1 + need : b.z0;
+    box = [cxm - 1, cxm + 1, b.top - 1, b.top, z0, z1];
+  } else {
+    const czm = clamp(az, b.z0 + 1, b.z1 - 1), toward = ax > b.x1 ? 1 : -1;
+    const x0 = toward > 0 ? b.x1 : b.x0 - need, x1 = toward > 0 ? b.x1 + need : b.x0;
+    box = [x0, x1, b.top - 1, b.top, czm - 1, czm + 1];
+  }
+  // pas de collision avec le reste (sauf b lui-même)
+  for (const o of G.blocs) {
+    if (o === b.b) continue;
+    const h = o.taille.map(v => v / 2);
+    if (box[0] < o.pos[0] + h[0] - 0.01 && box[1] > o.pos[0] - h[0] + 0.01 && box[2] < o.pos[1] + h[1] + 6 && box[3] > o.pos[1] - h[1] + 0.01 && box[4] < o.pos[2] + h[2] - 0.01 && box[5] > o.pos[2] - h[2] + 0.01) return null;
+  }
+  const blk = { type: 'bloc', pos: [(box[0] + box[1]) / 2, (box[2] + box[3]) / 2, (box[4] + box[5]) / 2], taille: [box[1] - box[0], 1, box[5] - box[4]] };
+  G.blocs.push(blk);
+  // la corniche fait partie de b pour le saut
+  c.b2 = { x0: Math.min(b.x0, box[0]), x1: Math.max(b.x1, box[1]), z0: Math.min(b.z0, box[4]), z1: Math.max(b.z1, box[5]), top: b.top };
+  c.g = Math.hypot(Math.max(0, c.b2.x0 - a.x1, a.x0 - c.b2.x1), Math.max(0, c.b2.z0 - a.z1, a.z0 - c.b2.z1));
+  return [blk];
+}
+function shortcutRun(c) {
+  const a = c.a, b = c.b2 || c.b;
+  // départ au milieu de a ; décollage au bord de a le plus proche de b ; atterrissage dans b ; puis le centre de b
+  const ax = (a.x0 + a.x1) / 2, az = (a.z0 + a.z1) / 2, bx = clamp(ax, b.x0 + 0.8, b.x1 - 0.8), bz = clamp(az, b.z0 + 0.8, b.z1 - 0.8);
+  const tx = clamp(bx, a.x0 + 0.6, a.x1 - 0.6), tz = clamp(bz, a.z0 + 0.6, a.z1 - 0.6);
+  const ex = clamp(tx + Math.sign(bx - tx) * 0.1, a.x0 + 0.6, a.x1 - 0.6), ez = clamp(tz + Math.sign(bz - tz) * 0.1, a.z0 + 0.6, a.z1 - 0.6);
+  const yaw = Math.atan2(-(bx - ax), -(bz - az));
+  // départ un peu en retrait pour prendre de l'élan
+  const back = 5, ux = ex - ax, uz = ez - az, ul = Math.hypot(ux, uz) || 1;
+  const sx = clamp(ex - ux / ul * back, a.x0 + 0.8, a.x1 - 0.8), sz = clamp(ez - uz / ul * back, a.z0 + 0.8, a.z1 - 0.8);
+  const r = botRun([{ x: ex, z: ez, jump: 1, r: 0.5 }, { x: bx, z: bz, air: 1, r: 1.6 }, { x: (c.b.x0 + c.b.x1) / 2, z: (c.b.z0 + c.b.z1) / 2 }], 6, { x: sx, y: a.top, z: sz, yaw }, Math.min(a.top, b.top) - 4);
+  return r.ok && Math.abs((P.y - COM_H) - c.b.top) < 0.6;
+}
+
+// Numéro de semaine (ISO) d'une date
+function weekNum(t) {
+  const d = new Date(t || Date.now()); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7);
+  const w1 = new Date(d.getFullYear(), 0, 4);
+  return 1 + Math.round(((d - w1) / 864e5 - 3 + (w1.getDay() + 6) % 7) / 7);
+}
+const canRerollWeekly = () => ACCT.on ? isAdmin() : true;   // sans comptes (aperçu), on peut toujours le tirer
+function weeklyMenu() {
+  const b = $('bWeekly');
+  b.hidden = !(canRerollWeekly() || (WEEKLY && WEEKLY.pub));
+  $('weekTag').textContent = WEEKLY ? 'S' + weekNum(WEEKLY.created) : '';
+}
+function weeklyFrom(d) {
+  try {
+    const data = cleanLevel(typeof d.data === 'string' ? JSON.parse(d.data) : d.data);
+    if (!data || !data.blocs.some(b => b.type === 'depart') || !data.blocs.some(b => b.type === 'arrivee')) return null;
+    return { id: String(d.id), data, created: +d.created || Date.now(), pub: !!d.pub, info: d.info || null };
+  } catch (e) { return null; }
+}
+async function loadWeekly() {
+  if (ACCT.on) {
+    try { const m = await ACCT.db.collection('meta').doc('weekly').get(); WEEKLY = m.exists ? weeklyFrom(m.data()) : null; } catch (e) { console.warn(e); }
+  } else {
+    try { const d = JSON.parse(localStorage.getItem('polyrush.weekly') || 'null'); WEEKLY = d ? weeklyFrom(d) : null; } catch (e) { WEEKLY = null; }
+  }
+  weeklyMenu();
+}
+async function saveWeekly(doc) {
+  if (ACCT.on) await ACCT.db.collection('meta').doc('weekly').set(doc);
+  else try { localStorage.setItem('polyrush.weekly', JSON.stringify(doc)); } catch (e) {}
+}
+// Nouveau tirage : on génère, on vérifie au robot, on enregistre ; tout le monde reçoit le même niveau
+async function rerollWeekly() {
+  if (UI.busy || !canRerollWeekly()) return;
+  UI.busy = true;
+  const boot = $('boot'), txt = $('bootTxt');
+  boot.classList.remove('done'); txt.textContent = 'Génération du niveau…';
+  let res = null;
+  try { res = await makeWeekly(k => { txt.textContent = 'Génération du niveau… (essai ' + (k + 1) + ')'; }); }
+  catch (e) { console.error(e); }
+  if (res) {
+    const doc = { id: Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), data: JSON.stringify({ blocs: res.G.blocs, salle: res.G.salle, fond: 'vide', grille: 1 }),
+      created: Date.now(), pub: !!(WEEKLY && WEEKLY.pub), info: { t: Math.round(res.t * 10) / 10, sc: res.shortcuts.length, seed: res.G.seed } };
+    try { await saveWeekly(doc); WEEKLY = weeklyFrom(doc); } catch (e) { console.warn(e); toast('Enregistrement impossible (règles Firestore ?)', 2400); }
+  } else toast('Génération ratée, réessaie', 1600);
+  weeklyMenu();
+  // retour sur la fiche du nouveau niveau
+  loadMap(WEEKLY ? 'level' + WEEKLY_N : 'level1'); setupPreview(WEEKLY ? WEEKLY_N : 1);
+  UI.busy = false; boot.classList.add('done');
+  if (WEEKLY) openLevelUI(WEEKLY_N); else showScreen('title', true);
+}
+function weeklyAdminUI(wk) {
+  const box = $('pvWeek'); box.hidden = !(wk && canRerollWeekly());
+  if (box.hidden) return;
+  const i = WEEKLY && WEEKLY.info;
+  $('pvWeekInfo').textContent = WEEKLY ? `Tiré le ${new Date(WEEKLY.created).toLocaleDateString('fr-FR')} · ${i ? `${i.sc} raccourci${i.sc > 1 ? 's' : ''} caché${i.sc > 1 ? 's' : ''} · robot : ${String(i.t).replace('.', ',')} s` : ''}` : '';
+  const t = $('bWeekPub'); t.hidden = !ACCT.on; t.classList.toggle('on', !!(WEEKLY && WEEKLY.pub));
+}
+$('bReroll').addEventListener('click', () => rerollWeekly());
+$('bWeekPub').addEventListener('click', async () => {
+  if (!WEEKLY || !isAdmin()) return;
+  const v = !WEEKLY.pub;
+  try { await ACCT.db.collection('meta').doc('weekly').set({ pub: v }, { merge: true }); WEEKLY.pub = v; weeklyAdminUI(true); toast(v ? 'Niveau de la semaine visible par tous' : 'Niveau de la semaine caché', 1500); }
+  catch (e) { toast('Impossible (règles Firestore ?)', 1800); }
+});
+$('bWeekly').addEventListener('click', () => {
+  if (UI.busy) return;
+  if (!WEEKLY) { if (canRerollWeekly()) rerollWeekly(); return; }
+  openLevel(WEEKLY_N);
+});
+
 /* ---------- Fiche d'un niveau : le niveau en fond, le classement à côté, « Jouer » ---------- */
 let PV = null;
 const _pc = new THREE.Vector3(), _pt = new THREE.Vector3(), _pr = new THREE.Vector3(), _pq = new THREE.Quaternion(), _pm = new THREE.Matrix4();
@@ -3730,8 +4110,11 @@ function previewCamera(fdt) {
   camera.position.lerp(_pc, k); camera.quaternion.slerp(_pq, k);
 }
 function openLevelUI(n) {
-  $('pvTitle').textContent = 'Niveau ' + String(n).padStart(2, '0'); $('pvNum').textContent = String(n).padStart(2, '0');
-  const rv = $('pvRec'); rv.textContent = records[n] ? fmtT(records[n]) : '—'; rv.classList.toggle('s', !!records[n]);
+  const wk = n === WEEKLY_N;
+  $('pvTitle').textContent = wk ? 'Semaine' : 'Niveau ' + String(n).padStart(2, '0');
+  $('pvNum').textContent = wk ? 'S' + weekNum(WEEKLY && WEEKLY.created) : String(n).padStart(2, '0');
+  weeklyAdminUI(wk);
+  const rk = recKey(n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]);
   pvBoard(n); showScreen('level');
 }
 function openLevel(n) {
@@ -3876,7 +4259,7 @@ async function adminAudit(n, rows, list) {
   rows.forEach(async (r, i) => {
     const li = lis[i]; if (!li) return;
     let g = null;
-    try { const d = await db.collection('ghosts').doc(String(n)).collection('runs').doc(r.uid).get(); g = d.exists ? d.data() : null; } catch (e) {}
+    try { const d = await db.collection('ghosts').doc(bkey(n)).collection('runs').doc(r.uid).get(); g = d.exists ? d.data() : null; } catch (e) {}
     if (!PV || PV.n !== n || MAP !== 'level' + n) return;
     const bad = validateGhost(g, n);
     li.classList.toggle('sus', bad.length > 0); li.classList.add('aud');
@@ -3901,14 +4284,14 @@ function adminPanel(n, r, bad) {
 }
 async function adminDelete(n, uid) {
   const db = ACCT.db;
-  for (const col of ['scores', 'ghosts']) { try { await db.collection(col).doc(String(n)).collection('runs').doc(uid).delete(); } catch (e) { console.warn(e); } }
+  for (const col of ['scores', 'ghosts']) { try { await db.collection(col).doc(bkey(n)).collection('runs').doc(uid).delete(); } catch (e) { console.warn(e); } }
 }
 async function adminBan(uid) {
   const ref = ACCT.db.collection('meta').doc('bans');
   try { const d = await ref.get(), uids = d.exists && Array.isArray(d.data().uids) ? d.data().uids : []; if (!uids.includes(uid)) uids.push(uid); await ref.set({ uids }); } catch (e) { console.warn(e); }
-  for (const k of Object.keys(BUILTIN)) await adminDelete(k, uid);
+  for (const k of boardLevels()) await adminDelete(k, uid);
 }
-$('bBackLv').addEventListener('click', () => { if (!UI.busy) showScreen('levels', true); });
+$('bBackLv').addEventListener('click', () => { if (!UI.busy) showScreen(PV && PV.n === WEEKLY_N ? 'title' : 'levels', true); });
 $('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
 
 function resetRun() {
@@ -3930,8 +4313,8 @@ function onFinish() {
   const ms = Math.round((run.end - run.start) * DT * 1000);
   if (REC) { qa.set(P.q.x, P.q.y, P.q.z, P.q.w); recSample(run.end, P.x, P.y, P.z, qa, true); }
   // Un essai depuis l'éditeur ne compte pas comme record.
-  const prev = ED.test ? 0 : records[LEVEL], better = !ED.test && (!prev || ms < prev);
-  if (better) { records[LEVEL] = ms; saveRecords(); }
+  const prev = ED.test ? 0 : records[recKey(LEVEL)], better = !ED.test && (!prev || ms < prev);
+  if (better) { records[recKey(LEVEL)] = ms; saveRecords(); }
   tMain.textContent = fmtT(ms); timerEl.className = 'card done';
   winflash.classList.remove('go'); void winflash.offsetWidth; winflash.classList.add('go');
   if (W && W.onFinish) W.onFinish();
@@ -5105,7 +5488,11 @@ const FB_VER = '10.12.2';
 const ACCT = { on: false, auth: null, db: null, user: null, pseudo: null, view: 'login', tab: 'in', boardLv: 1, busy: false };
 const acctEl = $('acct'), acctCard = acctEl.querySelector('.acct-card');
 const acctAllowed = () => !!FIREBASE_CONFIG && !/(^|\.)claude\.ai$|claudeusercontent|anthropic/.test(location.hostname);
-const boardOK = n => !!BUILTIN[n] && !CUSTOM[n];             // seulement les niveaux officiels, non modifiés
+const boardOK = n => +n === WEEKLY_N ? !!WEEKLY : !!BUILTIN[n] && !CUSTOM[n];   // niveaux officiels non modifiés, et le niveau de la semaine
+// Clés : le niveau de la semaine a son propre classement et son propre record, à chaque nouveau tirage
+const bkey = n => +n === WEEKLY_N ? 'w' + (WEEKLY ? WEEKLY.id : '') : String(n);
+const recKey = n => +n === WEEKLY_N ? 'w' + (WEEKLY ? WEEKLY.id : '') : n;
+const boardLevels = () => [...Object.keys(BUILTIN).map(Number), ...(WEEKLY ? [WEEKLY_N] : [])];
 const PSEUDO_RE = /^[A-Za-z0-9_.-]{3,16}$/;
 // L'éditeur n'est ouvert qu'à l'auteur du jeu (adresse vérifiée : Google, ou e-mail confirmé)
 const EDITOR_ADMIN = 'alexandre.tricot16@gmail.com';
@@ -5116,7 +5503,7 @@ function loadScript(src) { return new Promise((res, rej) => { const s = document
 const bootEl = $('boot');
 function bootDone() { bootEl.classList.add('done'); }
 async function acctInit() {
-  if (!acctAllowed()) { bootDone(); return; }
+  if (!acctAllowed()) { bootDone(); loadWeekly(); return; }
   setTimeout(bootDone, 10000);
   try {
     for (const f of ['app', 'auth', 'firestore']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${FB_VER}/firebase-${f}-compat.js`);
@@ -5124,7 +5511,7 @@ async function acctInit() {
     ACCT.auth = firebase.auth(); ACCT.db = firebase.firestore(); ACCT.on = true;
     $('bAcct').hidden = false; $('bEditor').hidden = true;
     ACCT.auth.getRedirectResult().catch(e => acctMsg(e));
-    ACCT.auth.onAuthStateChanged(u => acctUser(u));
+    ACCT.auth.onAuthStateChanged(u => { acctUser(u); loadWeekly(); });   // le niveau de la semaine est relu à chaque connexion
   } catch (e) { ACCT.on = false; bootDone(); }
 }
 const ERRS = {
@@ -5176,7 +5563,7 @@ async function adminResetAll() {
   const db = ACCT.db, now = Date.now();
   await db.collection('meta').doc('board').set({ reset: now });   // d'abord : plus personne ne renvoie ses anciens temps
   let k = 0;
-  for (const n of Object.keys(BUILTIN)) for (const col of ['scores', 'ghosts']) {
+  for (const n of boardLevels().map(bkey)) for (const col of ['scores', 'ghosts']) {
     try {
       const snap = await db.collection(col).doc(n).collection('runs').get();
       await Promise.all(snap.docs.map(x => db.collection(col).doc(n).collection('runs').doc(x.id).delete()));
@@ -5203,13 +5590,13 @@ async function acctPushBoard(force) {
 async function acctSubmit(n, ms, ghost) {
   if (!ACCT.user) return;
   const uid = ACCT.user.uid;
-  try { await ACCT.db.collection('users').doc(uid).set({ records: { [n]: ms }, maj: Date.now() }, { merge: true }); } catch (e) { console.warn(e); }
+  try { await ACCT.db.collection('users').doc(uid).set({ records: { [recKey(n)]: ms }, maj: Date.now() }, { merge: true }); } catch (e) { console.warn(e); }
   if (ACCT.pseudo && boardOK(n) && ghost) {
-    try { await ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(uid).set({ pseudo: ACCT.pseudo, ms: Math.round(ms), at: Date.now(), ghost: true }); } catch (e) { console.warn(e); }
+    try { await ACCT.db.collection('scores').doc(bkey(n)).collection('runs').doc(uid).set({ pseudo: ACCT.pseudo, ms: Math.round(ms), at: Date.now(), ghost: true }); } catch (e) { console.warn(e); }
   }
 }
 async function acctTop(n, k = 10) {
-  const snap = await ACCT.db.collection('scores').doc(String(n)).collection('runs').orderBy('ms').limit(k).get();
+  const snap = await ACCT.db.collection('scores').doc(bkey(n)).collection('runs').orderBy('ms').limit(k).get();
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
 function boardList(rows, el, lv) {
@@ -5256,7 +5643,7 @@ function acctReset() {
   if (!ACCT.user) return;
   const uid = ACCT.user.uid;
   ACCT.db.collection('users').doc(uid).update({ records: {}, maj: Date.now() }).catch(() => {});
-  for (const k of Object.keys(BUILTIN)) ACCT.db.collection('scores').doc(k).collection('runs').doc(uid).delete().catch(() => {});
+  for (const k of boardLevels()) ACCT.db.collection('scores').doc(bkey(k)).collection('runs').doc(uid).delete().catch(() => {});
 }
 async function setPseudo(p) {
   const low = p.toLowerCase(), uid = ACCT.user.uid, db = ACCT.db;
@@ -5294,6 +5681,7 @@ function acctRender() {
   b.querySelector('.nm').textContent = ACCT.user ? (ACCT.pseudo || 'Choisir un pseudo') : 'Se connecter';
   b.classList.toggle('in', !!ACCT.user);
   if (ACCT.on) $('bEditor').hidden = !isAdmin();
+  weeklyMenu();
   if (acctEl.hidden) return;
   const c = acctCard; c.textContent = '';
   const x = mkEl('button', 'acct-x', '×'); x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', acctClose); c.appendChild(x);
@@ -5402,7 +5790,7 @@ function acctResume() {
   acctEl.hidden = true;
   setTimeout(() => $(id).click(), 60);
 }
-for (const id of ['bLevels', 'bTrain', 'bEditor']) $(id).addEventListener('click', e => {
+for (const id of ['bLevels', 'bTrain', 'bEditor', 'bWeekly']) $(id).addEventListener('click', e => {
   if (!ACCT.on || acctReady()) return;
   e.stopImmediatePropagation(); e.preventDefault();
   ACCT.pending = id;
