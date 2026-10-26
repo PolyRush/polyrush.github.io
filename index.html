@@ -3404,7 +3404,10 @@ canvas.addEventListener('pointerup', endPointer);
 canvas.addEventListener('pointercancel', endPointer);
 bJump.addEventListener('pointerdown', e => { e.preventDefault(); if (!playing()) return; P.jumpBuf = CFG.buffer; input.jumpHeld = true; });
 ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => bJump.addEventListener(ev, () => { input.jumpHeld = false; }));
-bSL.addEventListener('click', () => { if (playing()) setShiftlock(!shiftlock); });
+// Au toucher : dès que le doigt se pose (un « click » n'arrive pas tant qu'un autre doigt tient le joystick).
+// Le click ne sert plus qu'au clavier (Entrée / Espace sur le bouton).
+bSL.addEventListener('pointerdown', e => { e.preventDefault(); e.stopPropagation(); if (playing()) setShiftlock(!shiftlock); });
+bSL.addEventListener('click', e => { if (e.detail === 0 && playing()) setShiftlock(!shiftlock); });
 
 // Résolution adaptative : si les images dépassent ~18,5 ms en moyenne, on baisse un peu la définition (jusqu'à 0,6×) ;
 // si tout est fluide pendant un moment, on remonte. Le jeu vise 60 images/s sur un PC moyen.
