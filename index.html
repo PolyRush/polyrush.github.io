@@ -2493,7 +2493,23 @@ function buildCustom(n, data) {
   };
   let holes;
   if (d.lumieres) holes = d.lumieres.map(h => h.slice());
-  else {
+  else if (LK >= 1.8) {
+    // Très grande salle : une grille régulière de grands trous au-dessus de tout le parcours (un bon quart du plafond
+    // ouvert), le départ et l'arrivée d'abord
+    const G = 48, Hs = 26;
+    holes = [dep, arr].map(q => { const [cx, cz] = mid(q); return hole(cx, cz, Hs, Hs, q.y1); });
+    const lit = [dep, arr].map(mid);
+    const bx0 = Math.max(R.x0 + 6, Math.min(...Q.map(q => q.x0)) - 10), bx1 = Math.min(R.x1 - 6, Math.max(...Q.map(q => q.x1)) + 10);
+    const bz0 = Math.max(R.z0 + 6, Math.min(...Q.map(q => q.z0)) - 10), bz1 = Math.min(R.z1 - 6, Math.max(...Q.map(q => q.z1)) + 10);
+    const nx = Math.max(1, Math.round((bx1 - bx0) / G)), nz = Math.max(1, Math.round((bz1 - bz0) / G));
+    const yMid = Q.reduce((a, q) => a + q.y1, 0) / Q.length;
+    for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
+      if (holes.length >= 40) break;
+      const px = bx0 + (i + 0.5) * (bx1 - bx0) / nx, pz = bz0 + (j + 0.5) * (bz1 - bz0) / nz;
+      if (lit.some(([lx, lz]) => Math.hypot(px - lx, pz - lz) < G * 0.6)) continue;
+      holes.push(hole(px, pz, Hs, Hs, clamp(yMid, R.bot + 2, R.top - 4), R.bot)); lit.push([px, pz]);
+    }
+  } else {
     holes = spots.map(q => { const [cx, cz] = mid(q); return hole(cx, cz, clamp(q.x1 - q.x0 + 2, 8 * LK, 16 * LK), clamp(q.z1 - q.z0 + 2, 8 * LK, 16 * LK), Math.min(q.y1, R.top - 2)); });
     // Remplissage : sur la zone du parcours, une tache de lumière tous les ~26 studs là où il n'y en a pas déjà une
     const lit = holes.map(h => mid({ x0: h[0], x1: h[1], z0: h[2], z1: h[3] }).map((v, i) => v - (i ? LIGHT.z : LIGHT.x) * (R.top - h[4])));
