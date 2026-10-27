@@ -3831,7 +3831,15 @@ function screenItems() {
   if (UI.screen === 'level') return [$('bBackLv'), $('bPlay')];
   return UI.screen === 'title' ? [...scr.title.querySelectorAll('.mbtn')] : [...scr[UI.screen].querySelectorAll('.back, .tile')];
 }
-function focusScreen() { const it = screenItems(); const k = UI.screen !== 'title' ? 1 : 0; if (it[k]) it[k].focus({ preventScroll: true }); }
+// On ne met le focus sur un bouton que si l'on navigue au clavier : à la souris (et au chargement), rien n'est sélectionné
+let kbdNav = false;
+addEventListener('keydown', () => { kbdNav = true; }, true);
+addEventListener('pointerdown', () => { kbdNav = false; }, true);
+function focusScreen() {
+  const it = screenItems(), k = UI.screen !== 'title' ? 1 : 0;
+  if (kbdNav) { if (it[k]) it[k].focus({ preventScroll: true }); }
+  else if (document.activeElement && document.activeElement !== document.body && uiEl.contains(document.activeElement)) document.activeElement.blur();
+}
 function showScreen(name, back) {
   UI.screen = name;
   uiEl.classList.toggle('pvmode', name === 'level');
