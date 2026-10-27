@@ -3313,7 +3313,15 @@ function updateCamera(fdt, fx, fy, fz) {
     return;
   }
   let ox = fx, oy = fy + 4.4, oz = fz;
-  if (shiftlock) { ox += Math.cos(cam.yaw) * 1.75; oz -= Math.sin(cam.yaw) * 1.75; }
+  if (shiftlock) {
+    // décalage d'épaule du camera lock : il s'arrête avant un mur (sinon la caméra entre dans le bloc, qu'on doit
+    // alors masquer, et un bloc fusionné laisse voir l'intérieur noir du volume)
+    const sx = Math.cos(cam.yaw), sz = -Math.sin(cam.yaw);
+    let d = 1.75;
+    for (const B of solids) { if (B.noCam) continue; const t = rayBox(ox, oy, oz, sx, 0, sz, B, d); if (t !== null && t < d) d = t; }
+    d = Math.max(0, d - 0.4);
+    ox += sx * d; oz += sz * d;
+  }
   const cp = Math.cos(cam.pitch);
   const dx = Math.sin(cam.yaw) * cp, dy = Math.sin(cam.pitch), dz = Math.cos(cam.yaw) * cp;
   let hit = cam.zoom;
