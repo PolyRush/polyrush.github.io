@@ -147,11 +147,14 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .tile.locked .corner{background:none;color:var(--lock)}
 .tile.locked .corner svg{width:80%;height:80%}
 .tile.locked:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-.tile.hard.open{background:var(--red);color:#fff}
-.tile.hard.open::before{background:var(--ink)}
-.tile.hard.open .corner{background:var(--ink)}
-.tile.hard.open:hover .corner,.tile.hard.open:focus-visible .corner{background:var(--red)}
-.tile.hard.locked{color:#e8a29c;border-color:#e8a29c;box-shadow:4px 4px 0 #e8a29c;background:repeating-linear-gradient(135deg,#fbe9e7 0 9px,#f7dcd8 9px 18px)}
+.tile.hard.open{background:var(--ink);color:#fff;border-color:var(--ink);box-shadow:4px 4px 0 var(--red)}
+.tile.hard.open .num{text-shadow:.07em .07em 0 var(--red)}
+.tile.hard.open .corner{background:var(--red)}
+.tile.hard.open:hover,.tile.hard.open:focus-visible{box-shadow:7px 7px 0 var(--red)}
+.tile.hard.open:hover .num,.tile.hard.open:focus-visible .num{text-shadow:.07em .07em 0 var(--ink)}
+.tile.hard.open:hover .corner,.tile.hard.open:focus-visible .corner{background:var(--ink)}
+.tile.hard.open:active{box-shadow:2px 2px 0 var(--red)}
+.tile.hard.locked{color:#5a5a5a;border-color:#2b2b2b;box-shadow:4px 4px 0 #e8a29c;background:repeating-linear-gradient(135deg,#1c1c1c 0 9px,#262626 9px 18px)}
 .tile.hard.locked .corner{color:#e8a29c}
 .screen.show .tile.shake{animation:shake .42s ease}
 @keyframes shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
