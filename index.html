@@ -483,7 +483,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 <button id="bSL" class="tbtn" hidden>Camera<br>lock</button>
 <div id="joy" hidden><i></i></div>
 
-<button id="backBtn" class="card" hidden aria-label="Retour au menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Menu</button>
+<button id="backBtn" class="card" hidden aria-label="Retour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Retour</button>
 <div id="hud" hidden><div id="timer" class="card ready" role="timer" aria-live="off"><i></i><span id="tMain">0,000</span></div></div>
 <div id="winflash"></div>
 <div id="repIntro" hidden><span class="lab">Replay</span><b id="repIntroWho"></b><span id="repIntroTime"></span></div>
@@ -494,7 +494,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
     <div id="repEndTime" class="ftime">0,000</div>
     <div class="fin-act">
       <button id="repAgain" class="mbtn small primary"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></span><span class="tx">Revoir</span></button>
-      <button id="repQuit" class="mbtn small"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="tx">Quitter</span></button>
+      <button id="repQuit" class="mbtn small"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="tx">Retour</span></button>
     </div>
   </div>
 </div>
@@ -507,7 +507,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
     <div id="finBoard" class="fin-board" hidden></div>
     <div class="fin-act">
       <button id="finRetry" class="mbtn small primary"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></span><span class="tx">Rejouer</span></button>
-      <button id="finQuit" class="mbtn small"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="tx">Quitter</span></button>
+      <button id="finQuit" class="mbtn small"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></span><span class="tx">Retour</span></button>
     </div>
   </div>
 </div>
@@ -574,7 +574,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 
 <div id="ed" hidden>
   <div class="ed-top card">
-    <button id="edBack" class="ed-btn" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Menu</button>
+    <button id="edBack" class="ed-btn" aria-label="Retour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Retour</button>
     <span id="edTitle" class="ttl">Niveau 04</span>
     <span id="edStatus" class="ed-status"><i></i><span>Enregistré</span></span>
     <button id="edSave" class="ed-btn" title="Ctrl+S">Enregistrer</button>
@@ -3309,7 +3309,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'Escape') {
     if (!menu.hidden) { openMenu(false); if (UI.mode === 'menu') focusScreen(); return; }
-    if (UI.mode === 'menu') { if (UI.screen === 'level') showScreen(PV && PV.n === WEEKLY_N ? 'title' : 'levels', true); else if (UI.screen !== 'title') showScreen('title', true); return; }
+    if (UI.mode === 'menu') { screenBack(); return; }
     if (UI.mode === 'replay') { stopReplay(); return; }
     if (!fly) openMenu(true);
     return;
@@ -3439,7 +3439,7 @@ resize();
 /* ---------- Menu, transitions, chrono ----------
    Le menu se pose sur le niveau 1 lui-même : la caméra y flotte lentement entre les rayons. Choisir le
    niveau 1 fait plonger la caméra jusque derrière le perso ; changer de carte passe par un volet. */
-const UI = { mode: 'menu', screen: 'title', busy: false };
+const UI = { mode: 'menu', screen: 'title', busy: false, from: null };   // from : l'écran où l'on revient en quittant une partie
 let fly = null, menuT = 0, pendingFinish = false, finToken = 0;
 const run = { state: 'off', start: 0, end: 0, shown: '' };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -3500,6 +3500,12 @@ function showScreen(name, back) {
   }
   focusScreen();
 }
+// un cran en arrière : fiche d'un niveau → liste des niveaux (ou accueil pour la semaine) ; liste → accueil
+function screenBack() {
+  if (UI.busy || UI.screen === 'title') return;
+  if (UI.screen === 'level') showScreen(PV && PV.n === WEEKLY_N ? 'title' : 'levels', true);
+  else showScreen('title', true);
+}
 function hideScreens() { for (const k in scr) { scr[k].classList.remove('show'); scr[k].inert = true; } uiEl.classList.remove('on'); }
 function menuNav(e) {
   const items = screenItems(), i = items.indexOf(document.activeElement);
@@ -3508,7 +3514,7 @@ function menuNav(e) {
     if (e.code === 'ArrowDown') j = i < 0 ? 0 : (i + 1) % items.length;
     if (e.code === 'ArrowUp') j = i < 0 ? 0 : (i - 1 + items.length) % items.length;
   } else {
-    if (e.code === 'Backspace') { e.preventDefault(); showScreen('title', true); return; }
+    if (e.code === 'Backspace') { e.preventDefault(); screenBack(); return; }
     const t = i - 1;                                    // tuiles : 5 par ligne ; l'élément 0 est le bouton retour
     if (t < 0) { if (e.code.startsWith('Arrow')) j = (e.code === 'ArrowRight' || e.code === 'ArrowDown') ? 1 : 0; }
     else if (e.code === 'ArrowRight') j = 1 + Math.min(9, t + 1);
@@ -3552,6 +3558,7 @@ function enterPlay() { UI.mode = 'play'; restart(); cam.pitch = 0.32; cam.dist =
 function startLevel(n) {
   if (UI.busy || !getBuilder(n)) return;
   if (!menu.hidden) openMenu(false);
+  UI.from = { screen: 'level', n };
   if (MAP === 'level' + n) {
     // Le niveau est déjà là, derrière le menu : la caméra plonge jusqu'au perso.
     hideScreens();
@@ -3562,6 +3569,7 @@ function startLevel(n) {
 function startTraining() {
   if (UI.busy) return;
   if (!menu.hidden) openMenu(false);
+  UI.from = { screen: 'title' };
   wipe(() => { hideScreens(); loadMap('training'); enterPlay(); onPlayStart(); });
 }
 function quitToMenu() {
@@ -3575,10 +3583,15 @@ function quitToMenu() {
     endRmb(); unlockPointer();
     UI.mode = 'menu'; fly = null;
     hideGameHud();
-    if (MAP !== 'level1') loadMap('level1'); else respawn(true);
+    const from = UI.from || { screen: 'title' }; UI.from = null;
+    // retour à la fiche du niveau qu'on jouait (le niveau reste en fond) ; sinon à l'écran d'où l'on venait
+    const lvl = from.screen === 'level' && getBuilder(from.n) && MAP === 'level' + from.n;
+    if (lvl) respawn(true); else if (MAP !== 'level1') loadMap('level1'); else respawn(true);
     resetRun(); clearInput();
     buildLevelGrid(); buildEditorGrid();
-    uiEl.classList.add('on'); showScreen('title', true);
+    uiEl.classList.add('on');
+    if (lvl) { setupPreview(from.n); openLevelUI(from.n, true); }
+    else showScreen(from.screen === 'editor' ? 'editor' : from.screen === 'level' ? 'levels' : 'title', true);
   });
 }
 const _fp = new THREE.Vector3(), _fq = new THREE.Quaternion();
@@ -5839,13 +5852,13 @@ function previewCamera(fdt) {
   PV.snap = false;
   camera.position.lerp(_pc, k); camera.quaternion.slerp(_pq, k);
 }
-function openLevelUI(n) {
+function openLevelUI(n, back) {
   const wk = n === WEEKLY_N;
   $('pvTitle').textContent = wk ? 'Semaine' : 'Niveau ' + String(n).padStart(2, '0');
   $('pvNum').textContent = wk ? 'S' + weekNum(WEEKLY && WEEKLY.created) : String(n).padStart(2, '0');
   weeklyAdminUI(wk);
   const rk = recKey(n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]);
-  pvBoard(n); showScreen('level');
+  pvBoard(n); showScreen('level', back);
 }
 function openLevel(n) {
   if (UI.busy || !getBuilder(n)) return;
@@ -6021,7 +6034,7 @@ async function adminBan(uid) {
   try { const d = await ref.get(), uids = d.exists && Array.isArray(d.data().uids) ? d.data().uids : []; if (!uids.includes(uid)) uids.push(uid); await ref.set({ uids }); } catch (e) { console.warn(e); }
   for (const k of boardLevels()) await adminDelete(k, uid);
 }
-$('bBackLv').addEventListener('click', () => { if (!UI.busy) showScreen(PV && PV.n === WEEKLY_N ? 'title' : 'levels', true); });
+$('bBackLv').addEventListener('click', () => { if (!UI.busy) screenBack(); });
 $('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
 
 function resetRun() {
@@ -6562,13 +6575,14 @@ function backToEditor() {
   setFP(false);
   endRmb(); unlockPointer(); fly = null;
   hideGameHud(); clearInput();
-  backBtn.lastChild.textContent = 'Menu'; $('finQuit').querySelector('.tx').textContent = 'Quitter';
+  backBtn.lastChild.textContent = 'Retour'; $('finQuit').querySelector('.tx').textContent = 'Retour';
   run.state = 'off'; finToken++; pendingFinish = false; finishEl.hidden = true; finishEl.classList.remove('show');
   enterEditor(ED.n, true, true);
 }
 function openEditor(n) {
   if (UI.busy) return;
   if (!menu.hidden) openMenu(false);
+  UI.from = { screen: 'editor' };
   wipe(() => { hideScreens(); enterEditor(n); });
 }
 
