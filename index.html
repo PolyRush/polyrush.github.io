@@ -1435,7 +1435,7 @@ function buildTraining() {
   zone('SANDBOX', 41.5, 214, -139, -14);
   sandbox(46, 209, -134, -20);
 
-  // ===== SUD 1 et 2 — WRAPAROUNDS : des pistes côte à côte, chacune barrée par un mur à contourner par un côté =====
+  // ===== SUD 1 et 2 — CORNER WRAPS : des pistes côte à côte, chacune barrée par un mur à contourner par un côté =====
   // (passerelles de 2 de large à 8 de haut ; le même vide sépare deux murs voisins)
   // largeur : le mur déborde de plus en plus sur les côtés ; longueur : le mur, au ras de la passerelle, s'allonge
   const GAP = 5;
@@ -1456,9 +1456,9 @@ function buildTraining() {
       label(val, X, 8.02, deckZ + 3, 2.6, 1.3, 170, Math.PI, true);
     });
   }
-  zone('WRAPAROUND · LARGEUR', -214, -81.5, 14, 114);
+  zone('CORNER WRAP · LARGEUR', -214, -81.5, 14, 114);
   wrapLanes(34, -92, [1, 1.5, 2, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4].map(d => [1, d]));
-  zone('WRAPAROUND · LONGUEUR', -78.5, 33.5, 14, 114);
+  zone('CORNER WRAP · LONGUEUR', -78.5, 33.5, 14, 114);
   wrapLanes(34, 23, [2, 3, 4, 5, 6, 7, 7.5, 8, 8.5, 9, 9.25, 9.5, 9.75, 10].map(L => [L, 0]));
 
   // ===== SUD 3 — BLOCS MOUVANTS ET TAPIS (tout ce qui bouge est rouge à rayures) =====
