@@ -2496,8 +2496,11 @@ function buildCustom(n, data) {
   else if (LK >= 3) {
     // Très grande salle : des ouvertures de tailles au hasard (toujours les mêmes pour ce niveau) — une grande au-dessus
     // du milieu du parcours, quelques moyennes et des petites ; elles peuvent se chevaucher, jamais contre un mur
-    let sd = 7; for (const q of Q) sd = (sd * 31 + Math.round(q.x0 * 7 + q.z1 * 13 + q.y1 * 3)) % 2147483647;
-    const rr = () => (sd = (sd * 16807 + 11) % 2147483647) / 2147483647, rn = (a, b) => a + (b - a) * rr();
+    // graine tirée des blocs (toujours positive : avec des coordonnées négatives, le modulo de JS l'est aussi)
+    const MOD = 2147483647, pos = v => ((v % MOD) + MOD) % MOD;
+    let sd = 7; for (const q of Q) sd = pos(sd * 31 + Math.round(q.x0 * 7 + q.z1 * 13 + q.y1 * 3));
+    if (!sd) sd = 1;
+    const rr = () => (sd = pos(sd * 16807)) / MOD, rn = (a, b) => a + (b - a) * rr();
     const W = R.x1 - R.x0, L = R.z1 - R.z0, A = W * L;
     const bx0 = Math.max(R.x0 + 6, Math.min(...Q.map(q => q.x0))), bx1 = Math.min(R.x1 - 6, Math.max(...Q.map(q => q.x1)));
     const bz0 = Math.max(R.z0 + 6, Math.min(...Q.map(q => q.z0))), bz1 = Math.min(R.z1 - 6, Math.max(...Q.map(q => q.z1)));
