@@ -2481,7 +2481,7 @@ function buildCustom(n, data) {
   const LK = clamp((Math.sqrt((R.x1 - R.x0) * (R.z1 - R.z0)) - 100) / 40, 1, 7);   // moyenne : 1 · immense : ~5,5 (un bon quart du plafond ouvert)
   const spots = [dep, arr];
   for (const q of Q.filter(q => q.b.type !== 'depart' && q.b.type !== 'arrivee' && q.y1 < R.top - 4).sort((a, c) => (c.x1 - c.x0) * (c.z1 - c.z0) - (a.x1 - a.x0) * (a.z1 - a.z0))) {
-    if (spots.length >= 16) break;
+    if (spots.length >= (LK > 1 ? 16 : 12)) break;
     const [cx, cz] = mid(q);
     if (spots.every(o => { const [ox, oz] = mid(o); return Math.hypot(cx - ox, cz - oz) > 15 * LK; })) spots.push(q);
   }
@@ -2493,9 +2493,9 @@ function buildCustom(n, data) {
   };
   let holes;
   if (d.lumieres) holes = d.lumieres.map(h => h.slice());
-  else if (LK >= 1.8) {
-    // Très grande salle : des ouvertures de tailles au hasard (toujours les mêmes pour ce niveau) — une immense, qui
-    // peut prendre jusqu'à un tiers du plafond, plusieurs moyennes et plein de petites ; elles peuvent se chevaucher
+  else if (LK >= 3) {
+    // Très grande salle : des ouvertures de tailles au hasard (toujours les mêmes pour ce niveau) — une grande au-dessus
+    // du milieu du parcours, quelques moyennes et des petites ; elles peuvent se chevaucher, jamais contre un mur
     let sd = 7; for (const q of Q) sd = (sd * 31 + Math.round(q.x0 * 7 + q.z1 * 13 + q.y1 * 3)) % 2147483647;
     const rr = () => (sd = (sd * 16807 + 11) % 2147483647) / 2147483647, rn = (a, b) => a + (b - a) * rr();
     const W = R.x1 - R.x0, L = R.z1 - R.z0, A = W * L;
@@ -2503,14 +2503,17 @@ function buildCustom(n, data) {
     const bz0 = Math.max(R.z0 + 6, Math.min(...Q.map(q => q.z0))), bz1 = Math.min(R.z1 - 6, Math.max(...Q.map(q => q.z1)));
     const yMid = clamp(Q.reduce((a, q) => a + q.y1, 0) / Q.length, R.bot + 2, R.top - 4);
     const open = (cx, cz, area, y = yMid) => {
-      const asp = rn(0.55, 1.8), w = Math.min(W - 4, Math.sqrt(area * asp)), dd = Math.min(L - 4, area / w);
-      holes.push(hole(cx, cz, w, dd, y, R.bot));
+      const asp = rn(0.55, 1.8), w = Math.min(W * 0.6, Math.sqrt(area * asp)), dd = Math.min(L * 0.6, area / w);
+      const h = hole(cx, cz, w, dd, y, R.bot);
+      // jamais collée à un mur : au moins 10 studs de plafond tout autour
+      const sx = clamp((h[0] + h[1]) / 2, R.x0 + 10 + w / 2, R.x1 - 10 - w / 2) - (h[0] + h[1]) / 2, sz = clamp((h[2] + h[3]) / 2, R.z0 + 10 + dd / 2, R.z1 - 10 - dd / 2) - (h[2] + h[3]) / 2;
+      holes.push([h[0] + sx, h[1] + sx, h[2] + sz, h[3] + sz, h[4]]);
     };
     holes = [];
-    open(rn(bx0, bx1), rn(bz0, bz1), A * rn(0.2, 0.33));                             // l'immense
-    for (const q of [dep, arr]) { const [cx, cz] = mid(q); open(cx, cz, A * rn(0.012, 0.03), q.y1); }   // départ et arrivée
-    for (let k = 0, n = 4 + Math.floor(rr() * 4); k < n; k++) open(rn(bx0, bx1), rn(bz0, bz1), A * rn(0.02, 0.05));    // moyennes
-    for (let k = 0, n = 8 + Math.floor(rr() * 8); k < n; k++) open(rn(bx0, bx1), rn(bz0, bz1), A * rn(0.002, 0.009));  // petites
+    open((bx0 + bx1) / 2 + rn(-0.15, 0.15) * (bx1 - bx0), (bz0 + bz1) / 2 + rn(-0.15, 0.15) * (bz1 - bz0), A * rn(0.1, 0.18));   // la grande, au-dessus du milieu du parcours
+    for (const q of [dep, arr]) { const [cx, cz] = mid(q); open(cx, cz, A * rn(0.008, 0.016), q.y1); }   // départ et arrivée
+    for (let k = 0, n = 3 + Math.floor(rr() * 3); k < n; k++) open(rn(bx0, bx1), rn(bz0, bz1), A * rn(0.012, 0.03));    // moyennes
+    for (let k = 0, n = 6 + Math.floor(rr() * 6); k < n; k++) open(rn(bx0, bx1), rn(bz0, bz1), A * rn(0.002, 0.006));  // petites
   } else {
     holes = spots.map(q => { const [cx, cz] = mid(q); return hole(cx, cz, clamp(q.x1 - q.x0 + 2, 8 * LK, 16 * LK), clamp(q.z1 - q.z0 + 2, 8 * LK, 16 * LK), Math.min(q.y1, R.top - 2)); });
     // Remplissage : sur la zone du parcours, une tache de lumière tous les ~26 studs là où il n'y en a pas déjà une
@@ -2519,7 +2522,7 @@ function buildCustom(n, data) {
     const bz0 = Math.max(R.z0 + 6, Math.min(...Q.map(q => q.z0)) - 6), bz1 = Math.min(R.z1 - 6, Math.max(...Q.map(q => q.z1)) + 6);
     const nx = Math.max(1, Math.round((bx1 - bx0) / (26 * LK))), nz = Math.max(1, Math.round((bz1 - bz0) / (26 * LK)));
     for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
-      if (holes.length >= 32) break;
+      if (holes.length >= (LK > 1 ? 32 : 24)) break;
       const px = bx0 + (i + 0.5) * (bx1 - bx0) / nx, pz = bz0 + (j + 0.5) * (bz1 - bz0) / nz;
       if (lit.some(([lx, lz]) => Math.hypot(px - lx, pz - lz) < 17 * LK)) continue;
       holes.push(hole(px, pz, 10 * LK, 10 * LK, 0, R.bot)); lit.push([px, pz]);
