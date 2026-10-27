@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Parkour 3D dans le navigateur : des parcours chronométrés, un niveau de la semaine et un classement entre potes."><meta name="theme-color" content="#111111"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta property="og:type" content="website"><meta property="og:site_name" content="Poly Rush"><meta property="og:title" content="Poly Rush"><meta property="og:description" content="Parkour 3D dans le navigateur : bats le chrono, grimpe au classement, nouveau niveau chaque semaine."><meta property="og:url" content="https://polyrush.github.io/"><meta property="og:image" content="https://polyrush.github.io/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://polyrush.github.io/og.png">
 <style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -710,6 +710,16 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 <script>
 (() => {
 'use strict';
+// Pas de 3D (navigateur trop vieux, accélération matérielle coupée, three.js pas chargé) : un message plutôt qu'une page vide
+const noGL = (() => { if (typeof THREE === 'undefined') return true; try { const c = document.createElement('canvas'); return !(c.getContext('webgl2') || c.getContext('webgl')); } catch (e) { return true; } })();
+if (noGL) {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;padding:24px;background:#111;color:#fff;font:16px/1.5 Chivo,system-ui,sans-serif;text-align:center;z-index:99';
+  d.innerHTML = '<div style="max-width:420px"><img src="icon.svg" width="88" height="88" alt="" style="border-radius:20px"><h1 style="font:italic 900 30px/1.1 Chivo,system-ui,sans-serif;text-transform:uppercase;margin:18px 0 10px">Pas de 3D ici</h1>' +
+    '<p style="margin:0;color:#b9c0c9">Poly Rush a besoin de WebGL. Active l’accélération matérielle de ton navigateur (Chrome : Paramètres › Système), mets-le à jour, ou essaie Chrome, Edge ou Firefox.</p></div>';
+  document.body.appendChild(d);
+  return;
+}
 
 // ----- Rendu : brume de profondeur. Sous le niveau du sol, tout se fond peu à peu dans une brume bleutée (le vide
 // fonce vers le bas, les dessus où l'on marche restent blancs). Ajoutée au brouillard de three.js : toutes les
