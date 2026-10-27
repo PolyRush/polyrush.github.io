@@ -2547,8 +2547,8 @@ function setEnv(env) {
   scene.background.set(cave ? 0xf8f8f8 : 0xeef1f4);
   scene.fog.color.set(cave ? 0xececec : 0xeef1f4);
   [scene.fog.near, scene.fog.far] = cave ? env.fog : [170, 520];
-  hemi.color.set(0xffffff); hemi.groundColor.set(cave ? (env.bright ? 0xbcc6d4 : 0xb4becc) : 0xc9d0d8);   // ombres légèrement froides hemi.intensity = cave ? (env.bright ? 0.98 : 0.94) : 0.55;   // ombres claires : une ambiance blanche, pas grise
-  sun.color.set(0xfff3e4);   // soleil un peu chaud sun.intensity = cave ? 1.0 : 0.7;
+  hemi.color.set(0xffffff); hemi.groundColor.set(cave ? (env.bright ? 0xd0d5dd : 0xc8ced8) : 0xc9d0d8);   // ombres à peine froides hemi.intensity = cave ? (env.bright ? 0.98 : 0.94) : 0.55;   // ombres claires : une ambiance blanche, pas grise
+  sun.color.set(0xfff7ee);   // soleil à peine chaud sun.intensity = cave ? 1.0 : 0.7;
   const sc = sun.shadow.camera;
   if (cave) {
     // Ombre fixe qui couvre toute la salle : le plafond doit faire de l'ombre partout, pas seulement près du perso.
