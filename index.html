@@ -524,7 +524,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
         <button id="bLevels" class="mbtn primary stag" style="--i:3"><span class="ic"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg></span><span class="tx">Niveaux</span><span id="prog" class="meta">0/10</span></button>
         <button id="bTrain" class="mbtn stag" style="--i:4"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span><span class="tx">Entraînement</span></button>
         <button id="bEditor" class="mbtn stag" style="--i:5"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="12.5" width="8" height="8"/><rect x="12.5" y="3.5" width="8" height="8"/><path d="M12.5 16.5h8M16.5 12.5v8"/></svg></span><span class="tx">Éditeur</span></button>
-        <button id="bWeekly" class="mbtn stag" style="--i:6" hidden><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tx">Semaine</span><span id="weekTag" class="meta"></span></button>
+        <button id="bWeekly" class="mbtn stag" style="--i:6" hidden><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg></span><span class="tx">Niveau de la semaine</span><span id="weekTag" class="meta"></span></button>
       </nav>
       <button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5"/></svg><b></b></span><span class="tx"><span class="nm">Se connecter</span></span><svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
@@ -6197,7 +6197,7 @@ function previewCamera(fdt) {
 }
 function openLevelUI(n, back) {
   const wk = n === WEEKLY_N;
-  $('pvTitle').textContent = wk ? 'Semaine' : 'Niveau ' + String(n).padStart(2, '0');
+  $('pvTitle').textContent = wk ? 'Niveau de la semaine' : 'Niveau ' + String(n).padStart(2, '0');
   $('pvNum').textContent = wk ? 'S' + weekNum(WEEKLY && WEEKLY.created) : String(n).padStart(2, '0');
   weeklyAdminUI(wk);
   const rk = recKey(n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]);
