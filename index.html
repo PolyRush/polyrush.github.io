@@ -720,7 +720,7 @@ if (FX) {
   SC.fog_pars_vertex = SC.fog_pars_vertex.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\tvarying float vFogWorldY;');
   SC.fog_vertex = SC.fog_vertex.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\t{ vec4 hwp = vec4(transformed, 1.0);\n\t#ifdef USE_INSTANCING\n\thwp = instanceMatrix * hwp;\n\t#endif\n\tvFogWorldY = (modelMatrix * hwp).y; }');
   SC.fog_pars_fragment = SC.fog_pars_fragment.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\tvarying float vFogWorldY;');
-  SC.fog_fragment = SC.fog_fragment.replace(/#endif\s*$/, '\tfloat hFog = (1.0 - smoothstep(-38.0, 1.0, vFogWorldY)) * 0.72;\n\tgl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor * vec3(0.66, 0.72, 0.82), hFog);\n#endif');
+  SC.fog_fragment = SC.fog_fragment.replace(/#endif\s*$/, '\tfloat hFog = (1.0 - smoothstep(-60.0, -10.0, vFogWorldY)) * 0.7;\n\tgl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor * vec3(0.66, 0.72, 0.82), hFog);\n#endif');
 }
 
 /* ---------- Réglages ----------
@@ -2507,7 +2507,7 @@ function buildCustom(n, data) {
   }
   const beams = [], pils = [];
   for (let z = R.z1 - 12; z > R.z0 + 6; z -= 24) { beams.push(z); pils.push([z, [-1, 1]]); }
-  NO_SHADOW = R.top >= 120;                         // tour : le soleil entre partout
+  NO_SHADOW = R.top >= 120 && Math.max(R.x1 - R.x0, R.z1 - R.z0) <= 80;   // tour (étroite et très haute) : le soleil entre partout
   const env = cave({ x0: R.x0, x1: R.x1, z0: R.z0, z1: R.z1, top: R.top, bot: R.bot, holes, beams, pils,
     floors: sol ? [{ r: [R.x0, R.x1, R.z0, R.z1] }] : [],
     fog: [110, Math.max(340, Math.hypot(R.x1 - R.x0, R.z1 - R.z0) * 1.4)] });
@@ -2548,13 +2548,14 @@ function setEnv(env) {
   scene.background.set(cave ? 0xf8f8f8 : 0xeef1f4);
   scene.fog.color.set(cave ? 0xececec : 0xeef1f4);
   [scene.fog.near, scene.fog.far] = cave ? env.fog : [170, 520];
-  hemi.color.set(0xffffff); hemi.groundColor.set(cave ? (FX ? (env.bright ? 0xd0d5dd : 0xc8ced8) : (env.bright ? 0xd2d2d2 : 0xcacaca)) : 0xc9d0d8);   // ombres à peine froides hemi.intensity = cave ? (env.bright ? 0.98 : 0.94) : 0.55;   // ombres claires : une ambiance blanche, pas grise
+  hemi.color.set(0xffffff); hemi.groundColor.set(cave ? (FX ? (env.bright ? 0xd0d5dd : 0xc8ced8) : (env.bright ? 0xd2d2d2 : 0xcacaca)) : 0xc9d0d8);   // ombres à peine froides
+  hemi.intensity = cave ? (env.bright ? 1.04 : 1.0) : 0.6;   // ombres claires : une ambiance blanche, pas grise
   sun.color.set(FX ? 0xfff7ee : 0xffffff);   // soleil à peine chaud sun.intensity = cave ? 1.0 : 0.7;
   const sc = sun.shadow.camera;
   if (cave) {
     // Ombre fixe qui couvre toute la salle : le plafond doit faire de l'ombre partout, pas seulement près du perso.
     // Le cadre de l'ombre est calculé sur la boîte de la salle vue depuis le soleil.
-    const cx = (env.x0 + env.x1) / 2, cz = (env.z0 + env.z1) / 2, D = 400;
+    const cx = (env.x0 + env.x1) / 2, cz = (env.z0 + env.z1) / 2, D = Math.max(400, Math.hypot(env.x1 - env.x0, env.y1 - env.y0, env.z1 - env.z0));   // assez loin pour voir toute la salle (plafond compris)
     sc.up.copy(_up);
     _ax.crossVectors(_up, LDIR).normalize(); _ay.crossVectors(LDIR, _ax);
     let l = Infinity, r = -Infinity, b = Infinity, t = -Infinity, n = Infinity, f = -Infinity;
