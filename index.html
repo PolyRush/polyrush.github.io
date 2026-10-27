@@ -3825,13 +3825,15 @@ function genWeekly(seed, opt = {}) {
   const D2R = Math.PI / 180, FLOOR = -40, r2 = v => Math.round(v * 100) / 100, hf = v => Math.round(v * 2) / 2;
   const H = th => [Math.sin(th * D2R), Math.cos(th * D2R)];
   const q15 = th => Math.round(th / 15) * 15;
+  // tout se pose sur une grille de 0,5 : un bord est aligné avec un autre, ou il dépasse franchement (0,5 au moins)
+  const Q = v => Math.round(v * 2) / 2, rq = (a, b) => Q(rnd(a, b)), rw = (a, b) => Math.max(1, Math.round(rnd(a, b)));
   const reachG = dh => jumpReach(dh) - 0.8;              // écart de bord à bord qu'on s'autorise au plus
 
   // ===== Le caractère du niveau =====
-  const MOVES = ['saut', 'poteaux', 'poutre', 'wrap', 'coin', 'uturn', 'echelle', 'corniches', 'crete', 'lames', 'geant', 'revisit', 'allee', 'aerien', 'wrapbloc', 'spirale', 'portail', 'facade', 'cheminee', 'navette', 'ascenseur', 'portes', 'contrefort', 'wrapechelle', 'wrapcorniche', 'anneau', 'helice', 'cretes', 'sautarriere'];
-  const FAMS = { sauts: ['saut', 'poteaux', 'lames', 'aerien', 'navette', 'anneau', 'helice'], wraps: ['wrap', 'coin', 'uturn', 'wrapbloc', 'spirale', 'contrefort', 'wrapechelle', 'wrapcorniche'], grimpe: ['echelle', 'corniches', 'geant', 'facade', 'cheminee', 'ascenseur', 'sautarriere', 'wrapechelle'], equilibre: ['poutre', 'crete', 'lames', 'revisit', 'allee', 'cretes'] };
-  const BASE = { saut: 0.5, poteaux: 0.7, poutre: 0.8, wrap: 1.1, coin: 0.9, uturn: 0.8, echelle: 0.6, corniches: 0.9, crete: 0.8, lames: 0.6, geant: 0.55, revisit: 2.2, allee: 1.4, aerien: 1.2, wrapbloc: 1, spirale: 0.7, portail: 0.6, facade: 0.8, cheminee: 0.7, navette: 0.8, ascenseur: 0.7, portes: 0.6, contrefort: 1, wrapechelle: 0.8, wrapcorniche: 0.9, anneau: 0.8, helice: 0.7, cretes: 0.8, sautarriere: 0.6 };
-  const CAP = { saut: 2, geant: 1, spirale: 1, portail: 1, allee: 2, aerien: 2, revisit: 2, navette: 2, ascenseur: 1, portes: 1, sautarriere: 1, helice: 1, anneau: 1 };   // au plus N fois par niveau (sinon 2)
+  const MOVES = ['saut', 'poteaux', 'poutre', 'wrap', 'coin', 'uturn', 'echelle', 'corniches', 'crete', 'lames', 'geant', 'revisit', 'allee', 'aerien', 'wrapbloc', 'spirale', 'portail', 'facade', 'cheminee', 'navette', 'ascenseur', 'portes', 'contrefort', 'wrapechelle', 'wrapcorniche', 'anneau', 'helice', 'cretes', 'sautarriere', 'pyramide', 'champ', 'cascade'];
+  const FAMS = { sauts: ['saut', 'poteaux', 'lames', 'aerien', 'navette', 'anneau', 'helice', 'champ'], wraps: ['wrap', 'coin', 'uturn', 'wrapbloc', 'spirale', 'contrefort', 'wrapechelle', 'wrapcorniche'], grimpe: ['echelle', 'corniches', 'geant', 'facade', 'cheminee', 'ascenseur', 'sautarriere', 'wrapechelle', 'pyramide'], equilibre: ['poutre', 'crete', 'lames', 'revisit', 'allee', 'cretes', 'cascade'] };
+  const BASE = { saut: 0.5, poteaux: 0.7, poutre: 0.8, wrap: 1.1, coin: 0.9, uturn: 0.8, echelle: 0.6, corniches: 0.9, crete: 0.8, lames: 0.6, geant: 0.55, revisit: 2.2, allee: 1.4, aerien: 1.2, wrapbloc: 1, spirale: 0.7, portail: 0.6, facade: 0.8, cheminee: 0.7, navette: 0.8, ascenseur: 0.7, portes: 0.6, contrefort: 1, wrapechelle: 0.8, wrapcorniche: 0.9, anneau: 0.8, helice: 0.7, cretes: 0.8, sautarriere: 0.6, pyramide: 0.7, champ: 0.8, cascade: 0.7 };
+  const CAP = { saut: 2, geant: 1, spirale: 1, portail: 1, allee: 2, aerien: 2, revisit: 2, navette: 2, ascenseur: 1, portes: 1, sautarriere: 1, helice: 1, anneau: 1, pyramide: 1, champ: 1, cascade: 1 };   // au plus N fois par niveau (sinon 2)
   // un vocabulaire restreint, propre au niveau : 4 à 6 coups (plus le retour sur ce qu'on a vu)
   const spec = opt.spec !== undefined ? opt.spec : pick(['', '', '', 'sauts', 'wraps', 'grimpe', 'equilibre']);
   const vocab = new Set(['saut']);
@@ -3850,7 +3852,7 @@ function genWeekly(seed, opt = {}) {
   const qa = t => Math.round(t / AG) * AG, angs = (mx, z = 1) => { const a = []; for (let v = AG; v <= mx; v += AG) a.push(v, -v); for (let k = 0; k < z; k++) a.push(0); return a; };
   const alt = opt.alt || pick(['montee', 'montee', 'vague', 'descente', 'plateau']);
   const SC = opt.sc || rnd(0.9, 1.25);                    // échelle des plateformes
-  const floatP = opt.floatP ?? pick([0.1, 0.5, 0.85, 0.85]);   // part des coups suspendus dans le vide (sinon posés sur des colonnes)
+  const floatP = opt.floatP ?? pick([0.1, 0.25, 0.4, 0.55, 0.7]);   // part des coups suspendus dans le vide (sinon posés sur des colonnes)
   const compact = opt.compact ?? pick([0, 0.3, 0.6, 0.8]);    // tendance à s'enrouler autour du départ (en hauteur)
   const revP = opt.revP ?? pick([0.15, 0.35, 0.6]);           // envie de revenir sur ce qu'on a déjà vu
   const snapP = opt.snapP ?? (AG === 90 ? 0.9 : pick([0.2, 0.5, 0.8]));           // goût pour les angles droits (sinon : biais libres)
@@ -3880,8 +3882,28 @@ function genWeekly(seed, opt = {}) {
     Object.assign(C, { ox, oz, th, hx, hz, px, pz });
     C.P = (a, l) => [ox + hx * a + px * l, oz + hz * a + pz * l];
     C.loc = (x, z) => [(x - ox) * hx + (z - oz) * hz, (x - ox) * px + (z - oz) * pz];
-    C.O = (a, l, ha, hw, dth = 0) => { const [cx, cz] = C.P(a, l), [ux, uz] = H(th + dth); return { cx, cz, ux, uz, hl: ha, hw }; };
-    C.box = (o, y0, y1, k = {}) => { const pc = { o, poly: obbPts(o), y0, y1, top: y1, ...k }; C.pcs.push(pc); return pc; };
+    C.O = (a, l, ha, hw, dth = 0, raw) => {
+      if (!raw && Math.min(ha, hw) > 0.3) {     // (les échelles, très fines, restent où on les met)
+        // bords sur la grille de 0,5 du repère (pavé droit dans le repère), sinon centre au quart et tailles à 0,5
+        if (Math.abs(dth / 90 - Math.round(dth / 90)) < 1e-6) {
+          const sw = Math.abs(Math.round(dth / 90)) % 2 === 1;
+          let ea = sw ? hw : ha, el = sw ? ha : hw;
+          let a0 = Q(a - ea), a1 = Q(a + ea), l0 = Q(l - el), l1 = Q(l + el);
+          if (a1 - a0 < 0.5) a1 = a0 + 0.5; if (l1 - l0 < 0.5) l1 = l0 + 0.5;
+          a = (a0 + a1) / 2; l = (l0 + l1) / 2; ea = (a1 - a0) / 2; el = (l1 - l0) / 2;
+          ha = sw ? el : ea; hw = sw ? ea : el;
+        } else { a = Math.round(a * 4) / 4; l = Math.round(l * 4) / 4; ha = Math.max(0.25, Math.round(ha * 4) / 4); hw = Math.max(0.25, Math.round(hw * 4) / 4); }
+      }
+      const [cx, cz] = C.P(a, l), [ux, uz] = H(th + dth); return { cx, cz, ux, uz, hl: ha, hw };
+    };
+    C.box = (o, y0, y1, k = {}) => {
+      if (!k.lad && !k.mob) {
+        o = { ...o, hl: Math.max(0.25, Math.round(o.hl * 4) / 4), hw: Math.max(0.25, Math.round(o.hw * 4) / 4) };
+        y1 = Math.round(y1 * 2) / 2;
+        if (y0 > FLOOR) y0 = Math.min(Math.ceil(y0 * 2 - 1e-6) / 2, y1 - 0.5);   // jamais plus épais que prévu (on garde la hauteur libre dessous)
+      }
+      const pc = { o, poly: obbPts(o), y0, y1, top: y1, ...k }; C.pcs.push(pc); return pc;
+    };
     C.blk = (a, l, ha, hw, y0, y1, k, dth) => C.box(C.O(a, l, ha, hw, dth), y0, y1, k);
     C.wp = (a, l, o = {}) => { const [x, z] = C.P(a, l); const w = { x: r2(x), z: r2(z), ...o }; C.wps.push(w); return w; };
     C.wpW = (x, z, o = {}) => { const w = { x: r2(x), z: r2(z), ...o }; C.wps.push(w); return w; };
@@ -3899,11 +3921,13 @@ function genWeekly(seed, opt = {}) {
   // Grande plateforme d'arrivée d'un saut : le point de réception L est à 2,3 au moins des bords
   const station = (C, L, top, k = {}) => {
     const dth = k.dth ?? pick(angs(45, 3));
-    const hl = k.hl ?? rnd(5, 9) * SC, hw = k.hw ?? rnd(5, 8) * SC;
-    const [ux, uz] = H(C.th + dth), dep = k.dep ?? rnd(2.6, 3.6);
+    const hl = k.hl ?? Q(rnd(5, 9) * SC), hw = k.hw ?? Q(rnd(5, 8) * SC);
+    const yw = C.alignW ? Math.round((C.th + dth) / 90) * 90 : C.th + dth;
+    const [ux, uz] = H(yw), dep = k.dep ?? rq(2.6, 3.6);
     for (const f of [0.6, 0.3, 0]) {
       const lat = rnd(-1, 1) * (hw - 2.6) * f;
       const o = { cx: L[0] + ux * (hl - dep) + uz * lat, cz: L[1] + uz * (hl - dep) - ux * lat, ux, uz, hl, hw };
+      if (C.alignW) { o.cx = Q(o.cx); o.cz = Q(o.cz); }      // la plateforme d'arrivée tombe sur la grille du monde
       if (!obbIn(o, L[0], L[1], 2.3)) continue;
       const pc = C.box(o, k.slab || C.air ? top - rnd(2.5, 5) : FLOOR, top, { route: true, nearS: k.nearS });
       return mkSt(C, pc, L, null, { minWalk: k.minWalk });
@@ -3954,7 +3978,7 @@ function genWeekly(seed, opt = {}) {
     const n = ri(2, 4), pat = AG >= 45 ? pick(['coude', 'droit', 'coude']) : pick(['arc', 'arc', 'zig', 'droit']), tau = pat === 'arc' ? sgn() * pick([15, 15, 30]) : pat === 'zig' ? pick([20, 30]) : pat === 'coude' ? sgn() * AG : 0;
     const kc = ri(1, n);
     const vpat = tgt > 3 ? 'monte' : tgt < -3 ? 'descend' : pick(['monte', 'onde', 'descend']);
-    const w = rnd(3.6, 5.6) * Math.min(SC, 1.1);
+    const w = rw(3.6, 5.6);
     const turnAt = i => pat === 'zig' ? (i % 2 ? tau : -tau) : pat === 'coude' ? (i === kc ? tau : 0) : tau;
     takeoff(C);
     let prevPoly = S.pc.poly, from = C.P(-0.45, 0), dir = C.th, top = S.top, E = [C.ox, C.oz];
@@ -3982,7 +4006,7 @@ function genWeekly(seed, opt = {}) {
 
   // Poutre étroite, parfois coudée (nœuds sur des colonnes), qu'on traverse en équilibre
   M.poutre = (C, S, tgt) => {
-    const bw = rnd(2, 3), k = pick([1, 2, 2, 3]), attach = C.perp && chance(0.5);
+    const bw = pick([2, 2, 3]), k = pick([1, 2, 2, 3]), attach = C.perp && chance(0.5);
     const dh0 = attach ? 0 : dhPick(tgt * 0.3, -2, 1.5), g0 = attach ? 0 : rnd(2.6, 0.7 * reachG(dh0));
     let top = S.top + dh0, dir = C.th, A = C.P(g0, 0), lastPoly = null, lastEnd = null;
     if (!attach) takeoff(C);
@@ -4065,16 +4089,16 @@ function genWeekly(seed, opt = {}) {
   };
   M.wrap = (C, S, tgt) => {
     // allée large, ou fine (réception précise) ; 1 à 3 murs (slalom quand ils alternent)
-    const fine = chance(0.2), ww = fine ? rnd(2.8, 3.4) : rnd(4, 6.4) * Math.min(SC, 1.12), nW = pick([1, 1, 2, 2, 3]), slalom = nW === 3 || chance(0.5), attach = C.perp && chance(0.5);
-    const dh0 = attach ? 0 : dhPick(tgt * 0.4, -3, 2), g0 = attach ? 0 : rnd(2.8, 0.75 * reachG(dh0));
+    const fine = chance(0.2), ww = fine ? 3 : rw(4, 6.4), nW = pick([1, 1, 2, 2, 3]), slalom = nW === 3 || chance(0.5), attach = C.perp && chance(0.5);
+    const dh0 = attach ? 0 : dhPick(tgt * 0.4, -3, 2), g0 = attach ? 0 : Q(rnd(2.8, 0.75 * reachG(dh0)));
     if (!attach) takeoff(C);
-    let top = S.top + dh0, a = g0 + rnd(7, 9.5), side = sgn();
+    let top = S.top + dh0, a = Q(g0 + rnd(7, 9.5)), side = sgn();
     const walls = [], thk = rnd(2, 3.5);
     C.thk = thk;
     for (let k = 0; k < nW; k++) {
-      if (k) { side = slalom ? -side : side; a += rnd(9.5, 13); }
+      if (k) { side = slalom ? -side : side; a += rq(9.5, 13); }
       const phi = AG === 90 ? 0 : AG === 45 ? pick([0, 0, 35, -35]) : pick([0, 0, 0, 15, -15, 25, -25, 35, -35]);
-      const lg = chance(0.25) && !fine, o = { t: hf((lg ? rnd(0.9, 1.3) : rnd(0.9, 2.2)) * 2) / 2, e: lg ? rnd(0.65, 0.9) : rnd(0.3, fine ? 0.5 : 0.65), phi, F: rnd(4.5, 7.5), h: rnd(8.6, 11) };
+      const o = { t: pick([1, 1.5, 1.5, 2]), e: 0.5, phi, F: rw(4.5, 7.5), h: rq(9, 11) };
       let dz = 0;                                   // l'allée change de hauteur sous un mur droit (on retombe plus bas, ou on monte)
       if (!phi && chance(0.4)) dz = pick([1, 2, -1.5, -3, -4.5, -6]);
       const wl = wrapWall(C, a, ww, side, o, top);
@@ -4084,7 +4108,7 @@ function genWeekly(seed, opt = {}) {
       top += dz;
     }
     for (let k = 1; k < walls.length; k++) if (walls[k].wl.aMin - walls[k - 1].wl.aMax < 7) return null;
-    const aEnd = Math.max(a, walls[walls.length - 1].wl.aMax) + rnd(8, 12) * SC;
+    const aEnd = Q(Math.max(a, walls[walls.length - 1].wl.aMax) + rnd(8, 12) * SC);
     const parts = [];
     let t0 = S.top + dh0, from = g0;
     for (const w of walls) if (w.dz) { parts.push([from, w.a, t0]); from = w.a; t0 += w.dz; }
@@ -4110,13 +4134,13 @@ function genWeekly(seed, opt = {}) {
 
   // Coin de tour : l'allée longe une tour et s'arrête avant l'angle ; on saute autour du coin sur l'allée suivante
   M.coin = (C, S, tgt) => {
-    const side = sgn(), ww1 = rnd(3.8, 5.6), ww2 = rnd(3.8, 5.8), attach = C.perp && chance(0.5);
-    const dh0 = attach ? 0 : dhPick(tgt * 0.3, -3, 2), g0 = attach ? 0 : rnd(2.8, 0.75 * reachG(dh0));
+    const side = sgn(), ww1 = rw(3.8, 5.6), ww2 = rw(3.8, 5.8), attach = C.perp && chance(0.5);
+    const dh0 = attach ? 0 : dhPick(tgt * 0.3, -3, 2), g0 = attach ? 0 : Q(rnd(2.8, 0.75 * reachG(dh0)));
     if (!attach) takeoff(C);
-    const top1 = S.top + dh0, L1 = rnd(9, 15) * SC, c1 = rnd(0.4, 1.3), c2 = rnd(0.4, 1.3), ac = g0 + L1 + c1;
-    const ts = Math.min(rnd(6, 10) * SC, ac - 5);
-    if (ts < 5.5) return null;
-    const dh2 = pick([0, 0, 1, -1.5, -3]), top2 = top1 + dh2, L2 = rnd(10, 16) * SC;
+    const top1 = S.top + dh0, L1 = Q(rnd(9, 15) * SC), c1 = pick([0.5, 1]), c2 = pick([0.5, 1]), ac = g0 + L1 + c1;
+    const thin = chance(0.35), ts = thin ? pick([2.5, 3, 4]) : Math.floor(Math.min(rnd(6, 10) * SC, ac - 5));
+    if (!thin && ts < 5.5) return null;
+    const dh2 = pick([0, 0, 1, -1.5, -3]), top2 = top1 + dh2, L2 = Q(rnd(10, 16) * SC);
     const thk = rnd(2, 3.5);
     const W1 = C.blk(g0 + L1 / 2, 0, L1 / 2, ww1 / 2, C.air ? top1 - thk : FLOOR, top1, { route: true, nearS: true });
     C.blk(ac - ts / 2, side * (ww1 / 2 + ts / 2), ts / 2, ts / 2, C.air ? Math.min(top1, top2) - rnd(5, 10) : FLOOR, Math.max(top1, top2) + rnd(9, 14), { deco: true });
@@ -4140,13 +4164,13 @@ function genWeekly(seed, opt = {}) {
 
   // Demi-tour autour du bout d'un mur fin : l'allée de l'aller d'un côté, celle du retour de l'autre
   M.uturn = (C, S, tgt) => {
-    const side = sgn(), t = hf(rnd(1, 1.8) * 2) / 2, ww = rnd(3.8, 5.6), ww2 = rnd(3.8, 5.6), attach = C.perp && chance(0.5);
-    const e = rnd(0.3, Math.min(1, (2.8 - t) / 2));
-    const dh0 = attach ? 0 : dhPick(tgt * 0.3, -3, 2), g0 = attach ? 0 : rnd(2.8, 0.75 * reachG(dh0));
+    const side = sgn(), t = pick([1, 1.5]), ww = rw(3.8, 5.6), ww2 = rw(3.8, 5.6), attach = C.perp && chance(0.5);
+    const e = 0.5;
+    const dh0 = attach ? 0 : dhPick(tgt * 0.3, -3, 2), g0 = attach ? 0 : Q(rnd(2.8, 0.75 * reachG(dh0)));
     if (!attach) takeoff(C);
-    const top1 = S.top + dh0, L1 = rnd(13, 20) * SC, aE = g0 + L1;
+    const top1 = S.top + dh0, L1 = Q(rnd(13, 20) * SC), aE = g0 + L1;
     const dz = pick([0, 0, 1, -1.5, -3]), top2 = top1 + dz;
-    const aw0 = g0 + rnd(0.5, 2), L2 = Math.min(rnd(10, 15) * SC, aE - aw0 - 8);
+    const aw0 = g0 + pick([0.5, 1, 1.5, 2]), L2 = Q(Math.min(rnd(10, 15) * SC, aE - aw0 - 8));
     if (L2 < 7) return null;
     const thk = rnd(2, 3.5);
     const W1 = C.blk(g0 + L1 / 2, 0, L1 / 2, ww / 2, C.air ? top1 - thk : FLOOR, top1, { route: true, nearS: true });
@@ -4175,7 +4199,7 @@ function genWeekly(seed, opt = {}) {
     const bars = [];
     for (let y = yTop - 0.6; y >= yBot + 0.8; y -= 1.5) bars.push(y);
     if (!bars.length) return null;
-    return C.box(C.O(a - 0.25, l, 0.25, len / 2), Math.min(...bars) - 0.2, Math.max(...bars) + 0.2, { lad: true, bars, ...k });
+    return C.box(C.O(a - 0.25, Q(l), 0.25, Q(len) / 2, 0, true), Math.min(...bars) - 0.2, Math.max(...bars) + 0.2, { lad: true, bars, ...k });
   };
   M.echelle = (C, S, tgt) => {
     const dh = hf(clamp(tgt + rnd(3, 9), 8, 16)), mur = chance(0.45), jumpOn = !C.perp || chance(0.55);
@@ -4183,13 +4207,13 @@ function genWeekly(seed, opt = {}) {
     if (jumpOn) takeoff(C);
     let T;
     if (mur) {
-      const tw = rnd(3.4, 4.8), Lm = rnd(16, 28) * SC, side = sgn(), lc = side * rnd(1, Lm / 2 - 4);
+      const tw = rw(3.4, 4.8), Lm = Math.round(rnd(16, 28) * SC), side = sgn(), lc = side * rq(1, Lm / 2 - 4);
       const pc = C.blk(g + tw / 2, lc, Lm / 2, tw / 2, C.air ? S.top - rnd(5, 10) : FLOOR, top, { route: true, nearS: !jumpOn }, 90);
       const [zx, zz] = C.P(g + tw / 2, lc + side * (Lm / 2 - 2.5));
       T = mkSt(C, pc, C.P(g + tw / 2, 0), { cx: zx, cz: zz, ux: pc.o.ux, uz: pc.o.uz, hl: 2.5, hw: tw / 2 }, { minWalk: 0, wide: false });
       C.thOut = C.th + 90 * side;
     } else {
-      const ts = rnd(8, 12) * SC;
+      const ts = Math.round(rnd(8, 12) * SC);
       const pc = C.blk(g + ts / 2, rnd(-1, 1) * (ts / 2 - bl / 2 - 1), ts / 2, ts / 2, C.air ? S.top - rnd(5, 10) : FLOOR, top, { route: true, nearS: !jumpOn });
       T = mkSt(C, pc, C.P(g + 2.5, 0), null, { minWalk: 5 });
       C.thOut = C.th;
@@ -4202,28 +4226,28 @@ function genWeekly(seed, opt = {}) {
 
   // Corniches le long d'un mur ; parfois on passe sur l'autre face en contournant son bout
   M.corniches = (C, S, tgt) => {
-    const side = sgn(), n = ri(3, 6), dp = rnd(2.2, 3.1), sw = n >= 4 && chance(0.35);
+    const side = sgn(), n = ri(3, 6), dp = pick([2.5, 3]), sw = n >= 4 && chance(0.35);
     const vpat = tgt > 2 ? 'monte' : tgt < -3 ? 'descend' : pick(['monte', 'onde']);
-    const tg = sw ? rnd(1.2, 1.6) : rnd(3, 6), ks = sw ? ri(2, n - 2) : n, lB = side * (dp + tg);
+    const tg = sw ? 1.5 : rq(3, 6), ks = sw ? ri(2, n - 2) : n, lB = side * (dp + tg);
     const dyOf = j => vpat === 'monte' ? hf(rnd(1.2, 2.3)) : vpat === 'descend' ? -hf(rnd(1.2, 2.4)) : (j % 2 ? -1 : 2);
     takeoff(C);
     let cur = 0, top = S.top;
     const L = [];
     for (let j = 0; j < ks; j++) {      // face A, vers l'avant
-      const dy = dyOf(j), ll = rnd(2.6, 4), g = j === 0 ? rnd(2.8, 3.8) : rnd(2.5, Math.max(2.6, Math.min(4.2, 0.82 * reachG(dy))));
+      const dy = dyOf(j), ll = rq(2.6, 4), g = j === 0 ? rq(2.8, 3.8) : Q(rnd(2.5, Math.max(2.6, Math.min(4.2, 0.82 * reachG(dy)))));
       top += dy;
       L.push({ a0: cur + g, a1: cur + g + ll, l: 0, top, B: false });
       cur += g + ll;
     }
-    const e = rnd(0.3, 0.7), aw0 = Math.max(0.6, L[0].a0 - rnd(1, 2.5));
+    const e = 0.5, aw0 = Math.max(1, L[0].a0 - rq(1, 2.5));
     for (let j = ks; j < n; j++) {      // face B, en revenant
-      const dy = dyOf(j), ll = rnd(2.6, 4);
+      const dy = dyOf(j), ll = rq(2.6, 4);
       top += dy;
-      const a1 = j === ks ? L[ks - 1].a1 : L[j - 1].a0 - rnd(2.5, Math.max(2.6, Math.min(4.2, 0.82 * reachG(dy))));
+      const a1 = j === ks ? L[ks - 1].a1 : L[j - 1].a0 - Q(rnd(2.5, Math.max(2.6, Math.min(4.2, 0.82 * reachG(dy)))));
       if (a1 - ll < aw0 + 0.5) return null;
       L.push({ a0: a1 - ll, a1, l: lB, top, B: true });
     }
-    const aw1 = sw ? L[ks - 1].a1 + e : L[n - 1].a1 + rnd(0.4, 1.5), maxTop = Math.max(...L.map(q => q.top));
+    const aw1 = sw ? L[ks - 1].a1 + e : L[n - 1].a1 + pick([0, 0.5, 1]), maxTop = Math.max(...L.map(q => q.top));
     C.blk((aw0 + aw1) / 2, side * (dp / 2 + tg / 2), (aw1 - aw0) / 2, tg / 2, C.air ? Math.min(...L.map(q => q.top)) - rnd(4, 9) : FLOOR, maxTop + rnd(8.6, 11), { deco: true, nearS: true });
     let from = C.P(-0.45, 0), prev = S.pc.poly, prevTop = S.top;
     for (let j = 0; j < n; j++) {
@@ -4253,7 +4277,7 @@ function genWeekly(seed, opt = {}) {
 
   // Crête : on marche sur le dessus d'un long mur fin, parfois coudé
   M.crete = (C, S, tgt) => {
-    const tw = rnd(2, 3), k = pick([1, 1, 2]), dh0 = dhPick(tgt * 0.4, -2, 2.5), g0 = rnd(2.6, 0.72 * reachG(dh0));
+    const tw = pick([2, 2.5, 3]), k = pick([1, 1, 2]), dh0 = dhPick(tgt * 0.4, -2, 2.5), g0 = Q(rnd(2.6, 0.72 * reachG(dh0)));
     const top = S.top + dh0;
     takeoff(C);
     let dir = C.th + (AG >= 45 ? 0 : pick([0, 0, 15, -15])), A = C.P(g0, 0), pc = null, L0 = 0;
@@ -4299,10 +4323,10 @@ function genWeekly(seed, opt = {}) {
 
   // Mur géant : on le longe en bas (contreforts à contourner), on grimpe à son bout, on revient par-dessus
   M.geant = (C, S, tgt) => {
-    const side = sgn(), sw = rnd(3.8, 5.2), tg = rnd(3.2, 4.5), Lg = rnd(34, 50) * SC, Hg = rnd(13, 17);
-    const dh0 = dhPick(Math.min(tgt, 0) * 0.3, -3, 1.5), g0 = rnd(2.8, 0.72 * reachG(dh0)), top1 = S.top + dh0;
+    const side = sgn(), sw = rw(3.8, 5.2), tg = rw(3.2, 4.5), Lg = Math.round(rnd(34, 50) * SC), Hg = rq(13, 17);
+    const dh0 = dhPick(Math.min(tgt, 0) * 0.3, -3, 1.5), g0 = rq(2.8, 0.72 * reachG(dh0)), top1 = S.top + dh0;
     takeoff(C);
-    const aw0 = g0 + rnd(0.5, 2), aw1 = aw0 + Lg, pe = rnd(5.5, 7), topG = top1 + Hg, wallL = side * (sw / 2 + tg / 2);
+    const aw0 = g0 + pick([0.5, 1, 1.5]), aw1 = aw0 + Lg, pe = rw(5.5, 7), topG = top1 + Hg, wallL = side * (sw / 2 + tg / 2);
     const shelf = C.blk((g0 + aw1) / 2, 0, (aw1 - g0) / 2, sw / 2, FLOOR, top1, { route: true, nearS: true });
     const gw = C.blk((aw0 + aw1) / 2, wallL, (aw1 - aw0) / 2, tg / 2, FLOOR, topG, { route: true, nearS: true });
     C.blk(aw1 + pe / 2, side * (tg / 2), pe / 2, sw / 2 + tg / 2 + 1, FLOOR, top1, { route: true });
@@ -4312,7 +4336,8 @@ function genWeekly(seed, opt = {}) {
     // contreforts : collés au mur géant, ils dépassent juste de l'allée côté vide
     let a = g0 + rnd(8, 11);
     for (let k = 0, nf = ri(1, 2); k < nf && a < aw1 - 9; k++) {
-      const t = hf(rnd(1, 2.2) * 2) / 2, e = rnd(0.3, 0.6);
+      const t = pick([1, 1.5, 2]), e = 0.5;
+      a = Q(a - t / 2) + t / 2;                  // ses faces tombent sur la grille : les points de passage collent au bloc
       C.blk(a, -side * e / 2, t / 2, (sw + e) / 2, FLOOR, top1 + rnd(8.6, 10), { deco: true, ov: true });
       const lt = -side * (sw / 2 - 0.8), lL = -side * Math.max(sw / 2 - 2.3, 0), ex = -side * (sw / 2 + e);
       C.wp(a - t / 2 - 3.4, lt, { r: 1 });
@@ -4407,7 +4432,7 @@ function genWeekly(seed, opt = {}) {
   const begin = (C, S, tgt, o = {}) => {
     const attach = !o.noAttach && C.perp && chance(o.pa ?? 0.45);
     const dh0 = attach ? 0 : dhPick(tgt * (o.f ?? 0.3), o.lo ?? -3, o.hi ?? 2);
-    const g0 = attach ? 0 : rnd(2.8, Math.max(2.9, 0.75 * reachG(dh0)));
+    const g0 = attach ? 0 : Q(rnd(2.8, Math.max(2.9, 0.75 * reachG(dh0))));
     if (!attach) takeoff(C);
     return { attach, g0, top: S.top + dh0, dh0 };
   };
@@ -4421,11 +4446,11 @@ function genWeekly(seed, opt = {}) {
 
   // Allée piégée : une allée qui enchaîne 2 à 4 épreuves différentes (haie, trou, mur à contourner, marche, passage
   // étroit, décalage, virage, tapis roulant) — l'allée change de largeur, de hauteur et de direction en route.
-  const ALLEE = ['haie', 'trou', 'mur', 'marche', 'etroit', 'decale', 'virage', 'tapis', 'mur', 'haie2'];
+  const ALLEE = ['haie', 'trou', 'mur', 'marche', 'etroit', 'decale', 'virage', 'tapis', 'mur', 'haie2', 'haietrou', 'escalier', 'chicane', 'colonnade', 'plots', 'escalier', 'plots', 'haietrou'];
   M.allee = (C, S, tgt) => {
     const b = begin(C, S, tgt, { pa: 0.55 });
     const thk = rnd(2, 3.5); C.thk = thk;
-    let F = C, a0 = b.g0, a = b.g0 + rnd(6, 9), w = rnd(4, 6.2) * Math.min(SC, 1.1), top = b.top, first = true, partBelt = null;
+    let F = C, a0 = b.g0, a = b.g0 + rq(6, 9), w = rw(4, 6.2), top = b.top, first = true, partBelt = null;
     const nSeg = ri(2, 4), kinds = shuffle(ALLEE.slice()).filter((k, i, ar) => ar.indexOf(k) === i).slice(0, nSeg);
     let ovNext = false;
     const close = (aEnd, k = {}) => {      // ferme la partie en cours de a0 à aEnd
@@ -4448,63 +4473,119 @@ function genWeekly(seed, opt = {}) {
       if (kind === 'haie' || kind === 'haie2') {
         const n = kind === 'haie2' ? 2 : 1;
         for (let i = 0; i < n; i++) {
-          const t = rnd(0.8, 2), hh = rnd(2.4, 4.6);
+          const t = rq(0.8, 2), hh = rq(2.4, 4.6);
           F.blk(a + t / 2, 0, t / 2, w / 2, top - 0.5, top + hh, { deco: true, ov: true });
           F.wp(a - 4, 0, { r: 1 }); F.wp(a - 2.7, 0, { r: 0.45, jump: 1 }); F.wp(a + t + 2.6, 0, { r: 1.2, y: top });
-          a += t + rnd(6, 8);
+          a += t + rq(6, 8);
         }
       } else if (kind === 'mur') {
         const side = sgn(), phi = AG === 90 ? 0 : AG === 45 ? pick([0, 35, -35]) : pick([0, 15, -15, 25, -25]);
-        const lg = chance(0.25), o = { t: hf((lg ? rnd(0.9, 1.3) : rnd(0.9, 2.2)) * 2) / 2, e: lg ? rnd(0.65, 0.9) : rnd(0.3, 0.65), phi, F: rnd(4.5, 7), h: rnd(8.6, 11) };
+        const o = { t: pick([1, 1.5, 1.5, 2]), e: 0.5, phi, F: rw(4.5, 7), h: rq(8.6, 11) };
         const wl = wrapWall(F, a, w, side, o, top);
         if (!wl || wl.len > jumpReach(0) - 0.8) return null;
         wrapWps(F, wl, side, top);
-        a = wl.aMax + rnd(6, 9);
+        a = wl.aMax + rq(6, 9);
       } else if (kind === 'trou' || kind === 'marche') {
         const dz = kind === 'trou' ? pick([0, 0, 1, -1.5, 2, -3]) : pick([1.8, 2.2, 2.6, -2.5, -4]);
-        const g = kind === 'trou' ? rnd(3, Math.max(3.1, Math.min(5.8, 0.85 * reachG(dz)))) : 0;
+        const g = kind === 'trou' ? rq(3, Math.max(3.1, Math.min(5.8, 0.85 * reachG(dz)))) : 0;
         const prev = close(a); if (!prev) return null;
         if (dz > 0 || g > 0) { F.wp(a - 3.2, 0, { r: 1 }); F.wp(a - (g > 0 ? 0.45 : 1.3), 0, { r: 0.45, jump: 1 }); }
-        a0 = a + g; top += dz; w = clamp(w + rnd(-1, 1), 3.6, 6.4);
+        a0 = a + g; top += dz; w = clamp(Math.round(w + rnd(-1, 1)), 4, 6);
         F.wp(a + g + 2.6, 0, { r: 1.2, y: top });
-        a = a + g + rnd(6, 9);
+        a = a + g + rq(6, 9);
       } else if (kind === 'etroit') {
         const prev = close(a); if (!prev) return null;
-        const nb = rnd(1.4, 2), Lb = rnd(7, 12), lo = pick([0, 1, -1]) * (w / 2 - nb / 2);
+        const nb = pick([1.5, 2]), Lb = rq(7, 12), lo = pick([0, 1, -1]) * (w / 2 - nb / 2);
         F.blk(a + Lb / 2, lo, Lb / 2 + 0.2, nb / 2, top - 1.2, top, { route: true, ov: true });
         F.wp(a - 1.5, lo, { r: 0.8, y: top }); F.wp(a + Lb - 1, lo, { r: 0.6, y: top });
-        a0 = a + Lb; w = rnd(4, 6.2); a = a0 + rnd(6, 9);
+        a0 = a + Lb; w = rw(4, 6.2); a = a0 + rq(6, 9);
       } else if (kind === 'decale') {
         const prev = close(a); if (!prev) return null;
-        const sd = sgn(), w2 = rnd(4, 6), g = rnd(1.6, 3), dz = pick([0, 1, -1.5]), lat = sd * (w / 2 + w2 / 2 + rnd(-0.6, 1.2));
+        const sd = sgn(), w2 = rw(4, 6), g = rq(1.6, 3), dz = pick([0, 1, -1.5]), lat = sd * (w / 2 + w2 / 2 + rq(-0.6, 1.2));
         const F2 = F.sub(0, lat, 0), tk = [a - 0.45, sd * (w / 2 - 0.9)], tkW = F.P(tk[0], tk[1]);
         F.wp(a - 3, sd * (w / 2 - 1.2), { r: 1 }); F.wp(tk[0], tk[1], { r: 0.45, jump: 1 });
         F = F2; a0 = a + g; top += dz; w = w2;
         const L = F.P(a + g + 2.4, -sd * (w2 / 2 - 1.4)), prov = obbPts(F.O(a0 + 3, 0, 3, w2 / 2));
         if (!jumpOK(tkW, L, prev.poly, prov, dz, 1.4, 1)) return null;
         F.wpW(L[0], L[1], { r: 1, y: top });
-        a = a0 + rnd(6, 9);
+        a = a0 + rq(6, 9);
       } else if (kind === 'virage') {
         const prev = close(a); if (!prev) return null;
         const sd = sgn(), ang = AG >= 45 ? AG : pick([45, 60, 90]);
-        const w2 = rnd(4, 6);
+        const w2 = rw(4, 6);
         F.wp(a - w / 2, 0, { r: 1, y: top });
         F = F.sub(a - w / 2, 0, sd * ang);
-        a0 = -Math.min(w, w2) / 2; w = w2; a = rnd(6, 9);
+        a0 = -Math.min(w, w2) / 2; w = w2; a = rq(6, 9);
         ovNext = true;
+      } else if (kind === 'haietrou') {
+        // un muret au bout de l'allée, juste avant un trou : on saute par-dessus les deux d'un coup
+        const t = pick([0.5, 1]), hh = pick([1.5, 2]), dz = pick([0, 0, -1.5, -3]);
+        const g = Q(Math.min(3.5, jumpReach(dz) - t - 5.4)); if (g < 1.5) continue;
+        F.blk(a - t / 2, 0, t / 2, w / 2, top - 0.5, top + hh, { deco: true, ov: true });
+        const prev = close(a); if (!prev) return null;
+        F.wp(a - t - 5, 0, { r: 1 }); F.wp(a - t - 2.4, 0, { r: 0.45, jump: 1 });
+        a0 = a + g; top += dz;
+        F.wp(a + g + 2.4, 0, { r: 1.2, y: top });
+        a = a0 + rq(6, 9);
+      } else if (kind === 'escalier') {
+        // des marches qu'on monte (ou descend) en marchant
+        const prev = close(a); if (!prev) return null;
+        const n = ri(3, 6), rise = tgt < -2 ? -1 : chance(0.75) ? 1 : -1, sl = pick([1.5, 2, 2, 2.5]);
+        for (let i = 0; i < n; i++) { top += rise; F.blk(a + sl / 2, 0, sl / 2, w / 2, bot(F, top, thk), top, { route: true, stair: true }); a += sl; }
+        F.wp(a - sl / 2, 0, { r: 1, y: top });
+        a0 = a; a = a0 + rq(5, 8);
+      } else if (kind === 'chicane') {
+        // deux grands panneaux, l'un depuis la gauche, l'autre depuis la droite : on passe en S
+        if (w < 5) continue;
+        const sd = sgn(), tpp = pick([1.5, 2]), hh = rq(8.5, 11), gp = pick([2.5, 3]), d2 = rq(4.5, 6);
+        for (const [k, s2] of [[0, sd], [1, -sd]]) {
+          const ak = a + 1 + k * d2, len = w - gp;
+          F.blk(ak + tpp / 2, s2 * (w / 2 - len / 2), tpp / 2, len / 2, top - 0.5, top + hh, { deco: true, ov: true });
+          F.wp(ak + tpp / 2, -s2 * (w / 2 - gp / 2), { r: 0.9, y: top });
+        }
+        a += 1 + d2 + tpp + rq(4, 6);
+      } else if (kind === 'colonnade') {
+        // une rangée de colonnes de chaque côté (parfois reliées au-dessus) : un passage à pied
+        const ps = pick([1.5, 2]), sp = pick([3.5, 4, 5]), nC = ri(3, 5), hh = rq(8.5, 11), gap = pick([0, 0.5, 1]), arch = chance(0.5);
+        const lc = w / 2 + gap + ps / 2;
+        for (let i = 0; i < nC; i++) for (const s2 of [-1, 1]) F.blk(a + i * sp + ps / 2, s2 * lc, ps / 2, ps / 2, bot(F, top, rq(4, 10)), top + hh, { deco: true, ov: true });
+        if (arch) for (let i = 0; i < nC; i += 2) F.blk(a + i * sp + ps / 2, 0, ps / 2, lc + ps / 2, top + hh - 1.5, top + hh, { deco: true, ov: true });
+        F.wp(a + (nC - 1) * sp / 2, 0, { r: 1.2, y: top });
+        a += (nC - 1) * sp + ps + rq(3, 5);
+      } else if (kind === 'plots') {
+        // des plots qui se décalent à gauche, à droite, par-dessus le vide
+        const prev = close(a); if (!prev) return null;
+        const n = ri(2, 4), ps = pick([2.5, 3, 3]), s0 = sgn();
+        let from = F.P(a - 0.45, 0), prevPoly = prev.poly, ac = a, lat = 0;
+        F.wp(a - 3, 0, { r: 1 }); F.wp(a - 0.45, 0, { r: 0.45, jump: 1 });
+        for (let i = 0; i < n; i++) {
+          const gp = rq(2, 3.5), l2 = Q((i % 2 ? -s0 : s0) * rnd(0.5, Math.max(0.6, w / 2 - 0.5)));
+          ac += gp + ps / 2;
+          const pc = F.blk(ac, l2, ps / 2, ps / 2, bot(F, top, pick([1, 1.5, 2])), top, { route: true });
+          const ctr = F.P(ac, l2);
+          if (!jumpOK(from, ctr, prevPoly, pc.poly, 0, 1.5, 1)) return null;
+          F.wp(ac, l2, { r: ps / 2 - 0.7, y: top });
+          ac += ps / 2; from = F.P(ac - 0.45, l2); prevPoly = pc.poly; lat = l2;
+          F.wp(ac - 0.45, l2, { r: 0.45, jump: 1 });
+        }
+        const gp = rq(2, 3.2); a0 = ac + gp;
+        const L = F.P(a0 + 2.4, lat * 0.5), prov = obbPts(F.O(a0 + 3, 0, 3, w / 2));
+        if (!jumpOK(from, L, prevPoly, prov, 0, 1.5, 1)) return null;
+        F.wpW(L[0], L[1], { r: 1.1, y: top });
+        a = a0 + rq(6, 9);
       } else if (kind === 'tapis') {
         // la partie suivante est un tapis : contre soi, avec soi, ou de travers (il pousse vers un bord)
         const prev = close(a); if (!prev) return null;
         a0 = a; const mode = pick(['contre', 'avec', 'travers']);
-        partBelt = mode === 'contre' ? { dir: 180, v: rnd(5, 9) } : mode === 'avec' ? { dir: 0, v: rnd(8, 14) } : { dir: sgn() * 90, v: rnd(3, 5) };
-        w = mode === 'travers' ? rnd(5, 6.5) : w;
-        a = a0 + rnd(9, 14);
+        partBelt = mode === 'contre' ? { dir: 180, v: rq(5, 9) } : mode === 'avec' ? { dir: 0, v: rq(8, 14) } : { dir: sgn() * 90, v: rq(3, 5) };
+        w = mode === 'travers' ? rw(5, 6.5) : w;
+        a = a0 + rq(9, 14);
         const pcB = close(a); if (!pcB) return null;
         F.wp(a - 1.5, 0, { r: 1.2, y: top });
-        a0 = a; a = a0 + rnd(5, 8);
+        a0 = a; a = a0 + rq(5, 8);
       }
     }
-    const aEnd = a + rnd(2, 4);
+    const aEnd = a + rq(2, 4);
     const last = close(aEnd); if (!last) return null;
     // vérifie les sauts décalés (la plateforme d'arrivée est connue maintenant)
     const st = mkSt(C, last, F.P(aEnd - 6, 0), zoneOf(last.o, last.o.hl - 4.5, last.o.hl), { minWalk: 0, wide: false });
@@ -4562,14 +4643,14 @@ function genWeekly(seed, opt = {}) {
   // Wrap au-dessus du vide : entre deux allées étroites, un bloc haut barre le saut ; on passe à côté de lui en l'air
   M.wrapbloc = (C, S, tgt) => {
     const b = begin(C, S, tgt, { pa: 0.4 });
-    const thk = rnd(2, 3.5), w1 = rnd(3.2, 4.4), w2 = rnd(3.2, 4.4), L1 = rnd(8, 13) * SC, side = sgn();
+    const thk = rnd(2, 3.5), w1 = rw(3.2, 4.4), w2 = rw(3.2, 4.4), L1 = Q(rq(8, 13) * SC), side = sgn();
     const W1 = C.blk(b.g0 + L1 / 2, 0, L1 / 2, w1 / 2, bot(C, b.top, thk), b.top, { route: true, nearS: true });
     if (!landOn(C, S, b, W1)) return null;
-    const e1 = b.g0 + L1, g1 = rnd(0.5, 1.1), g2 = rnd(0.5, 1.1), shape = pick(['plaque', 'pilier', 'plaque']);
-    const tb = shape === 'pilier' ? rnd(1.6, 2.2) : rnd(0.8, 1.6), bh = shape === 'pilier' ? Math.max(w1, w2) / 2 + rnd(0.2, 0.5) : Math.max(w1, w2) / 2 + rnd(0.3, 0.9);
+    const e1 = b.g0 + L1, g1 = rq(0.5, 1.1), g2 = rq(0.5, 1.1), shape = pick(['plaque', 'pilier', 'plaque']);
+    const tb = shape === 'pilier' ? rq(1.6, 2.2) : rq(0.8, 1.6), bh = shape === 'pilier' ? Math.max(w1, w2) / 2 + rq(0.2, 0.5) : Math.max(w1, w2) / 2 + rq(0.3, 0.9);
     const dz = pick([0, -1.5, -3, -4.5, 1]), top2 = b.top + dz;
-    const blk = C.blk(e1 + g1 + tb / 2, rnd(-0.4, 0.4), tb / 2, bh, bot(C, Math.min(b.top, top2), rnd(6, 12)), Math.max(b.top, top2) + rnd(8.6, 12), { deco: true });
-    const a2 = e1 + g1 + tb + g2, L2 = rnd(9, 14) * SC;
+    const blk = C.blk(e1 + g1 + tb / 2, rq(-0.4, 0.4), tb / 2, bh, bot(C, Math.min(b.top, top2), rq(6, 12)), Math.max(b.top, top2) + rq(8.6, 12), { deco: true });
+    const a2 = e1 + g1 + tb + g2, L2 = rq(9, 14) * SC;
     const W2 = C.blk(a2 + L2 / 2, 0, L2 / 2, w2 / 2, bot(C, top2, thk), top2, { route: true });
     const inf = obbPts({ ...blk.o, hl: blk.o.hl + 0.6, hw: blk.o.hw + 0.6 }).map(q => C.loc(q[0], q[1])).sort((p, q) => side * q[1] - side * p[1]).slice(0, 2).sort((p, q) => p[0] - q[0]);
     const path = [[e1 - 0.4, side * (w1 / 2 - 0.7)], inf[0], inf[1], [a2 + 2.4, side * Math.max(0, w2 / 2 - 1.3)]];
@@ -4588,14 +4669,14 @@ function genWeekly(seed, opt = {}) {
   // Tour en spirale : des corniches larges sur 2 à 4 faces d'une tour, des wraps d'angle de l'une à l'autre en montant ;
   // parfois une échelle pour finir sur le toit
   M.spirale = (C, S, tgt) => {
-    const side = sgn(), hs = rnd(4, 6.5) * Math.min(SC, 1.1), sw = rnd(3.4, 4.6), n = ri(2, 3), ext = rnd(1, 4);
+    const side = sgn(), hs = rq(4, 6.5), sw = rw(3.4, 4.6), n = ri(2, 3), ext = rq(1, 4);
     const b = begin(C, S, tgt, { noAttach: true, f: 0.2, lo: -2, hi: 1.5 });
     const thk = rnd(2, 3.5);
     // repère de la tour : centre, cap ; la corniche 0 longe la face l = -side·hs
     const T0 = C.sub(b.g0 + ext + hs, side * (hs + sw / 2), 0);
     const fr = k => ctxOf(T0.ox, T0.oz, C.th + 90 * side * k, C);
     let top = b.top, prevPc = null, lastFr = null, lastPc = null;
-    const c1 = rnd(0.4, 1), c2 = rnd(0.4, 1);
+    const c1 = pick([0.5, 1]), c2 = pick([0.5, 1]);
     const tops = [];
     for (let k = 0; k < n; k++) {
       const F = fr(k), a0 = k === 0 ? -hs - ext : -hs + c2, a1 = hs - c1;
@@ -4641,11 +4722,11 @@ function genWeekly(seed, opt = {}) {
   // Grand portail : l'allée traverse un mur géant par une porte haute, et on saute dans le vide juste derrière
   M.portail = (C, S, tgt) => {
     const b = begin(C, S, tgt, { pa: 0.5 });
-    const thk = rnd(2, 3.5), w = rnd(3.6, 4.8), Lw = rnd(9, 14), tw = rnd(1.8, 3.5), ow = w + rnd(0.4, 1.4), oh = rnd(11, 14);
-    const aw = b.g0 + Lw - tw, WL = rnd(18, 30) * SC, H0 = b.top;
+    const thk = rnd(2, 3.5), w = rw(3.6, 4.8), Lw = rq(9, 14), tw = rq(1.8, 3.5), ow = w + pick([1, 2]), oh = rq(11, 14);
+    const aw = b.g0 + Lw - tw, WL = rq(18, 30) * SC, H0 = b.top;
     const pc = C.blk(b.g0 + Lw / 2, 0, Lw / 2, w / 2, bot(C, H0, thk), H0, { route: true, nearS: true });
     if (!landOn(C, S, b, pc)) return null;
-    const wb = bot(C, H0, rnd(8, 16)), wt = H0 + oh + rnd(5, 12), off = rnd(-1, 1) * (WL / 2 - ow / 2 - 3);
+    const wb = bot(C, H0, rq(8, 16)), wt = H0 + oh + rq(5, 12), off = rq(-1, 1) * (WL / 2 - ow / 2 - 3);
     // le mur : deux montants et un linteau autour de l'ouverture (l'allée passe dessous)
     const lA = off - WL / 2, lB = off + WL / 2, o0 = -ow / 2, o1 = ow / 2;
     if (o0 - lA < 3 || lB - o1 < 3) return null;
@@ -4654,20 +4735,20 @@ function genWeekly(seed, opt = {}) {
     C.blk(aw + tw / 2, 0, tw / 2, ow / 2, H0 + oh, wt, { deco: true, ov: true }, 0);
     C.wp(aw - 1, 0, { r: 1, y: H0 });
     C.wp(b.g0 + Lw - 0.45, 0, { r: 0.45, jump: 1 });
-    const T = toStation(C, C.P(b.g0 + Lw, 0), C.th, C.P(b.g0 + Lw - 0.45, 0), pc.poly, dhPick(tgt * 0.5, -6, 1.5), { top0: H0, gmin: 3.2, lat: rnd(-2, 2) });
+    const T = toStation(C, C.P(b.g0 + Lw, 0), C.th, C.P(b.g0 + Lw - 0.45, 0), pc.poly, dhPick(tgt * 0.5, -6, 1.5), { top0: H0, gmin: 3.2, lat: rq(-2, 2) });
     if (!T) return null;
     C.T = T; C.thOut = C.th; return C;
   };
 
   // Façade : des corniches posées sur la face d'un grand mur, en zigzag vers le haut ; on part ensuite d'en haut
   M.facade = (C, S, tgt) => {
-    const n = ri(3, 5), dp = rnd(2.2, 3), ll = rnd(3, 4.5), side0 = sgn(), WL = rnd(20, 30), tg = rnd(3, 5);
+    const n = ri(3, 5), dp = pick([2.5, 3]), ll = rq(3, 4.5), side0 = sgn(), WL = rw(20, 30), tg = rw(3, 5);
     takeoff(C);
-    const gF = rnd(3, 4.2) + dp;                   // face du mur à gF devant le bord
+    const gF = rq(3, 4.2) + dp;                   // face du mur à gF devant le bord
     let top = S.top, from = C.P(-0.45, 0), prev = S.pc.poly, l = 0;
     const pcs = [];
     for (let j = 0; j < n; j++) {
-      const dy = hf(rnd(1.4, 2.3)), lat = j === 0 ? -side0 * rnd(0, 2) : l + side0 * (ll + rnd(2.4, Math.max(2.5, Math.min(3.8, 0.8 * reachG(dy)))));
+      const dy = hf(rq(1.4, 2.3)), lat = j === 0 ? -side0 * rq(0, 2) : l + side0 * (ll + rq(2.4, Math.max(2.5, Math.min(3.8, 0.8 * reachG(dy)))));
       top += dy;
       const pc = C.blk(gF - dp / 2, lat, dp / 2, ll / 2, top - 1.2, top, { route: true, nearS: j <= 1 });
       const L = C.P(gF - dp / 2, lat - (j ? Math.sign(lat - l) * (ll / 2 - 1) : 0));
@@ -4681,9 +4762,9 @@ function genWeekly(seed, opt = {}) {
       from = tk; prev = pc.poly;
     }
     // le mur s'arrête au ras de la dernière corniche (on repart de ce côté-là)
-    const ls = pcs.map(q => q.lat), lEnd = ls[n - 1] + side0 * (ll / 2 + 0.3), lBeg = ls[0] - side0 * (ll / 2 + rnd(3, 8));
+    const ls = pcs.map(q => q.lat), lEnd = ls[n - 1] + side0 * (ll / 2 + 0.3), lBeg = ls[0] - side0 * (ll / 2 + rq(3, 8));
     const wl0 = Math.min(lEnd, lBeg), wl1 = Math.max(lEnd, lBeg);
-    C.blk(gF + tg / 2, (wl0 + wl1) / 2, tg / 2, (wl1 - wl0) / 2, bot(C, S.top, rnd(6, 12)), top + rnd(8.6, 11), { deco: true });
+    C.blk(gF + tg / 2, (wl0 + wl1) / 2, tg / 2, (wl1 - wl0) / 2, bot(C, S.top, rq(6, 12)), top + rq(8.6, 11), { deco: true });
     // sortie : un saut en arrière-côté, loin du mur, vers une plateforme
     const dirOut = C.th + side0 * (90 + pick([0, 15, 30]));
     const [ox, oz] = H(dirOut), ce = polyClip(prev, from[0], from[1], ox, oz);
@@ -4695,15 +4776,15 @@ function genWeekly(seed, opt = {}) {
 
   // Cheminée : deux murs face à face, des corniches qui alternent de l'un à l'autre en montant (ou en descendant)
   M.cheminee = (C, S, tgt) => {
-    const n = ri(4, 6), dp = rnd(2, 2.8), ll = rnd(3, 4.2), dw = 2 * dp + rnd(2.2, 3.8), tg = rnd(2, 3.5);
+    const n = ri(4, 6), dp = pick([2, 2.5]), ll = rq(3, 4.2), dw = 2 * dp + rq(2.2, 3.8), tg = rq(2, 3.5);
     const up = tgt > -2;
     takeoff(C);
-    let a = rnd(2.8, 3.6), top = S.top, from = C.P(-0.45, 0), prev = S.pc.poly, sd = sgn();
+    let a = rq(2.8, 3.6), top = S.top, from = C.P(-0.45, 0), prev = S.pc.poly, sd = sgn();
     const L = [];
     for (let j = 0; j < n; j++) {
-      const dy = up ? hf(rnd(1, 2)) : -hf(rnd(1, 2)), lat = sd * (dw / 2 - dp / 2);
+      const dy = up ? hf(rq(1, 2)) : -hf(rq(1, 2)), lat = sd * (dw / 2 - dp / 2);
       top += dy;
-      const a0 = j === 0 ? a : a + rnd(-0.5, 1.5);
+      const a0 = j === 0 ? a : a + rq(-0.5, 1.5);
       const pc = C.blk(a0 + ll / 2, lat, ll / 2, dp / 2, top - 1.2, top, { route: true, nearS: j <= 1 });
       const Lp = C.P(a0 + ll / 2, lat);
       if (!jumpOK(from, Lp, prev, pc.poly, dy, j ? 1.5 : 2, 0.8)) return null;
@@ -4713,7 +4794,7 @@ function genWeekly(seed, opt = {}) {
       a = a0 + ll; sd = -sd;
     }
     const aEnd = a, aB = L[0].a0 - 0.5;
-    for (const s2 of [-1, 1]) C.blk((aEnd + aB) / 2, s2 * (dw / 2 + tg / 2), (aEnd - aB) / 2, tg / 2, bot(C, Math.min(S.top, top) - 2, rnd(6, 12)), Math.max(S.top, top) + rnd(8.6, 11), { deco: true, nearS: true });
+    for (const s2 of [-1, 1]) C.blk((aEnd + aB) / 2, s2 * (dw / 2 + tg / 2), (aEnd - aB) / 2, tg / 2, bot(C, Math.min(S.top, top) - 2, rq(6, 12)), Math.max(S.top, top) + rq(8.6, 11), { deco: true, nearS: true });
     C.wps[C.wps.length - 1].jump = 0;
     const lastL = L[n - 1], tk = C.P(lastL.a0 + ll - 0.4, lastL.lat);
     C.wpW(tk[0], tk[1], { r: 0.45, jump: 1 });
@@ -4779,14 +4860,14 @@ function genWeekly(seed, opt = {}) {
   // Portes coulissantes : sur une allée, des murs mobiles barrent le passage par moments (de côté ou par le haut)
   M.portes = (C, S, tgt) => {
     const b = begin(C, S, tgt, { pa: 0.5 });
-    const thk = rnd(2, 3.5), w = rnd(4, 5.5), n = ri(1, 3);
-    let a = b.g0 + rnd(6, 8);
+    const thk = rnd(2, 3.5), w = rw(4, 5.5), n = ri(1, 3);
+    let a = b.g0 + rq(6, 8);
     const first = C.blk(b.g0 + 1, 0, 1, w / 2, bot(C, b.top, thk), b.top, { route: true, nearS: true });
     C.pcs.pop();
     if (!landOn(C, S, b, first)) return null;
     for (let k = 0; k < n; k++) {
-      const t = rnd(1, 1.8), v = rnd(3, 5.5), vertical = chance(0.35), side = sgn();
-      const hgt = rnd(9, 11), oW = C.O(a + t / 2, 0, t / 2, w / 2 + 0.6);
+      const t = rq(1, 1.8), v = rq(3, 5.5), vertical = chance(0.35), side = sgn();
+      const hgt = rq(9, 11), oW = C.O(a + t / 2, 0, t / 2, w / 2 + 0.6);
       // fermée en A (au milieu de l'allée), ouverte en B
       const dB = vertical ? [0, 8.5, 0] : (() => { const q = C.P(a + t / 2, side * (w + 2.6)); return [q[0] - oW.cx, 0, q[1] - oW.cz]; })();
       const y0 = b.top - 0.3, y1 = b.top + hgt;
@@ -4797,9 +4878,9 @@ function genWeekly(seed, opt = {}) {
       C.wp(a - 2.6, 0, { r: 1.5, hold: 1, wk: Bc, wkr: 1, wky: 1 });
       C.wp(a + t + 2.6, 0, { r: 1, y: b.top });
       C.extraT += pc.period * 0.6;
-      a += t + rnd(7, 10);
+      a += t + rq(7, 10);
     }
-    const aEnd = a + rnd(2, 5);
+    const aEnd = a + rq(2, 5);
     const W = C.blk((b.g0 + aEnd) / 2, 0, (aEnd - b.g0) / 2, w / 2, bot(C, b.top, thk), b.top, { route: true, nearS: true });
     const st = mkSt(C, W, C.P(aEnd - 5, 0), zoneOf(W.o, W.o.hl - 4.5, W.o.hl), { minWalk: 0, wide: false });
     C.T = st; C.thOut = C.th; return C;
@@ -4810,27 +4891,27 @@ function genWeekly(seed, opt = {}) {
   M.contrefort = (C, S, tgt) => {
     const b = begin(C, S, tgt, { pa: 0.5 });
     const thk = rnd(2, 3.5); C.thk = thk;
-    const side = sgn(), ww = rnd(3.8, 5.6), n = ri(2, 3), tb = rnd(2.5, 4.5);
-    let a = b.g0 + rnd(6.5, 9), top = b.top, a0p = b.g0;
+    const side = sgn(), ww = rw(3.8, 5.6), n = ri(2, 3), tb = rw(2.5, 4.5);
+    let a = b.g0 + rq(6.5, 9), top = b.top, a0p = b.g0;
     const parts = [], fins = [];
     for (let k = 0; k < n; k++) {
       const dz = chance(0.35) ? pick([1, -1.5, -2.5]) : 0;
-      const o = { t: hf(rnd(1, 2.4) * 2) / 2, e: rnd(0.3, 0.65), phi: 0, F: 0, h: rnd(8.6, 11) };
+      const o = { t: pick([1, 1.5, 2]), e: 0.5, phi: 0, F: 0, h: rq(9, 11) };
       const wl = wrapWall(C, a, ww, -side, o, top);
       if (!wl || wl.len > jumpReach(Math.min(dz, 0)) - 0.8) return null;
       fins.push({ wl, dz });
       if (dz) { parts.push([a0p, a, top]); a0p = a; }
       top += dz;
-      a = wl.aMax + rnd(7, 10);
+      a = wl.aMax + rq(7, 10);
     }
-    const aEnd = a + rnd(2, 5);
+    const aEnd = a + rq(2, 5);
     parts.push([a0p, aEnd, top]);
     let first = null, last = null;
     for (const [p0, p1, tp] of parts) { const pc = C.blk((p0 + p1) / 2, 0, (p1 - p0) / 2, ww / 2, bot(C, tp, thk), tp, { route: true, nearS: p0 === b.g0 }); if (!first) first = pc; last = pc; }
     if (!landOn(C, S, b, first)) return null;
     // le grand mur, côté opposé au vide
     const hiT = Math.max(...parts.map(q => q[2]));
-    C.blk((b.g0 + aEnd) / 2, side * (ww / 2 + tb / 2), (aEnd - b.g0) / 2, tb / 2, bot(C, Math.min(...parts.map(q => q[2])), rnd(8, 14)), hiT + rnd(9, 14), { deco: true, ov: true });
+    C.blk((b.g0 + aEnd) / 2, side * (ww / 2 + tb / 2), (aEnd - b.g0) / 2, tb / 2, bot(C, Math.min(...parts.map(q => q[2])), rq(8, 14)), hiT + rq(9, 14), { deco: true, ov: true });
     let yy = b.top;
     for (const f of fins) { yy += f.dz; wrapWps(C, f.wl, -side, yy); }
     const pl = parts[parts.length - 1], mid = (pl[0] + pl[1]) / 2;
@@ -4839,38 +4920,34 @@ function genWeekly(seed, opt = {}) {
     C.T = st; C.thOut = C.th; return C;
   };
 
-  // Wrap vers une échelle : on contourne le bout d'un mur et on s'accroche en l'air à une échelle sur sa face arrière,
-  // on grimpe sur le mur et on marche sur sa crête
+  // Wrap puis échelle : on contourne le bout d'un mur, on se pose sur le palier derrière, on se retourne et on grimpe
+  // l'échelle de sa face arrière jusqu'à la crête, sur laquelle on marche
   M.wrapechelle = (C, S, tgt) => {
     const b = begin(C, S, tgt, { pa: 0.5 });
     const thk = rnd(2, 3.5); C.thk = thk;
-    const side = sgn(), ww = rnd(4, 5.6), L1 = rnd(7, 10);
+    const side = sgn(), ww = pick([4, 4, 5]), L1 = rq(7, 10), t = pick([1.5, 2, 2, 2.5]), F = rw(9, 16), hw = rq(9, 12);
+    const aw = b.g0 + L1 + t / 2, dz = pick([0, -1.5, -1.5]), topB = b.top + dz, bd = rq(4.5, 6);
+    const wl = wrapWall(C, aw, ww, side, { t, e: 0.5, phi: 0, F, h: hw }, b.top);
+    if (!wl || wl.len > jumpReach(Math.min(dz, 0)) - 0.8) return null;
+    const wall = wl.pc; wall.deco = false; wall.route = true;
     const W = C.blk(b.g0 + L1 / 2, 0, L1 / 2, ww / 2, bot(C, b.top, thk), b.top, { route: true, nearS: true });
     if (!landOn(C, S, b, W)) return null;
-    const aw = b.g0 + L1 - 0.5, t = rnd(2, 2.8), e = rnd(0.3, 0.5), F = rnd(9, 16), hw = rnd(9, 12);
-    const wt = b.top + hw, L = ww + e + F;
-    const lc = side * (ww / 2 + e) - side * L / 2;
-    const wall = C.blk(aw + t / 2, lc, t / 2, L / 2, bot(C, b.top, rnd(6, 12)), wt, { route: true, ov: true });
-    // échelle sur la face arrière, près du bout qu'on contourne
-    const bl = rnd(3.4, 4.2), ll = side * (ww / 2 + e - bl / 2 - 0.1);
-    const lad = C.box(C.O(aw + t + 0.25, ll, 0.25, bl / 2), 0, 0, { lad: true, host: wall });
-    lad.bars = []; for (let y = wt - 0.6; y >= b.top - 13; y -= 1.5) lad.bars.push(y);
+    const far = wl.far, Bp = C.blk(far + bd / 2, 0, bd / 2, ww / 2, bot(C, topB, thk), topB, { route: true });
+    // l'échelle, sur la face arrière, au milieu du palier
+    const wt = b.top + hw, ll = Q(side * rnd(0, ww / 2 - 1.8)), bl = 3;
+    const lad = C.box(C.O(far + 0.25, ll, 0.25, bl / 2, 0, true), 0, 0, { lad: true, host: wall });
+    lad.bars = []; for (let y = wt - 0.6; y >= topB + 0.8; y -= 1.5) lad.bars.push(y);
     lad.y0 = Math.min(...lad.bars) - 0.2; lad.y1 = Math.max(...lad.bars) + 0.2; lad.top = lad.y1;
-    const lt = side * (ww / 2 - 0.8);
-    const cA = [aw + 0.2, side * (ww / 2 + e + 0.8)], cB = [aw + t + 0.6, side * (ww / 2 + e + 0.6)];
-    C.wp(aw - 3.4, lt, { r: 1 });
-    C.wp(aw - 1.2, lt, { r: 0.45, jump: 1 });
-    C.wp(cA[0], cA[1], { r: 0.8, air: 1 });
-    C.wp(cB[0], cB[1], { r: 0.8, air: 1 });
-    C.wp(aw + t + 1.4, ll, { r: 0.8, air: 1 });
-    C.wp(aw + t / 2, ll - side * 0.6, { r: 1.4, y: wt });   // on pousse vers la face : on s'accroche et on grimpe
-    C.extraT += hw / 12 + 0.5;
-    const zf = (L / 2 - 4), zone = zoneOf(wall.o, -wall.o.hl, -wall.o.hl + 4);
-    // la crête : la zone de sortie est au bout opposé à l'échelle
-    const lend = lc - side * zf;
-    const [zx, zz] = C.P(aw + t / 2, lc - side * (L / 2 - 2));
-    const st = mkSt(C, wall, C.P(aw + t / 2, ll), { cx: zx, cz: zz, ux: wall.o.ux, uz: wall.o.uz, hl: 2, hw: t / 2 }, { minWalk: 0, wide: false });
-    void zone; void lend;
+    wrapWps(C, wl, side, topB);
+    C.wp(far + 2.6, ll, { r: 0.8, y: topB });
+    C.wp(far - t / 2, ll, { r: 1.4, y: wt });            // on pousse vers la face : on s'accroche et on grimpe
+    C.extraT += (wt - topB) / 12 + 0.5;
+    const lc = wall.o, Lw = Math.max(lc.hl, lc.hw), lu = lc.hl >= lc.hw ? [lc.ux, lc.uz] : [lc.uz, -lc.ux];
+    // la crête : sortie au bout opposé au contournement
+    const [lx, lz] = C.P(0, -side), sg = Math.sign(lu[0] * (lx - C.ox) + lu[1] * (lz - C.oz)) || 1;
+    const zc = sg * (Lw - 2), zone = { cx: lc.cx + lu[0] * zc, cz: lc.cz + lu[1] * zc, ux: lu[0], uz: lu[1], hl: 2, hw: Math.min(lc.hl, lc.hw) };
+    const st = mkSt(C, wall, C.P(far - t / 2, ll), zone, { minWalk: 0, wide: false });
+    void Bp;
     C.T = st; C.thOut = C.th - 90 * side; return C;
   };
 
@@ -4879,22 +4956,22 @@ function genWeekly(seed, opt = {}) {
   M.wrapcorniche = (C, S, tgt) => {
     const b = begin(C, S, tgt, { pa: 0.5 });
     const thk = rnd(2, 3.5); C.thk = thk;
-    const side = sgn(), ww = rnd(4, 5.6), L1 = rnd(7, 10), n = ri(2, 4), dp = rnd(2.2, 2.8);
+    const side = sgn(), ww = rw(4, 5.6), L1 = rq(7, 10), n = ri(2, 4), dp = pick([2.5]);
     const W = C.blk(b.g0 + L1 / 2, 0, L1 / 2, ww / 2, bot(C, b.top, thk), b.top, { route: true, nearS: true });
     if (!landOn(C, S, b, W)) return null;
-    const aw = b.g0 + L1 - 0.5, t = rnd(1.2, 2.2), e = rnd(0.3, 0.6), F = rnd(12, 20);
+    const aw = b.g0 + L1 - 0.5, t = pick([1.5, 2]), e = 0.5, F = rw(12, 20);
     const L = ww + e + F, lc = side * (ww / 2 + e) - side * L / 2;
     let top = b.top + pick([0, -1, -2]), l = side * (ww / 2 + e), maxTop = top;
     const ledges = [];
     for (let k = 0; k < n; k++) {
-      const ll = rnd(3, 4.5), gap = k ? rnd(2.5, 3.6) : 0, dy = k ? pick([1.5, 2, -1.5, 1]) : 0;
+      const ll = rq(3, 4.5), gap = k ? rq(2.5, 3.6) : 0, dy = k ? pick([1.5, 2, -1.5, 1]) : 0;
       top += dy; maxTop = Math.max(maxTop, top);
       const l1 = l - side * gap, l0 = l1 - side * ll;    // la corniche va de l1 (côté bout) vers l'intérieur
       ledges.push({ l0, l1, top, ll });
       l = l0;
     }
     if (Math.abs(l) > Math.abs(lc - side * L / 2) - 1) return null;
-    C.blk(aw + t / 2, lc, t / 2, L / 2, bot(C, Math.min(b.top, ...ledges.map(q => q.top)), rnd(6, 12)), Math.max(b.top, maxTop) + rnd(8.6, 11), { deco: true, ov: true });
+    C.blk(aw + t / 2, lc, t / 2, L / 2, bot(C, Math.min(b.top, ...ledges.map(q => q.top)), rq(6, 12)), Math.max(b.top, maxTop) + rq(8.6, 11), { deco: true, ov: true });
     const lt = side * (ww / 2 - 0.8), cA = [aw + 0.2, side * (ww / 2 + e + 0.8)], cB = [aw + t - 0.2, side * (ww / 2 + e + 0.5)];
     C.wp(aw - 3.4, lt, { r: 1 });
     C.wp(aw - 1.2, lt, { r: 0.45, jump: 1 });
@@ -4955,7 +5032,7 @@ function genWeekly(seed, opt = {}) {
 
   // Hélice : des marches flottantes autour d'un mât, en spirale serrée vers le haut (ou vers le bas)
   M.helice = (C, S, tgt) => {
-    const side = sgn(), pr = rnd(1.2, 2), sl = rnd(2.8, 3.4), sw = rnd(2.4, 3), R0 = pr + 1 + sw / 2 + rnd(2.5, 4), n = ri(5, 8);
+    const side = sgn(), pr = pick([1.25, 1.5, 2]), sl = pick([3, 3, 3.5]), sw = pick([2.5, 3]), R0 = pr + 1 + sw / 2 + rnd(2.5, 4), n = ri(5, 8);
     const sn2 = (sl + rnd(1.9, 2.6)) / (2 * (R0 - sw / 2));
     if (sn2 > 0.9) return null;
     const dth = 2 * Math.asin(sn2) / D2R;
@@ -4990,18 +5067,18 @@ function genWeekly(seed, opt = {}) {
   M.cretes = (C, S, tgt) => {
     const n = ri(3, 4), side0 = sgn(), alt = chance(0.5);
     takeoff(C);
-    let a = rnd(2.8, 3.8), l = 0, top = S.top + hf(rnd(-1, 1)), from = C.P(-0.45, 0), prev = S.pc.poly, prevTop = S.top, sd = side0;
+    let a = rq(2.8, 3.8), l = 0, top = S.top + hf(rq(-1, 1)), from = C.P(-0.45, 0), prev = S.pc.poly, prevTop = S.top, sd = side0;
     let lastPc = null, lastA1 = 0, lastL = 0;
     for (let k = 0; k < n; k++) {
-      const tw = rnd(1.8, 2.6), Lc = rnd(10, 16), dy = k ? pick([0, 1, -1, 1.5, -1.5]) : 0;
+      const tw = pick([2, 2.5]), Lc = rw(10, 16), dy = k ? pick([0, 1, -1, 1.5, -1.5]) : 0;
       top += dy;
-      if (k) { sd = alt ? -sd : sd; l += sd * (tw + rnd(2.6, 3.6)); a = lastA1 - rnd(3, 6); }
-      const pc = C.blk(a + Lc / 2, l, Lc / 2, tw / 2, bot(C, top, rnd(4, 9)), top, { route: true, nearS: k === 0 });
+      if (k) { sd = alt ? -sd : sd; l += sd * (tw + rq(2.6, 3.6)); a = lastA1 - rq(3, 6); }
+      const pc = C.blk(a + Lc / 2, l, Lc / 2, tw / 2, bot(C, top, rq(4, 9)), top, { route: true, nearS: k === 0 });
       const land = C.P(a + (k ? Math.min(Lc / 2, 4) : 2.6), l);
       if (!jumpOK(from, land, prev, pc.poly, top - prevTop, 1.8, 0.6)) return null;
       C.wpW(land[0], land[1], { r: 0.6, y: top });
       if (k < n - 1) {
-        const tkA = a + Lc - rnd(1.5, 3);
+        const tkA = a + Lc - rq(1.5, 3);
         const tk = C.P(tkA, l + (alt ? -sd : sd) * 0 + (k + 1 < n ? 0 : 0));
         C.wpW(tk[0], tk[1], { r: 0.6, y: top });
         // saut de côté : du bord de la crête
@@ -5020,10 +5097,10 @@ function genWeekly(seed, opt = {}) {
   // arrière, par-dessus l'allée, vers une plateforme haute qu'on ne peut atteindre que comme ça
   M.sautarriere = (C, S, tgt) => {
     const b = begin(C, S, tgt, { pa: 0.5 });
-    const thk = rnd(2, 3.5), side = sgn(), ww = rnd(3, 3.6), L1 = rnd(10, 14), ts = rnd(4.5, 6.5), hl = rnd(10, 13.5);
+    const thk = rnd(2, 3.5), side = sgn(), ww = 3, L1 = rq(10, 14), ts = rw(4.5, 6.5), hl = rq(10, 13.5);
     const W = C.blk(b.g0 + L1 / 2, 0, L1 / 2, ww / 2, bot(C, b.top, thk), b.top, { route: true, nearS: true });
     if (!landOn(C, S, b, W)) return null;
-    const aT = b.g0 + rnd(4.5, L1 - 2.5), yJ = b.top + hl;
+    const aT = b.g0 + rq(4.5, L1 - 2.5), yJ = b.top + hl;
     const tw = C.blk(aT, side * (ww / 2 + ts / 2), ts / 2, ts / 2, bot(C, b.top, rnd(8, 14)), yJ + rnd(7, 9), { deco: true });
     const bl = rnd(2.4, 3), bars = [];
     for (let y = yJ + 0.6; y >= b.top + 0.8; y -= 1.5) bars.push(y);
@@ -5041,6 +5118,77 @@ function genWeekly(seed, opt = {}) {
     if (gp < 1.8 || gp > 4) return null;
     C.wpW(L[0], L[1], { r: 1.2, y: T.top });
     C.T = T; C.thOut = dirOut; return C;
+  };
+
+  // Pyramide à gradins : on gravit ses terrasses une à une, on traverse le sommet et on repart de sa face arrière (à pic)
+  M.pyramide = (C, S, tgt) => {
+    const b = begin(C, S, tgt, { pa: 0.5, f: 0.1 });
+    const n = ri(2, 4), d = rq(4.5, 5.5), rise = pick([2, 2.5, 3]), hlT = Q(rnd(3.5, 5.5) * SC), hwT = Q(rnd(4.5, 7) * SC), dl = pick([d, 3, 2.5, 0]);
+    const lc = Q(rnd(-1, 1) * Math.min(3, hwT - 3)), X = rq(9, 12), yb = bot(C, b.top, rq(4, 10));
+    const A = k => b.g0 + k * d, aEnd = A(n) + 2 * hlT, aBack = aEnd + X, HW = k => Q(hwT + (n - k) * dl);
+    // gradin k : une bande devant la terrasse k+1 et, si la pyramide s'élargit, deux bandes sur ses côtés
+    for (let k = 0; k < n; k++) {
+      const tp = b.top + k * rise;
+      const pc = C.blk((A(k) + A(k + 1)) / 2, lc, d / 2, HW(k), yb, tp, { route: true, ov: true, stair: true, nearS: k === 0 });
+      if (!k && !landOn(C, S, b, pc)) return null;
+      if (dl > 0) for (const s2 of [-1, 1]) C.blk((A(k + 1) + aEnd) / 2, lc + s2 * (HW(k + 1) + dl / 2), (aEnd - A(k + 1)) / 2, dl / 2, yb, tp, { deco: true, ov: true });
+      if (k) C.wp(A(k) + 1.7, 0, { r: 1, y: tp });
+      C.wp(A(k + 1) - 2.6, 0, { r: 0.5, jump: 1 });
+    }
+    const tpT = b.top + n * rise;
+    const T = C.blk((A(n) + aBack) / 2, lc, (aBack - A(n)) / 2, hwT, yb, tpT, { route: true, ov: true, stair: true });
+    C.wp(A(n) + 1.7, 0, { r: 1, y: tpT });
+    const st = mkSt(C, T, C.P(A(n) + 1.7, 0), zoneOf(T.o, T.o.hl - 3, T.o.hl), { minWalk: 0, wide: false });
+    C.T = st; C.thOut = C.th; return C;
+  };
+
+  // Cascade : de grandes marches qui descendent, chacune un peu décalée ; on se laisse tomber de l'une à l'autre en courant
+  M.cascade = (C, S, tgt) => {
+    const b = begin(C, S, tgt, { pa: 0.6, f: 0.1, lo: -2, hi: 1 });
+    const n = ri(3, 5), w0 = rw(5, 7), zig = chance(0.5), s0 = sgn();
+    let a = b.g0, top = b.top, l = 0, T = null;
+    for (let k = 0; k < n; k++) {
+      const d = rq(4.5, 6.5) * (k === n - 1 ? 1.6 : 1), w = k ? clamp(w0 + pick([-1, 0, 1]), 4, 7) : w0;
+      if (k) { top -= pick([2, 2.5, 3, 3.5]); if (zig) l = Q(l + (k % 2 ? s0 : -s0) * rnd(1, 2)); }
+      const pc = C.blk(a + Q(d) / 2, l, Q(d) / 2, w / 2, bot(C, top, rq(3, 6)), top, { route: true, stair: true, ov: true, nearS: k === 0 });
+      if (!k && !landOn(C, S, b, pc)) return null;
+      if (k) C.wp(a + 1.6, l, { r: 1.2, y: top });
+      a += Q(d); T = pc;
+    }
+    const st = mkSt(C, T, C.P(a - 3, l), zoneOf(T.o, T.o.hl - 3.5, T.o.hl), { minWalk: 0, wide: false });
+    C.T = st; C.thOut = C.th; return C;
+  };
+
+  // Champ de poteaux : une grille de plots à des hauteurs différentes ; on y trace son chemin en zigzag
+  M.champ = (C, S, tgt) => {
+    const rows = ri(3, 5), cols = pick([3, 3, 4]), ps = pick([2.5, 3]), gap = pick([2, 2.5, 3]), sp = ps + gap;
+    const top0 = S.top + dhPick(tgt * 0.2, -2, 1.5), g = rq(2.6, 3.4);
+    const lc = j => (j - (cols - 1) / 2) * sp;
+    let c = Math.round((cols - 1) / 2 + rnd(-0.5, 0.5));
+    const path = [];
+    for (let r = 0; r < rows; r++) { if (r) c = clamp(c + pick([-1, 1, 0, 1, -1]), 0, cols - 1); path.push(c); }
+    const H2 = [];
+    for (let r = 0; r < rows; r++) { H2.push([]); for (let j = 0; j < cols; j++) H2[r].push(top0 + pick([-1, -0.5, 0, 0.5, 1, 1.5])); }
+    takeoff(C);
+    let from = C.P(-0.45, 0), prevPoly = S.pc.poly, prevTop = S.top, E = null, dir = C.th, hTop = top0;
+    for (let r = 0; r < rows; r++) for (let j = 0; j < cols; j++) {
+      const on = path[r] === j, a = g + ps / 2 + r * sp, h = H2[r][j];
+      const pc = C.blk(a, lc(j), ps / 2, ps / 2, bot(C, h, pick([2, 3, 4])), h, on ? { route: true, stair: true, nearS: r === 0 } : { deco: true, nearS: r === 0 });
+      if (!on) continue;
+      const [cx, cz] = C.P(a, lc(j));
+      if (!jumpOK(from, [cx, cz], prevPoly, pc.poly, h - prevTop, 1.5, 1)) return null;
+      C.wpW(cx, cz, { r: ps / 2 - 0.7, y: h });
+      const nx2 = r + 1 < rows ? C.P(a + sp, lc(path[r + 1])) : C.P(a + sp, lc(j));
+      const dx = nx2[0] - cx, dz = nx2[1] - cz, L = Math.hypot(dx, dz), ux = dx / L, uz = dz / L, cl = polyClip(pc.poly, cx, cz, ux, uz);
+      if (!cl) return null;
+      from = [cx + ux * (cl[1] - 0.4), cz + uz * (cl[1] - 0.4)]; E = [cx + ux * cl[1], cz + uz * cl[1]];
+      dir = Math.atan2(ux, uz) / D2R; prevPoly = pc.poly; prevTop = h; hTop = h;
+      C.wpW(from[0], from[1], { r: 0.45, jump: 1 });
+    }
+    const T = toStation(C, E, C.th, from, prevPoly, dhPick(tgt * 0.5, -5, 2), { top0: hTop, gmin: 2.8, lat: 0 });
+    if (!T) return null;
+    void dir;
+    C.T = T; C.thOut = C.th; return C;
   };
 
   // ===== Écarts entre les parties du parcours =====
@@ -5076,7 +5224,7 @@ function genWeekly(seed, opt = {}) {
     for (const n of C.pcs) if (n.nearS) for (const e of PC) if (e.st === S && clash(n, e)) return false;
     // dans le coup : on ne doit pas pouvoir sauter plus d'un élément (de la 1re marche d'une hélice à la plateforme
     // finale, par exemple)
-    const rp = C.pcs.filter(q => q.route && !q.lad && !q.mob);
+    const rp = C.pcs.filter(q => q.route && !q.lad && !q.mob && !q.stair);
     for (let i = 0; i < rp.length; i++) for (let j = i + 3; j < rp.length; j++)
       if (rp[j].top - rp[i].top <= 7.25 && polyDist(rp[i].poly, rp[j].poly) < need(rp[i], rp[j]) - 0.5) return false;
     for (const n of C.pcs) for (const e of PC) {
@@ -5108,7 +5256,13 @@ function genWeekly(seed, opt = {}) {
       const sx = z.cx + hz * j, sz = z.cz - hx * j;
       if (!obbIn(z, sx, sz, 0.3)) continue;
       const c = polyClip(S.pc.poly, sx, sz, hx, hz); if (!c) continue;
-      const X = [sx + hx * c[1], sz + hz * c[1]];
+      let X = [sx + hx * c[1], sz + hz * c[1]];
+      {   // le point de sortie glisse sur la grille de 0,5 du bord (les allées collées tombent pile)
+        const o = S.o, dx = X[0] - o.cx, dz = X[1] - o.cz;
+        let la = dx * o.ux + dz * o.uz, lw = dx * o.uz - dz * o.ux;
+        if (Math.abs(Math.abs(la) - o.hl) < Math.abs(Math.abs(lw) - o.hw)) lw = Q(lw + o.hw) - o.hw; else la = Q(la + o.hl) - o.hl;
+        X = [o.cx + o.ux * la + o.uz * lw, o.cz + o.uz * la - o.ux * lw];
+      }
       const mg = Math.min(0.7, Math.min(S.o.hw, S.o.hl) - 0.25);
       let ru = null;
       for (const d of [3, 2.2, 1.4]) { const q = [X[0] - hx * d, X[1] - hz * d]; if (obbIn(S.o, q[0], q[1], mg)) { ru = q; break; } }
@@ -5126,13 +5280,14 @@ function genWeekly(seed, opt = {}) {
   // ===== Le départ =====
   const th0 = qa(rnd(0, 360));
   const C0 = ctxOf(0, 0, th0);
-  const sHl = rnd(6, 8.5), sHw = rnd(5.5, 8);
+  const sHl = rq(6, 8.5), sHw = rq(5.5, 8);
   const sPc = C0.blk(0, 0, sHl, sHw, FLOOR, y0, { route: true });
-  const spawn = C0.P(-sHl + 3, 0);
+  const spawn = C0.P(0, 0);
   const start = mkSt(C0, sPc, spawn, null, { minWalk: 7 });
   PC.push(sPc);
   const yawD = ((th0 + 180) % 360 + 360) % 360;
-  sPc.blocks = [[C0.O(-sHl + 3, 0, 3, sHw), FLOOR, y0 - 1], [C0.O(-sHl + 3, 0, 3, sHw), y0 - 1, y0, 'depart', null, yawD > 180 ? yawD - 360 : yawD], [C0.O(3, 0, sHl - 3, sHw), FLOOR, y0]];
+  // le départ : une dalle carrée posée au centre de la plateforme, dans son axe
+  sPc.blocks = [[sPc.o, FLOOR, y0], [C0.O(0, 0, 3, 3), y0, y0 + 1, 'depart', null, yawD > 180 ? yawD - 360 : yawD]];
 
   // ===== Le tracé =====
   let S = start, th = th0, kMove = 0, estT = 0, lastMv = '', lastMv2 = '', turnSign = sgn(), totTurn = 0, goal = null, goalK = 0, hints = 0;
@@ -5191,7 +5346,7 @@ function genWeekly(seed, opt = {}) {
       const ex = exitFrom(S, thO);
       if (!ex) continue;
       const C = ctxOf(ex.X[0], ex.X[1], ex.th);
-      C.perp = ex.perp;
+      C.perp = ex.perp; C.alignW = true;
       if (!M.saut(C, S, tgtY(kMove + 1) - S.top) || !sepOK(C, S)) continue;
       commit(C, S, ex, 'saut');
       th = C.thOut;
@@ -5282,13 +5437,28 @@ function genWeekly(seed, opt = {}) {
     kMove++;
   }
   {
-    const T = fin, [hx, hz] = H(th), c = polyClip(T.pc.poly, T.entry[0], T.entry[1], hx, hz);
-    const d = Math.max(0, Math.min(c ? c[1] - 4 : 0, 9));
-    const fx = T.entry[0] + hx * d, fz = T.entry[1] + hz * d;
-    T.finish = { cx: fx, cz: fz, ux: T.o.ux, uz: T.o.uz, hl: 2.5, hw: 2.5 };
+    // l'arrivée : une dalle carrée au centre de la dernière plateforme (droite, comme elle)
+    const T = fin, fx = T.o.cx, fz = T.o.cz, hs = Math.max(2, Math.min(3, Q(Math.min(T.o.hl, T.o.hw) - 1.5)));
+    T.finish = { cx: fx, cz: fz, ux: T.o.ux, uz: T.o.uz, hl: hs, hw: hs };
     wps.push({ x: r2(fx), z: r2(fz), r: 1.5, y: T.top + 1 });
   }
 
+  // ===== Piliers : certaines plateformes suspendues reposent sur un gros pied qui descend jusqu'au sol =====
+  {
+    const segs = []; let yk = start.top;
+    for (let i = 1; i < wps.length; i++) { if (wps[i - 1].y != null) yk = wps[i - 1].y; segs.push([wps[i - 1], wps[i], Math.min(yk, wps[i].y ?? yk)]); }
+    const colP = opt.colP ?? pick([0.25, 0.45, 0.65]);
+    for (const pc of PC.slice()) {
+      if (pc.deco || pc.lad || pc.kin || pc.mob || pc.blocks || pc.y0 <= FLOOR + 4 || !chance(colP)) continue;
+      const m = Math.min(pc.o.hl, pc.o.hw); if (m < 2) continue;
+      const full = chance(0.35), k = full ? 0 : Q(clamp(m * rnd(0.35, 0.6), 1, 4));
+      const o = full ? pc.o : { ...pc.o, hl: Math.min(k, pc.o.hl - 1), hw: Math.min(k, pc.o.hw - 1) }, poly = obbPts(o);
+      if (PC.some(q => q !== pc && !q.decor && q.top <= pc.y0 + 0.01 && q.y1 > FLOOR && polyDist(poly, q.poly) < 2.5)) continue;
+      if (segs.some(([a, b, y]) => y < pc.y0 + 1 && polyDist(poly, [[a.x, a.z], [b.x, b.z]]) < 2.5)) continue;
+      if (full) { pc.y0 = FLOOR; pc.grounded = true; }
+      else PC.push({ o, poly, y0: FLOOR, y1: pc.y0, top: pc.y0, deco: true, col: true, mv: pc.mv });
+    }
+  }
   // ===== Décor : de très grandes formes (murs, monolithes, tours) dans les grands vides autour du parcours =====
   // loin de lui (on ne peut ni les atteindre, ni s'y cogner) ; on remplit d'abord les plus grands trous
   {
@@ -5302,12 +5472,12 @@ function genWeekly(seed, opt = {}) {
       for (let tr = 0; tr < 24; tr++) {
         const kind = pick(kinds);
         let hl, hw, top;
-        if (kind === 'monolithe') { hl = rnd(16, 45); hw = rnd(10, 32); top = hi + rnd(20, 90); }
-        else if (kind === 'mur') { hl = rnd(45, 120); hw = rnd(2.5, 7); top = hi + rnd(5, 55); }
-        else if (kind === 'tour') { hl = hw = rnd(7, 16); top = hi + rnd(35, 110); }
-        else { hl = hw = rnd(2, 4); top = hi + rnd(10, 60); }
-        const [ux, uz] = H(th0 + (chance(0.75) ? qa(rnd(0, 180)) : rnd(0, 180)));
-        const o = { cx: rnd(x0 - M0, x1 + M0), cz: rnd(z0 - M0, z1 + M0), ux, uz, hl, hw }, poly = obbPts(o);
+        if (kind === 'monolithe') { hl = rw(16, 45); hw = rw(10, 32); top = Math.round(hi + rnd(20, 90)); }
+        else if (kind === 'mur') { hl = rw(45, 120); hw = pick([2.5, 3, 4, 5, 6]); top = Math.round(hi + rnd(5, 55)); }
+        else if (kind === 'tour') { hl = hw = rw(7, 16); top = Math.round(hi + rnd(35, 110)); }
+        else { hl = hw = pick([2, 2.5, 3, 4]); top = Math.round(hi + rnd(10, 60)); }
+        const [ux, uz] = H(th0 + (chance(0.8) ? qa(rnd(0, 180)) : Math.round(rnd(0, 180) / 15) * 15));
+        const o = { cx: Math.round(rnd(x0 - M0, x1 + M0)), cz: Math.round(rnd(z0 - M0, z1 + M0)), ux, uz, hl, hw }, poly = obbPts(o);
         const dr = Math.min(...route.map(q => polyDist(poly, q.poly) - (top - q.top > 7.25 ? 0 : jumpReach(Math.max(-60, Math.min(6.3, top - q.top))))));
         const dd = Math.min(Infinity, ...PC.filter(q => q.decor).map(q => polyDist(poly, q.poly)));
         if (dr < 18 || dd < 10 || PC.some(q => !q.decor && polyDist(poly, q.poly) < 16)) continue;
