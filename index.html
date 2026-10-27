@@ -2478,10 +2478,10 @@ function buildCustom(n, data) {
   // et enfin un trou partout où le parcours reste dans l'ombre. Les trous restent au-dessus de la salle.
   const mid = q => [(q.x0 + q.x1) / 2, (q.z0 + q.z1) / 2];
   // plus la salle est grande, plus les trous sont grands (et espacés) : une immense salle reste bien éclairée
-  const LK = clamp(Math.sqrt((R.x1 - R.x0) * (R.z1 - R.z0)) / 130, 1, 3.2);
+  const LK = clamp(Math.sqrt((R.x1 - R.x0) * (R.z1 - R.z0)) / 105, 1, 4);
   const spots = [dep, arr];
   for (const q of Q.filter(q => q.b.type !== 'depart' && q.b.type !== 'arrivee' && q.y1 < R.top - 4).sort((a, c) => (c.x1 - c.x0) * (c.z1 - c.z0) - (a.x1 - a.x0) * (a.z1 - a.z0))) {
-    if (spots.length >= 12) break;
+    if (spots.length >= 16) break;
     const [cx, cz] = mid(q);
     if (spots.every(o => { const [ox, oz] = mid(o); return Math.hypot(cx - ox, cz - oz) > 15 * LK; })) spots.push(q);
   }
@@ -2501,7 +2501,7 @@ function buildCustom(n, data) {
     const bz0 = Math.max(R.z0 + 6, Math.min(...Q.map(q => q.z0)) - 6), bz1 = Math.min(R.z1 - 6, Math.max(...Q.map(q => q.z1)) + 6);
     const nx = Math.max(1, Math.round((bx1 - bx0) / (26 * LK))), nz = Math.max(1, Math.round((bz1 - bz0) / (26 * LK)));
     for (let i = 0; i < nx; i++) for (let j = 0; j < nz; j++) {
-      if (holes.length >= 24) break;
+      if (holes.length >= 32) break;
       const px = bx0 + (i + 0.5) * (bx1 - bx0) / nx, pz = bz0 + (j + 0.5) * (bz1 - bz0) / nz;
       if (lit.some(([lx, lz]) => Math.hypot(px - lx, pz - lz) < 17 * LK)) continue;
       holes.push(hole(px, pz, 10 * LK, 10 * LK, 0, R.bot)); lit.push([px, pz]);
