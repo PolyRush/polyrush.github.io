@@ -1643,9 +1643,10 @@ const LDIR = new THREE.Vector3(LIGHT.x, 1, LIGHT.z).normalize();
 function glowMat(color, top, bottom) {
   return new THREE.ShaderMaterial({
     uniforms: { uColor: { value: new THREE.Color(color) }, uTop: { value: top }, uBot: { value: bottom }, uTime: timeU },
-    vertexShader: 'varying vec2 vUv; varying float vCap;\nvoid main(){ vUv = uv; vCap = step(0.5, abs(normal.y)); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
-    fragmentShader: 'uniform vec3 uColor; uniform float uTop, uBot, uTime; varying vec2 vUv; varying float vCap;\n' +
-      'void main(){\n  if (vCap > 0.5) discard;\n  float h = vUv.y;\n  float edge = smoothstep(0.0, 0.32, vUv.x) * smoothstep(1.0, 0.68, vUv.x);\n' +
+    // « keep » (rayons fusionnés) : 1 à un bout d'une face = pas de fondu de ce côté (coin rentrant) ; absent = 0, comme avant
+    vertexShader: 'attribute vec2 keep; varying vec2 vUv, vKeep; varying float vCap;\nvoid main(){ vUv = uv; vKeep = keep; vCap = step(0.5, abs(normal.y)); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'uniform vec3 uColor; uniform float uTop, uBot, uTime; varying vec2 vUv, vKeep; varying float vCap;\n' +
+      'void main(){\n  if (vCap > 0.5) discard;\n  float h = vUv.y;\n  float edge = max(vKeep.x, smoothstep(0.0, 0.32, vUv.x)) * max(vKeep.y, smoothstep(1.0, 0.68, vUv.x));\n' +
       '  float a = mix(uBot, uTop, h * h * (3.0 - 2.0 * h)) * edge;\n  a *= 0.84 + 0.16 * sin(uTime * 0.55 + vUv.x * 5.0 + h * 4.0);\n  gl_FragColor = vec4(uColor, a);\n}',
     transparent: true, depthWrite: false, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, fog: false
   });
@@ -1664,24 +1665,67 @@ function dustMat(w, d, top, bottom) {
     transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false
   });
 }
-// Rayon de lumière sous un trou du plafond [x0, x1, z0, z1, bas] (dessous du plafond à « top »), jusqu'au bas.
-function lightShaft(h, top, mat) {
+// Rayons de lumière sous les trous du plafond [x0, x1, z0, z1, bas] (dessous du plafond à « top »), jusqu'au bas.
+// Les trous qui se touchent ou se chevauchent forment un seul rayon : on ne garde que le contour de leur union
+// (sinon chaque carré a ses propres faces lumineuses et on voit les séparations en traversant la lumière).
+function lightShafts(holes, top, mat) {
+  const byBot = new Map();
+  for (const h of holes) { const b = h[4] ?? 0; if (!byBot.has(b)) byBot.set(b, []); byBot.get(b).push(h); }
+  for (const [bot, hs] of byBot) {
+    const xs = [...new Set(hs.flatMap(h => [h[0], h[1]]))].sort((a, b) => a - b), zs = [...new Set(hs.flatMap(h => [h[2], h[3]]))].sort((a, b) => a - b);
+    const NX = xs.length - 1, NZ = zs.length - 1, fill = new Uint8Array(Math.max(0, NX * NZ));
+    for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++) {
+      const cx = (xs[i] + xs[i + 1]) / 2, cz = (zs[j] + zs[j + 1]) / 2;
+      fill[i * NZ + j] = hs.some(h => cx > h[0] && cx < h[1] && cz > h[2] && cz < h[3]) ? 1 : 0;
+    }
+    const F = (i, j) => i >= 0 && j >= 0 && i < NX && j < NZ ? fill[i * NZ + j] : 0;
+    // coin rentrant : trois des quatre cases autour du point sont dans la lumière
+    const inner = (i, j) => F(i - 1, j - 1) + F(i, j - 1) + F(i - 1, j) + F(i, j) === 3;
+    const pos = [], uv = [], nor = [], keep = [], idx = [];
+    const quad = (ax, az, bx, bz, ka, kb) => {
+      const v = pos.length / 3;
+      for (const [x, z, y, u] of [[ax, az, bot, 0], [bx, bz, bot, 1], [bx, bz, top, 1], [ax, az, top, 0]]) {
+        const k = top - y; pos.push(x - LIGHT.x * k, y, z - LIGHT.z * k); uv.push(u, y === top ? 1 : 0); nor.push(1, 0, 0); keep.push(ka, kb);
+      }
+      idx.push(v, v + 1, v + 2, v, v + 2, v + 3);
+    };
+    // bords verticaux (x constant), fusionnés tant que le même côté reste éclairé
+    for (let i = 0; i <= NX; i++) for (let j = 0; j < NZ;) {
+      const side = F(i - 1, j) - F(i, j);
+      if (!side) { j++; continue; }
+      let e = j; while (e + 1 < NZ && F(i - 1, e + 1) - F(i, e + 1) === side) e++;
+      quad(xs[i], zs[j], xs[i], zs[e + 1], inner(i, j) ? 1 : 0, inner(i, e + 1) ? 1 : 0);
+      j = e + 1;
+    }
+    for (let j = 0; j <= NZ; j++) for (let i = 0; i < NX;) {
+      const side = F(i, j - 1) - F(i, j);
+      if (!side) { i++; continue; }
+      let e = i; while (e + 1 < NX && F(e + 1, j - 1) - F(e + 1, j) === side) e++;
+      quad(xs[i], zs[j], xs[e + 1], zs[j], inner(i, j) ? 1 : 0, inner(e + 1, j) ? 1 : 0);
+      i = e + 1;
+    }
+    if (!idx.length) continue;
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+    g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+    g.setAttribute('keep', new THREE.Float32BufferAttribute(keep, 2));
+    g.setIndex(idx); g.computeBoundingSphere();
+    const m = new THREE.Mesh(g, mat); m.renderOrder = 2;
+    W.add(m);
+  }
+  for (const h of holes) shaftDust(h, top);
+}
+// Poussière qui flotte dans le rayon d'un trou
+function shaftDust(h, top) {
   const [x0, x1, z0, z1] = h, bot = h[4] ?? 0, w = x1 - x0, d = z1 - z0;
-  const g = new THREE.BoxGeometry(w, top - bot, d);
-  g.translate(0, (top + bot) / 2, 0);
-  const p = g.attributes.position;
-  for (let i = 0; i < p.count; i++) { const k = top - p.getY(i); p.setX(i, p.getX(i) - LIGHT.x * k); p.setZ(i, p.getZ(i) - LIGHT.z * k); }
-  g.computeBoundingSphere();
-  const m = new THREE.Mesh(g, mat);
-  m.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); m.renderOrder = 2;
-  W.add(m);
   const n = Math.round(clamp(w * d * 0.3 * (top - bot) / 32, 20, 90)), seed = new Float32Array(n * 4);
   for (let i = 0; i < n * 4; i++) seed[i] = Math.random();
   const pg = new THREE.BufferGeometry();
   pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   pg.setAttribute('seed', new THREE.BufferAttribute(seed, 4));
   const pts = new THREE.Points(pg, dustMat(w, d, top, bot));
-  pts.position.copy(m.position); pts.frustumCulled = false; pts.renderOrder = 3;
+  pts.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); pts.frustumCulled = false; pts.renderOrder = 3;
   W.add(pts);
 }
 // Trou du plafond qui éclaire une tache (px, pz) de w × d, sur une surface à la hauteur y. « bas » : où s'arrête le rayon.
@@ -1719,7 +1763,7 @@ function cave(c) {
     if (!shaftHits(holes, top, a, a + 2.5, bot, top - 6, z - 2, z + 2)) blk(a, a + 2.5, bot, top - 6, z - 2, z + 2);
   }
   const mat = glowMat(0xffffff, 0.18, 0.02);
-  for (const h of holes) lightShaft(h, top, mat);
+  lightShafts(holes, top, mat);
   CAP_SKIP--;
   return { x0, x1, z0, z1, y0: bot - 2, y1: top + 4, fog: c.fog };
 }
@@ -1833,7 +1877,7 @@ function buildLevel1() {
 
   // Rayons de lumière, puis B — arrivée : une dalle verte au sol, sous le dernier rayon
   const shaft = glowMat(0xffffff, 0.18, 0.02);
-  for (const h of holes) lightShaft(h, TOP, shaft);
+  lightShafts(holes, TOP, shaft);
   makeFinish(9, 19, -151, -141, 0);
   return { x0: -34, x1: 34, z0: -170, z1: 24, y0: 0, y1: TOP + ROOF, fog: [90, 330] };
 }
@@ -2505,18 +2549,35 @@ function buildCustom(n, data) {
     const bx0 = Math.max(R.x0 + 6, Math.min(...Q.map(q => q.x0))), bx1 = Math.min(R.x1 - 6, Math.max(...Q.map(q => q.x1)));
     const bz0 = Math.max(R.z0 + 6, Math.min(...Q.map(q => q.z0))), bz1 = Math.min(R.z1 - 6, Math.max(...Q.map(q => q.z1)));
     const yMid = clamp(Q.reduce((a, q) => a + q.y1, 0) / Q.length, R.bot + 2, R.top - 4);
-    const open = (cx, cz, area, y = yMid) => {
-      const asp = rn(0.55, 1.8), w = Math.min(W * 0.6, Math.sqrt(area * asp)), dd = Math.min(L * 0.6, area / w);
+    const place = (cx, cz, w, dd, y) => {
       const h = hole(cx, cz, w, dd, y, R.bot);
       // jamais collée à un mur : au moins 10 studs de plafond tout autour
       const sx = clamp((h[0] + h[1]) / 2, R.x0 + 10 + w / 2, R.x1 - 10 - w / 2) - (h[0] + h[1]) / 2, sz = clamp((h[2] + h[3]) / 2, R.z0 + 10 + dd / 2, R.z1 - 10 - dd / 2) - (h[2] + h[3]) / 2;
-      holes.push([h[0] + sx, h[1] + sx, h[2] + sz, h[3] + sz, h[4]]);
+      return [h[0] + sx, h[1] + sx, h[2] + sz, h[3] + sz, h[4]];
+    };
+    // écart bord à bord avec les ouvertures déjà posées (négatif si elles se chevauchent)
+    const gap = h => holes.reduce((m, o) => Math.min(m, Math.max(o[0] - h[1], h[0] - o[1], o[2] - h[3], h[2] - o[3])), Infinity);
+    const size = area => { const asp = rn(0.55, 1.8), w = Math.min(W * 0.6, Math.sqrt(area * asp)); return [w, Math.min(L * 0.6, area / w)]; };
+    const open = (cx, cz, area, y = yMid) => { const [w, dd] = size(area); holes.push(place(cx, cz, w, dd, y)); };
+    // les autres s'éparpillent autour du parcours : parmi quelques tirages, on garde celui le plus loin des autres
+    // (elles peuvent encore se toucher ou se chevaucher un peu, mais ne s'empilent plus toutes au même endroit)
+    const ex = (bx1 - bx0) * 0.2 + 12, ez = (bz1 - bz0) * 0.2 + 12, ccx = (bx0 + bx1) / 2, ccz = (bz0 + bz1) / 2;
+    const rx0 = Math.max(R.x0 + 10, bx0 - ex), rx1 = Math.min(R.x1 - 10, bx1 + ex), rz0 = Math.max(R.z0 + 10, bz0 - ez), rz1 = Math.min(R.z1 - 10, bz1 + ez);
+    const spread = area => {
+      const [w, dd] = size(area);
+      let best = null, bg = -Infinity;
+      // un peu d'écart suffit (8 studs) ; à écart égal, on préfère le plus près du milieu du parcours
+      for (let t = 0; t < 14; t++) {
+        const h = place(rn(rx0, rx1), rn(rz0, rz1), w, dd, yMid), g = Math.min(gap(h), 8) - 0.04 * Math.hypot((h[0] + h[1]) / 2 - ccx, (h[2] + h[3]) / 2 - ccz);
+        if (g > bg) { bg = g; best = h; }
+      }
+      holes.push(best);
     };
     holes = [];
-    open((bx0 + bx1) / 2 + rn(-0.15, 0.15) * (bx1 - bx0), (bz0 + bz1) / 2 + rn(-0.15, 0.15) * (bz1 - bz0), A * rn(0.1, 0.18));   // la grande, au-dessus du milieu du parcours
+    open((bx0 + bx1) / 2 + rn(-0.15, 0.15) * (bx1 - bx0), (bz0 + bz1) / 2 + rn(-0.15, 0.15) * (bz1 - bz0), A * rn(0.07, 0.11));   // la grande, au-dessus du milieu du parcours
     for (const q of [dep, arr]) { const [cx, cz] = mid(q); open(cx, cz, A * rn(0.008, 0.016), q.y1); }   // départ et arrivée
-    for (let k = 0, n = 3 + Math.floor(rr() * 3); k < n; k++) open(rn(bx0, bx1), rn(bz0, bz1), A * rn(0.012, 0.03));    // moyennes
-    for (let k = 0, n = 6 + Math.floor(rr() * 6); k < n; k++) open(rn(bx0, bx1), rn(bz0, bz1), A * rn(0.002, 0.006));  // petites
+    for (let k = 0, n = 4 + Math.floor(rr() * 3); k < n; k++) spread(A * rn(0.012, 0.026));    // moyennes
+    for (let k = 0, n = 8 + Math.floor(rr() * 6); k < n; k++) spread(A * rn(0.002, 0.006));  // petites
   } else {
     holes = spots.map(q => { const [cx, cz] = mid(q); return hole(cx, cz, clamp(q.x1 - q.x0 + 2, 8 * LK, 16 * LK), clamp(q.z1 - q.z0 + 2, 8 * LK, 16 * LK), Math.min(q.y1, R.top - 2)); });
     // Remplissage : sur la zone du parcours, une tache de lumière tous les ~26 studs là où il n'y en a pas déjà une
