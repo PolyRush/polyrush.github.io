@@ -1329,9 +1329,9 @@ function checkpoint(x, z, y, yaw) { const b = box(x, y + 0.1, z, 5, 0.2, 5, { co
 /* ---------- Carte : salle d'entraînement ----------
    Une grande salle fermée, éclairée par le plafond comme les niveaux. Au centre, le départ ; de part et d'autre, une
    longue allée de tapis roulants (la voie du nord s'éloigne du départ, celle du sud y ramène). Les zones s'alignent
-   le long de l'allée, chacune derrière son nom peint au sol, séparées par un muret qu'on enjambe :
-     nord : échelles · marches et saut en hauteur · saut en longueur · wall hop · écraseurs et tapis
-     sud  : formes · wraparounds (largeur) · wraparounds (longueur) · blocs mouvants */
+   le long de l'allée, chacune dans un cadre au sol, son nom peint devant :
+     nord : échelles · marches et saut en hauteur · saut en longueur · sandbox
+     sud  : wraparounds (largeur) · wraparounds (longueur) · blocs mouvants et tapis */
 function beltAt(x0, x1, z0, z1, vx, vz) {
   const tex = stripeTex.clone(); tex.needsUpdate = true;
   box((x0 + x1) / 2, 0.25, (z0 + z1) / 2, x1 - x0, 0.5, z1 - z0, { stripe: toon(0xffffff, { map: tex }), surf: { x: vx, z: vz } });
@@ -1340,7 +1340,6 @@ function beltAt(x0, x1, z0, z1, vx, vz) {
 function buildTraining() {
   SPAWN = { x: 0, y: 1, z: 0, yaw: 0 };
   const X0 = -215, X1 = 215, Z0 = -140, Z1 = 115, TOP = 52, BOT = -40;
-  const PIT = [62, 132, -105, -55];                                                  // le vide du wall hop
   // Lumière : une tache sur le départ et sur chaque zone, puis de quoi éclairer le reste
   const holes = [], lit = [];
   const light = (x, z, w, d) => {
@@ -1350,14 +1349,14 @@ function buildTraining() {
     holes.push([h[0] + sx, h[1] + sx, h[2] + sz, h[3] + sz, h[4]]); lit.push([x, z]);
   };
   light(0, 0, 16, 16);
-  for (const [x, z] of [[-190, -36], [-178, -100], [-72, -45], [-72, -85], [-12, -60], [-2, -110], [85, -80], [100, -125], [175, -40],
-    [-180, 57], [-75, 45], [48, 45], [160, 40], [160, 75]]) light(x, z, 16, 16);
+  for (const [x, z] of [[-200, -40], [-165, -55], [-140, -60], [-185, -112], [-145, -112], [-72, -45], [-72, -85], [-12, -60], [-2, -110],
+    [75, -50], [125, -50], [180, -50], [75, -105], [125, -105], [180, -105], [-150, 45], [-25, 45], [90, 38], [75, 70], [175, 40]]) light(x, z, 16, 16);
   for (let i = 0; i < 12; i++) for (let j = 0; j < 8; j++) {
     const x = X0 + (i + 0.5) * (X1 - X0) / 12, z = Z0 + (j + 0.5) * (Z1 - Z0) / 8;
     if (!lit.some(([a, b]) => Math.hypot(x - a, z - b) < 30)) light(x, z, 12, 12);
   }
   const env = cave({ x0: X0, x1: X1, z0: Z0, z1: Z1, top: TOP, bot: BOT, holes, beams: [], pils: [],
-    floors: [{ r: [X0, X1, Z0, Z1], pits: [PIT] }], fog: [140, 720] });
+    floors: [{ r: [X0, X1, Z0, Z1] }], fog: [140, 720] });
   env.bright = true;
 
   // ===== Le départ et l'allée de tapis =====
@@ -1365,49 +1364,50 @@ function buildTraining() {
   const V = 28;
   beltAt(12, 213, -9, -3, V, 0); beltAt(12, 213, 3, 9, -V, 0);                       // est : on part au nord, on revient au sud
   beltAt(-213, -12, -9, -3, -V, 0); beltAt(-213, -12, 3, 9, V, 0);                   // ouest, pareil
-  // les zones : un nom au sol au bord de l'allée, un muret bas entre deux zones
-  const sign = (name, x, north) => label(name, x, 0.03, north ? -18 : 18, 26, 3.4, 150, north ? 0 : Math.PI, true);
-  const curb = (x, north) => north ? box(x, 0.3, -77, 1, 0.6, 126) : box(x, 0.3, 64.5, 1, 0.6, 101);
-  for (const x of [-120, -25, 40, 135]) curb(x, true);
-  for (const x of [-145, -10, 105]) curb(x, false);
+  // les zones : un cadre au sol (on l'enjambe), son nom peint devant, au bord de l'allée
+  const zone = (name, x0, x1, z0, z1) => {
+    const t = 1.5, h = 0.4, cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
+    box(cx, h / 2, z0 + t / 2, x1 - x0, h, t); box(cx, h / 2, z1 - t / 2, x1 - x0, h, t);
+    box(x0 + t / 2, h / 2, cz, t, h, z1 - z0 - 2 * t); box(x1 - t / 2, h / 2, cz, t, h, z1 - z0 - 2 * t);
+    const north = cz < 0;
+    label(name, cx, 0.03, north ? -11.3 : 11.3, 26, 3.4, 150, north ? 0 : Math.PI, true);
+  };
 
-  // ===== NORD 1 — ÉCHELLES (x -215 à -120) : barreaux fins (moins de 1,2), on grimpe en avançant vers eux =====
-  sign('ÉCHELLES', -167.5, true);
-  // écartement des barreaux : 1,5 · 1 · 2,2
-  [[-205, 1.5], [-197, 1.0], [-189, 2.2]].forEach(([x, sp]) => {
-    box(x, 8, -36, 4, 16, 4);
-    for (let y = 15.4; y >= 0.8; y -= sp) rungZ(x, y, -34, 3, 1);
-    label(fr(sp), x, 0.03, -30.5, 2.4, 1.2, 170, 0, true);
-  });
-  // cheminée : des tronçons d'échelle alternés sur deux tours face à face, on saute de l'une à l'autre
-  box(-180, 12.5, -36, 4, 25, 4); box(-171, 12.5, -36, 4, 25, 4);
-  for (const [a, b, sx, dir] of [[1, 7, -178, 1], [7.5, 13, -173, -1], [13.5, 19, -178, 1], [19.5, 24.4, -173, -1]])
-    for (let y = b; y >= a - 0.01; y -= 1) rungX(sx, y, -36, 3, dir);
-  label('CHEMINÉE', -175.5, 0.03, -30.5, 7, 1.2, 150, 0, true);
-  // échelles face à face, de plus en plus écartées : 5 · 7 · 9
-  [[-205, 5], [-188, 7], [-169, 9]].forEach(([x0, d]) => {
-    box(x0 - 2, 7, -72, 4, 14, 4); box(x0 + d + 2, 7, -72, 4, 14, 4);
-    for (let y = 13.4; y >= 0.8; y -= 1.5) { rungX(x0, y, -72, 3, 1); rungX(x0 + d, y, -72, 3, -1); }
-    label(String(d), x0 + d / 2, 0.03, -66.5, 2.4, 1.2, 170, 0, true);
+  // ===== NORD 1 — ÉCHELLES =====
+  zone('ÉCHELLES', -214, -121.5, -139, -14);
+  // une grande échelle simple, jusqu'en haut d'une tour
+  box(-200, 15, -42, 6, 30, 4);
+  for (let y = 29.4; y >= 0.8; y -= 1.5) rungZ(-200, y, -40, 4, 1);
+  label('30', -200, 0.03, -36.5, 2.4, 1.2, 170, 0, true);
+  // wrap puis échelle : une passerelle (à 8) barrée par un mur ; on le contourne en l'air et on attrape l'échelle
+  // de sa face arrière, juste derrière le bout. On grimpe jusqu'à la crête du mur.
+  [[-170, 1, 0.5], [-140, -1, 1]].forEach(([x, side, e]) => {
+    for (let i = 1; i <= 8; i++) box(x, i / 2, -20 - (i - 0.5) * 2, 4, i, 2);       // escalier
+    box(x, 7.5, -49, 4, 1, 26);                                                      // passerelle
+    const a = x + side * (2 + e), b = x - side * 12, wx = (a + b) / 2;                // le mur dépasse de e d'un côté
+    box(wx, 10, -63, Math.abs(a - b), 20, 2);
+    const lc = a - side * 2;                                                         // l'échelle, contre le bout
+    for (let y = 19.4; y >= 0.8; y -= 1.5) rungZ(lc, y, -64, 3, -1);
+    label(fr(e), x, 8.02, -40, 2.4, 1.2, 170, 0, true);
   });
   // échelle très large (palier au bout) ; échelle large coiffée d'un mur : on ne passe pas au-dessus
-  for (let y = 1; y <= 13.1; y += 1.5) box(-195, y, -112, 30, 0.4, 0.5);
-  box(-210.3, 7, -112, 0.6, 14, 0.6); box(-179.7, 7, -112, 0.6, 14, 0.6);
-  box(-175.4, 6.5, -112, 8, 13, 4);
+  for (let y = 1; y <= 13.1; y += 1.5) box(-190, y, -112, 30, 0.4, 0.5);
+  box(-205.3, 7, -112, 0.6, 14, 0.6); box(-174.7, 7, -112, 0.6, 14, 0.6);
+  box(-170.4, 6.5, -112, 8, 13, 4);
   for (let y = 1; y <= 10.1; y += 1.5) box(-145, y, -112, 30, 0.4, 0.5);
   box(-145, 14.5, -112, 30, 8, 0.5);
   box(-160.3, 9.25, -112, 0.6, 18.5, 0.6); box(-129.7, 9.25, -112, 0.6, 18.5, 0.6);
 
-  // ===== NORD 2 — MARCHES ET SAUT EN HAUTEUR (x -120 à -25) =====
-  sign('MARCHES · SAUT EN HAUTEUR', -72.5, true);
+  // ===== NORD 2 — MARCHES ET SAUT EN HAUTEUR =====
+  zone('MARCHES · SAUT EN HAUTEUR', -118.5, -26.5, -139, -14);
   // monter en marchant : le capteur de sol enjambe jusqu'à 1,1
   [0.25, 0.5, 0.75, 1.0, 1.05, 1.1, 1.15, 1.2, 1.5, 2.0].forEach((h, i) => {
     const x = -99.5 + i * 6;
     box(x, h / 2, -32, 4, h, 4);
     label(fr(h), x, 0.03, -28.6, 3, 1.4, 170, 0, true);
   });
-  // escaliers de marches de 0,5 · 1 · 1,1
-  [[0.5, -90.5], [1.0, -72.5], [1.1, -54.5]].forEach(([h, x]) => {
+  // escaliers de marches de 1 · 1,2 · 1,5
+  [[1, -90.5], [1.2, -72.5], [1.5, -54.5]].forEach(([h, x]) => {
     for (let i = 1; i <= 6; i++) box(x, i * h / 2, -44 - (i - 0.5) * 2.5, 6, i * h, 2.5);
     label(fr(h), x, 0.03, -42.7, 3, 1.3, 170, 0, true);
   });
@@ -1418,8 +1418,8 @@ function buildTraining() {
     label(fr(h), x, 2.2, -82.98, 3.6, 1.5, 170);
   });
 
-  // ===== NORD 3 — SAUT EN LONGUEUR (x -25 à 40) : planches suspendues, écart croissant d'une piste à l'autre =====
-  sign('SAUT EN LONGUEUR', 7.5, true);
+  // ===== NORD 3 — SAUT EN LONGUEUR : planches suspendues, écart croissant d'une piste à l'autre =====
+  zone('SAUT EN LONGUEUR', -23.5, 38.5, -139, -14);
   for (let i = 1; i <= 8; i++) box(-17, i / 2, -16 - (i - 0.5) * 2, 6, i, 2);           // escalier jusqu'au pont
   box(-17, 7.5, -74, 6, 1, 84);                                                      // pont de départ (hauteur 8)
   [4, 5, 6, 7, 8, 9, 10, 11, 11.5, 12, 12.25, 12.5, 12.75, 13].forEach((g, j) => {
@@ -1430,57 +1430,13 @@ function buildTraining() {
     label(fr(g), -4 + g + 4, 8.02, z, 2.8, 1.6, 170, -Math.PI / 2, true);
   });
 
-  // ===== NORD 4 — WALL HOP (x 40 à 135) : un long mur de bâtons au-dessus du vide, et un mur haut =====
-  sign('WALL HOP', 87.5, true);
-  checkpoint(57, -75, 0, -Math.PI / 2);
-  for (let y = -24; y < 14; y++) box(80, y + 0.5, -80, 52, 1, 1, { seam: true });      // 52 de long, au-dessus du vide
-  for (let d = 0; d <= 40; d += 10) {
-    label(String(d), 62 + d, 2.5, -80.53, 1.8, 1.2, 170, Math.PI);
-    label(String(d), 62 + d, 2.5, -79.47, 1.8, 1.2, 170);
-  }
-  box(114, -1, -80, 20, 2, 24);                                                      // arrivée, au milieu du vide
-  for (let i = 0; i < 36; i++) box(100, i + 0.5, -125, 20, 1, 1, { seam: true });
-  box(100, 35.5, -127.5, 20, 1, 4);                                                  // sommet
-  for (let h = 6; h <= 36; h += 6) label(String(h), 100, h - 0.5, -124.47, 1.6, 1, 170);
+  // ===== NORD 4 — SANDBOX : des chaînes de sauts qui s'emmêlent (piliers, dalles, plots, poutres, lames, blocs en
+  // biais, wraps, tours à échelle), toujours les mêmes ; chaque saut est faisable =====
+  zone('SANDBOX', 41.5, 214, -139, -14);
+  sandbox(46, 209, -134, -20);
 
-  // ===== NORD 5 — ÉCRASEURS ET TAPIS (x 135 à 215) =====
-  sign('ÉCRASEURS · TAPIS', 175, true);
-  {
-    const z = -40, o = 172;
-    // écraseurs : un contre le sol, un contre un mur, un contre un plafond (tout ce qui bouge est rouge à rayures)
-    box(o - 35.5, 6.25, z, 1, 12.5, 1); box(o - 28.5, 6.25, z, 1, 12.5, 1); box(o - 32, 13, z, 8, 1, 1);
-    box(o - 32, 10, z, 5, 3, 5, { stripe: true, move: (b, t) => { b.c.y = 1.5 + 4.25 * (1 + Math.cos(t * 0.9)); } });
-    box(o - 14, 5, z, 1, 10, 7);                                                     // mur fixe
-    box(o - 20, 2.55, z, 3, 5, 5, { stripe: true, move: (b, t) => { b.c.x = o - 16 - 4 * (1 + Math.cos(t * 0.9)); } });
-    for (const [ox, oz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) box(o - 2 + ox, 3.5, z + oz, 0.5, 7, 0.5);
-    box(o - 2, 7.5, z, 6.5, 1, 6.5);                                                 // plafond fixe (dessous à 7)
-    box(o - 2, 0.5, z, 5, 1, 5, { stripe: true, move: (b, t) => { b.c.y = 0.5 + 3 * (1 - Math.cos(t * 0.9)); } });
-    // tapis roulants, de plus en plus rapides (ils poussent vers l'allée)
-    [4, 8, 16, 28].forEach((v, k) => {
-      const x = o + 4 + k * 6;
-      beltAt(x - 2, x + 2, z - 9, z + 9, 0, v);
-      label(String(v), x, 0.03, z + 10.6, 3, 1.4, 170, 0, true);
-    });
-    box(o + 36, 0.8, z, 1, 1.6, 1);                                                  // barre au ras des jambes
-    box(o + 36, 1.0, z, 11, 0.6, 0.6, { stripe: true, move: (b, t) => { b.yaw = -t * 1.1; } });
-  }
-
-  // ===== SUD 1 — FORMES (x -215 à -145) : des blocs posés au hasard (toujours les mêmes) =====
-  sign('FORMES', -180, false);
-  {
-    let seed = 20261017;
-    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    for (let i = 0; i < 44; i++) {
-      const x = -210 + rnd() * 64, z = 24 + rnd() * 66, kind = rnd(), yaw = rnd() * Math.PI;
-      if (kind < 0.42) { const h = 0.5 + rnd() * 5; box(x, h / 2, z, 2 + rnd() * 7, h, 2 + rnd() * 7, { yaw }); }
-      else if (kind < 0.62) { const h = 4 + rnd() * 11; box(x, h / 2, z, 1.5 + rnd() * 2, h, 1.5 + rnd() * 2, { yaw }); }
-      else if (kind < 0.84) { const t = 0.5 + rnd(), y = 3 + rnd() * 6; box(x, y + t / 2, z, 4 + rnd() * 6, t, 3 + rnd() * 5, { yaw }); }
-      else { let y = 0, w = 6 + rnd() * 3; for (let k = 0; k < 3; k++) { const h = 1 + rnd() * 2; box(x, y + h / 2, z, w, h, w, { yaw: yaw + k * 0.3 }); y += h; w *= 0.65; } }
-    }
-  }
-
-  // ===== SUD 2 et 3 — WRAPAROUNDS : des pistes côte à côte, chacune barrée par un mur à contourner par un côté =====
-  // (passerelles de 2 de large au-dessus du sol, à 8 de haut ; le même vide sépare deux murs voisins)
+  // ===== SUD 1 et 2 — WRAPAROUNDS : des pistes côte à côte, chacune barrée par un mur à contourner par un côté =====
+  // (passerelles de 2 de large à 8 de haut ; le même vide sépare deux murs voisins)
   // largeur : le mur déborde de plus en plus sur les côtés ; longueur : le mur, au ras de la passerelle, s'allonge
   const GAP = 5;
   function wrapLanes(deckZ, xStart, walls) {
@@ -1500,34 +1456,109 @@ function buildTraining() {
       label(val, X, 8.02, deckZ + 3, 2.6, 1.3, 170, Math.PI, true);
     });
   }
-  sign('WRAPAROUND · LARGEUR', -77.5, false);
-  wrapLanes(34, -18, [1, 1.5, 2, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4].map(d => [1, d]));
-  sign('WRAPAROUND · LONGUEUR', 47.5, false);
-  wrapLanes(34, 95, [2, 3, 4, 5, 6, 7, 7.5, 8, 8.5, 9, 9.25, 9.5, 9.75, 10].map(L => [L, 0]));
+  zone('WRAPAROUND · LARGEUR', -214, -81.5, 14, 114);
+  wrapLanes(34, -92, [1, 1.5, 2, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4].map(d => [1, d]));
+  zone('WRAPAROUND · LONGUEUR', -78.5, 33.5, 14, 114);
+  wrapLanes(34, 23, [2, 3, 4, 5, 6, 7, 7.5, 8, 8.5, 9, 9.25, 9.5, 9.75, 10].map(L => [L, 0]));
 
-  // ===== SUD 4 — BLOCS MOUVANTS (x 105 à 215) =====
-  sign('BLOCS MOUVANTS', 160, false);
+  // ===== SUD 3 — BLOCS MOUVANTS ET TAPIS (tout ce qui bouge est rouge à rayures) =====
+  zone('BLOCS MOUVANTS · TAPIS', 36.5, 214, 14, 114);
   {
-    const o = 160, SPEEDS = [['lent', 0.45], ['moyen', 0.9], ['rapide', 1.6]];
+    const o = 90, SPEEDS = [['lent', 0.45], ['moyen', 0.9], ['rapide', 1.6]];
     box(o - 42, 0.5, 38, 2, 1, 24); box(o - 40, 1, 38, 2, 2, 24);                    // marches
     box(o + 42, 0.5, 38, 2, 1, 24); box(o + 40, 1, 38, 2, 2, 24);
     SPEEDS.forEach(([nm, w], k) => {                                                 // plateformes qui font l'aller-retour
       const z = 30 + k * 8;
       box(o - 36, 1.5, z, 6, 3, 6); box(o + 36, 1.5, z, 6, 3, 6);
       box(o, 2.5, z, 6, 1, 6, { stripe: true, move: (b, t) => { b.c.x = o + 29.5 * Math.sin(t * w); } });
-      label(nm, o - 36, 3.02, z, 4, 1.3, 150, 0, true);
+      label(nm, o - 36, 3.02, z, 4, 1.3, 150, Math.PI, true);
     });
-    box(o - 22, 5, 72, 28, 10, 4);                                                   // palier des ascenseurs
+    box(o - 22, 5, 76, 28, 10, 4);                                                   // palier des ascenseurs
     SPEEDS.forEach(([nm, w], k) => {
       const x = o - 30 + k * 8;
-      box(x, 0.5, 66, 5, 1, 5, { stripe: true, move: (b, t) => { b.c.y = 0.5 + 4.75 * (1 - Math.cos(t * w * 1.1)); } });
+      box(x, 0.5, 70, 5, 1, 5, { stripe: true, move: (b, t) => { b.c.y = 0.5 + 4.75 * (1 - Math.cos(t * w * 1.1)); } });
+      label(nm, x, 0.03, 65.4, 3.6, 1.2, 150, Math.PI, true);
     });
-    box(o + 2, 0.75, 65, 10, 0.5, 10, { stripe: true, move: (b, t) => { b.yaw = t * 0.6; } });          // disques
-    box(o + 18, 0.75, 65, 10, 0.5, 10, { stripe: true, move: (b, t) => { b.yaw = -t * 1.5; } });
-    box(o + 32, 1.4, 65, 1, 2.8, 1);                                                 // barre tournante à grimper
-    box(o + 32, 3.2, 65, 12, 0.8, 0.8, { stripe: true, move: (b, t) => { b.yaw = t * 0.7; } });
+    // tapis roulants, de plus en plus rapides (ils ramènent vers l'allée)
+    [4, 8, 16, 28].forEach((v, k) => {
+      const x = 160 + k * 12;
+      beltAt(x - 2, x + 2, 30, 60, 0, -v);
+      label(String(v), x, 0.03, 26.6, 3, 1.4, 170, Math.PI, true);
+    });
   }
   return env;
+}
+// Sandbox : des chaînes de sauts au hasard (graine fixe) dans [x0, x1] × [z0, z1]. Chaque élément est posé à une
+// distance qu'on franchit d'un saut depuis le précédent (portée selon la différence de hauteur), loin des autres.
+function sandbox(x0, x1, z0, z1) {
+  let seed = 7051;
+  const R = () => (seed = (seed * 16807) % 2147483647) / 2147483647, rnd = (a, b) => a + (b - a) * R(), pick = a => a[Math.floor(R() * a.length)];
+  const placed = [];                                       // { x, z, r, y0, y1 } : emprise (cercle) de chaque élément
+  const ext = (e, ux, uz) => e.hx * Math.abs(ux * e.lx[0] + uz * e.lx[1]) + e.hz * Math.abs(ux * e.lz[0] + uz * e.lz[1]);
+  const KINDS = ['pilier', 'pilier', 'dalle', 'dalle', 'plot', 'poutre', 'lame', 'biais', 'biais', 'wrap', 'wrap', 'tour'];
+  for (let c = 0; c < 16; c++) {
+    // départ : un bloc bas, quelque part dans la zone
+    let prev = null, dir = rnd(0, Math.PI * 2);
+    for (let tr = 0; tr < 30 && !prev; tr++) {
+      const x = rnd(x0 + 6, x1 - 6), z = rnd(z0 + 6, z1 - 6), h = rnd(1.5, 3), s = rnd(4, 6);
+      if (placed.some(p => Math.hypot(p.x - x, p.z - z) < p.r + s + 2)) continue;
+      box(x, h / 2, z, s, h, s);
+      const me = { x, z, r: s * 0.71, own: c };
+      placed.push(me);
+      prev = { x, z, top: h, hx: s / 2, hz: s / 2, lx: [1, 0], lz: [0, 1], p: me };
+    }
+    if (!prev) continue;
+    const n = 12 + Math.floor(R() * 10);
+    for (let k = 0; k < n; k++) {
+      let ok = false;
+      for (let tr = 0; tr < 24 && !ok; tr++) {
+        const d = dir + rnd(-1.1, 1.1), ux = Math.sin(d), uz = Math.cos(d), kind = pick(KINDS);
+        let dh = Math.round(rnd(-1, 2.5) * 2) / 2;
+        if (prev.top + dh > 24) dh = -Math.abs(dh);
+        if (prev.top + dh < 1.5) dh = Math.abs(dh) + 0.5;
+        const top = prev.top + dh;
+        // l'élément, dans son repère : axe z le long de la direction (sauf les blocs en biais)
+        let e, yaw = d;
+        if (kind === 'pilier') { const s = rnd(3, 5); e = { hx: s / 2, hz: s / 2 }; }
+        else if (kind === 'dalle') { e = { hx: rnd(2, 3.5), hz: rnd(2, 3.5) }; }
+        else if (kind === 'plot') { e = { hx: 1, hz: 1 }; }
+        else if (kind === 'poutre') { e = { hx: 0.75, hz: rnd(3, 5) }; }
+        else if (kind === 'lame') { e = { hx: rnd(2, 3), hz: 0.65 }; }
+        else if (kind === 'biais') { yaw = d + pick([1, -1]) * rnd(0.3, 0.8); e = { hx: rnd(1.8, 3), hz: rnd(1.8, 3) }; }
+        else if (kind === 'wrap') { e = { hx: 2, hz: 7 }; }
+        else { e = { hx: 2, hz: 2 }; }
+        e.lx = [Math.cos(yaw), -Math.sin(yaw)]; e.lz = [Math.sin(yaw), Math.cos(yaw)];
+        const tower = kind === 'tour', eTop = tower ? prev.top + Math.round(rnd(6, 10)) : top;
+        if (tower && eTop > 26) continue;
+        // écart de bord à bord : un saut franc, sans être limite (une tour : on saute sur son échelle)
+        const reach = jumpReach(tower ? 0 : Math.max(dh, -6));
+        const gap = tower ? rnd(2.4, 3.2) : rnd(2.2, Math.max(2.4, reach - 2.2));
+        const dist = ext(prev, ux, uz) + gap + ext(e, ux, uz) + (tower ? 0.55 : 0);
+        const x = prev.x + ux * dist, z = prev.z + uz * dist, r = Math.hypot(e.hx, e.hz) + (kind === 'wrap' ? 6 : 0);
+        if (x - r < x0 || x + r > x1 || z - r < z0 || z + r > z1) continue;
+        if (placed.some(p => p !== prev.p && Math.hypot(p.x - x, p.z - z) < p.r + r + 2)) continue;
+        // posé
+        const opt = { yaw };
+        if (kind === 'pilier' || kind === 'lame' || tower) box(x, eTop / 2, z, e.hx * 2, eTop, e.hz * 2, opt);
+        else box(x, eTop - 0.5, z, e.hx * 2, 1, e.hz * 2, opt);
+        if (kind === 'wrap') {
+          // un mur en travers au milieu de la passerelle, qui dépasse de 0,5 d'un côté : on le contourne en l'air
+          const sd = pick([1, -1]), a = sd * 2.5, b = -sd * 8, lat = (a + b) / 2;
+          box(x + e.lx[0] * lat, eTop + 1.5, z + e.lx[1] * lat, Math.abs(a - b), 15, 1.5, opt);
+        }
+        if (tower) {
+          // échelle sur la face tournée vers l'élément d'avant
+          const fx = x - ux * (e.hz + 0.3), fz = z - uz * (e.hz + 0.3);
+          for (let y = eTop - 0.6; y >= Math.max(0.8, prev.top - 3); y -= 1.5) box(fx, y, fz, 3, 0.4, 0.5, opt);
+        }
+        const me = { x, z, r, own: c };
+        placed.push(me);
+        prev = { x, z, top: eTop, hx: e.hx, hz: e.hz, lx: e.lx, lz: e.lz, p: me };
+        dir = d; ok = true;
+      }
+      if (!ok) break;
+    }
+  }
 }
 
 function resetKin() {
