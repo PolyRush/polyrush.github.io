@@ -147,12 +147,14 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .tile.locked .corner{background:none;color:var(--lock)}
 .tile.locked .corner svg{width:80%;height:80%}
 .tile.locked:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
-/* niveaux difficiles : une bande « danger » rayée en bas de la tuile, une flamme dans le coin */
-.tile.hard::after{content:"";position:absolute;left:0;right:0;bottom:0;height:24%;border-top:2.5px solid var(--ink);background:repeating-linear-gradient(-45deg,var(--red) 0 7px,#fff 7px 14px)}
-.tile.hard .best{bottom:calc(24% + 7px)}
-.tile.hard.open .corner{background:var(--ink)}
-.tile.hard.open:hover .corner,.tile.hard.open:focus-visible .corner{background:#fff;color:var(--ink)}
-.tile.hard.locked::after{border-top-color:var(--lock);background:repeating-linear-gradient(-45deg,#f2c4bf 0 7px,transparent 7px 14px)}
+/* niveaux difficiles : la tuile noire s'embrase par le bas, le numéro rougeoie, une flamme dans le coin */
+.tile.hard.open{background:radial-gradient(120% 90% at 85% 110%,#c4271f 0%,#5a0f0b 45%,#1a0c0b 100%);color:#fff;border-color:var(--ink)}
+.tile.hard.open .num{text-shadow:0 0 14px rgba(255,90,70,.55)}
+.tile.hard.open .corner{background:#fff;color:var(--red-deep)}
+.tile.hard.open .best{color:#ffd0cb;opacity:.85}
+.tile.hard.open:hover .corner,.tile.hard.open:focus-visible .corner{background:var(--ink);color:#fff}
+.tile.hard.open:hover .best,.tile.hard.open:focus-visible .best{color:#fff}
+.tile.hard.locked{background:radial-gradient(120% 90% at 85% 110%,#e9b6b1 0%,#efe3e2 60%,var(--lock-bg) 100%)}
 .screen.show .tile.shake{animation:shake .42s ease}
 @keyframes shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .screen.show .tile{animation:tileIn .55s var(--ease-pop) backwards;animation-delay:calc(var(--i) * 38ms + 180ms)}
