@@ -7631,6 +7631,11 @@ async function acctUser(u) {
         await ref.set({ records: {}, seen: reset, maj: Date.now() }, { merge: true });
         await ref.update({ records: {} }).catch(() => {});
       }
+      // Remise à zéro de certains niveaux seulement : leurs records d'avant disparaissent (ici et sur le compte)
+      const lv = m.exists && m.data().resets || {}, seenLv = { ...(d.seenLv || {}) };
+      let cut = false;
+      for (const k in lv) if ((+seenLv[k] || 0) < +lv[k]) { delete records[k]; delete cloud[k]; seenLv[k] = +lv[k]; cut = true; }
+      if (cut) { saveRecords(); await ref.update({ records: { ...cloud }, seenLv, maj: Date.now() }).catch(() => ref.set({ records: { ...cloud }, seenLv, maj: Date.now() }, { merge: true })); }
     } catch (e) { console.warn(e); }
     // Records : le meilleur temps de chaque côté (ce navigateur et le compte)
     let push = !snap.exists;
@@ -7648,7 +7653,7 @@ async function acctUser(u) {
 }
 async function adminResetAll() {
   const db = ACCT.db, now = Date.now();
-  await db.collection('meta').doc('board').set({ reset: now });   // d'abord : plus personne ne renvoie ses anciens temps
+  await db.collection('meta').doc('board').set({ reset: now }, { merge: true });   // d'abord : plus personne ne renvoie ses anciens temps
   let k = 0;
   for (const n of boardLevels().map(bkey)) for (const col of ['scores', 'ghosts']) {
     try {
@@ -7659,6 +7664,27 @@ async function adminResetAll() {
   }
   records = {}; saveRecords(); buildLevelGrid();
   try { await db.collection('users').doc(ACCT.user.uid).set({ records: {}, seen: now, maj: now }, { merge: true }); await db.collection('users').doc(ACCT.user.uid).update({ records: {} }); } catch (e) { console.warn(e); }
+  return k;
+}
+// Remise à zéro de quelques niveaux : classement et replays effacés ; avec « recs », les records des joueurs aussi
+// (chacun perd son record de ces niveaux à sa prochaine connexion)
+async function adminResetLevels(list, recs) {
+  const db = ACCT.db, now = Date.now();
+  let k = 0;
+  if (recs) {
+    const upd = {}; for (const n of list) upd[String(recKey(n))] = now;
+    await db.collection('meta').doc('board').set({ resets: upd }, { merge: true });
+    for (const n of list) delete records[recKey(n)];
+    saveRecords(); buildLevelGrid();
+    try { await db.collection('users').doc(ACCT.user.uid).update({ records: { ...records }, maj: now }); } catch (e) { console.warn(e); }
+  }
+  for (const n of list) for (const col of ['scores', 'ghosts']) {
+    try {
+      const snap = await db.collection(col).doc(bkey(n)).collection('runs').get();
+      await Promise.all(snap.docs.map(x => db.collection(col).doc(bkey(n)).collection('runs').doc(x.id).delete()));
+      if (col === 'scores') k += snap.docs.length;
+    } catch (e) { console.warn(e); }
+  }
   return k;
 }
 // Met au classement les records de ce compte qui battent ce qui y est déjà (force : réécrit le pseudo partout)
@@ -7831,27 +7857,75 @@ function acctRender() {
     out.addEventListener('click', () => acctDo(async () => { await ACCT.auth.signOut(); records = {}; saveRecords(); buildLevelGrid(); ACCT.view = 'login'; acctRender(); }));
     row.append(ch, out); c.appendChild(row);
     if (isAdmin()) {
-      // Admin : vider le classement de tous les niveaux (et les replays) ; chaque joueur repart de zéro à sa prochaine connexion
-      c.appendChild(mkEl('div', 'acct-sec', 'Admin'));
-      const rs = mkEl('button', 'ed-btn danger', 'Réinitialiser tous les scores');
-      let armed = 0;
-      rs.addEventListener('click', () => {
-        if (!armed) { rs.textContent = 'Confirmer : tout effacer pour tout le monde ?'; rs.classList.add('armed'); armed = setTimeout(() => { armed = 0; rs.textContent = 'Réinitialiser tous les scores'; rs.classList.remove('armed'); }, 4000); return; }
-        clearTimeout(armed); armed = 0;
-        acctDo(async () => { const k = await adminResetAll(); acctRender(); acctMsg(`Classement remis à zéro (${k} temps effacés).`, true); });
-      });
-      // Replays : visibles par tous les joueurs, ou seulement par l'admin
-      const tg = mkEl('button', 'acct-toggle' + (ACCT.replays ? ' on' : ''));
-      tg.setAttribute('role', 'switch'); tg.setAttribute('aria-checked', String(!!ACCT.replays));
-      tg.append(mkEl('span', null, 'Replays visibles par tous'), mkEl('i'));
-      tg.addEventListener('click', () => acctDo(async () => {
-        const v = !ACCT.replays;
-        await ACCT.db.collection('meta').doc('board').set({ replays: v }, { merge: true });
-        ACCT.replays = v; acctRender(); acctMsg(v ? 'Tout le monde peut voir les replays.' : 'Les replays ne sont visibles que par toi.', true);
-      }));
-      c.appendChild(tg);
-      c.appendChild(rs);
+      const ad = mkEl('button', 'ed-btn primary', 'Panneau admin');
+      ad.addEventListener('click', () => { ACCT.view = 'admin'; acctRender(); });
+      c.appendChild(ad);
     }
+  } else if (v === 'admin' && isAdmin()) {
+    // Panneau admin : niveau de la semaine, replays, remises à zéro
+    c.appendChild(mkEl('h2', null, 'Panneau admin'));
+    const back = mkEl('button', 'acct-link', '← Mon compte');
+    back.addEventListener('click', () => { ACCT.view = 'me'; acctRender(); }); c.appendChild(back);
+    const toggle = (label, on, fn) => {
+      const tg = mkEl('button', 'acct-toggle' + (on ? ' on' : ''));
+      tg.setAttribute('role', 'switch'); tg.setAttribute('aria-checked', String(!!on));
+      tg.append(mkEl('span', null, label), mkEl('i'));
+      tg.addEventListener('click', () => acctDo(fn)); return tg;
+    };
+    const confirmBtn = (txt, ask, cls, fn) => {      // un premier clic arme le bouton, un second confirme
+      const b = mkEl('button', 'ed-btn ' + cls, txt); let armed = 0;
+      b.addEventListener('click', () => {
+        if (!armed) { b.textContent = ask; b.classList.add('armed'); armed = setTimeout(() => { armed = 0; b.textContent = txt; b.classList.remove('armed'); }, 4000); return; }
+        clearTimeout(armed); armed = 0; acctDo(fn);
+      });
+      return b;
+    };
+    // Niveau de la semaine
+    c.appendChild(mkEl('div', 'acct-sec', 'Niveau de la semaine'));
+    const wi = WEEKLY && WEEKLY.info;
+    c.appendChild(mkEl('p', 'acct-p', WEEKLY ? `S${weekNum(WEEKLY.created)} · tiré le ${new Date(WEEKLY.created).toLocaleDateString('fr-FR')}${wi ? ` · robot : ${String(wi.t).replace('.', ',')} s` : ''}` : 'Aucun niveau tiré pour l’instant.'));
+    if (WEEKLY) c.appendChild(toggle('Visible par tous', WEEKLY.pub, async () => {
+      const v2 = !WEEKLY.pub;
+      await ACCT.db.collection('meta').doc('weekly').set({ pub: v2 }, { merge: true });
+      WEEKLY.pub = v2; weeklyMenu(); acctRender(); acctMsg(v2 ? 'Le niveau de la semaine est visible par tous.' : 'Le niveau de la semaine est caché.', true);
+    }));
+    const rr = mkEl('button', 'ed-btn', WEEKLY ? 'Nouveau tirage' : 'Tirer un niveau');
+    rr.addEventListener('click', () => { acctClose(); if (UI.mode === 'menu') rerollWeekly(); });
+    c.appendChild(rr);
+    // Replays
+    c.appendChild(mkEl('div', 'acct-sec', 'Replays'));
+    c.appendChild(toggle('Replays visibles par tous', ACCT.replays, async () => {
+      const v2 = !ACCT.replays;
+      await ACCT.db.collection('meta').doc('board').set({ replays: v2 }, { merge: true });
+      ACCT.replays = v2; acctRender(); acctMsg(v2 ? 'Tout le monde peut voir les replays.' : 'Les replays ne sont visibles que par toi.', true);
+    }));
+    // Remises à zéro : les niveaux choisis, ou tout
+    c.appendChild(mkEl('div', 'acct-sec', 'Remettre à zéro'));
+    const A = ACCT.adm || (ACCT.adm = { sel: new Set(), recs: false });
+    const lvls = boardLevels().sort((p, q) => p - q), chips = mkEl('div', 'chips acct-lv');
+    for (const n of lvls) {
+      const bt = mkEl('button', A.sel.has(n) ? 'on' : '', n === WEEKLY_N ? 'Semaine' : String(n));
+      bt.addEventListener('click', () => { A.sel.has(n) ? A.sel.delete(n) : A.sel.add(n); acctRender(); });
+      chips.appendChild(bt);
+    }
+    const all = mkEl('button', A.sel.size === lvls.length ? 'on' : '', 'Tous');
+    all.addEventListener('click', () => { if (A.sel.size === lvls.length) A.sel.clear(); else for (const n of lvls) A.sel.add(n); acctRender(); });
+    chips.appendChild(all); c.appendChild(chips);
+    const rc = mkEl('button', 'acct-toggle' + (A.recs ? ' on' : ''));
+    rc.setAttribute('role', 'switch'); rc.setAttribute('aria-checked', String(A.recs));
+    rc.append(mkEl('span', null, 'Effacer aussi les records des joueurs'), mkEl('i'));
+    rc.addEventListener('click', () => { A.recs = !A.recs; acctRender(); });
+    c.appendChild(rc);
+    const n = A.sel.size, what = A.recs ? 'classement, replays et records' : 'classement et replays';
+    const go = confirmBtn(n ? `Effacer : ${what} (${n} niveau${n > 1 ? 'x' : ''})` : 'Choisis des niveaux', 'Confirmer ?', 'danger', async () => {
+      if (!A.sel.size) return;
+      const k = await adminResetLevels([...A.sel], A.recs);
+      A.sel.clear(); acctRender(); acctMsg(`Remis à zéro (${k} temps effacés).`, true);
+    });
+    go.disabled = !n; c.appendChild(go);
+    c.appendChild(confirmBtn('Tout réinitialiser pour tout le monde', 'Confirmer : tout effacer pour tout le monde ?', 'danger', async () => {
+      const k = await adminResetAll(); acctRender(); acctMsg(`Classement remis à zéro (${k} temps effacés).`, true);
+    }));
   } else if (v === 'board') {
     c.appendChild(mkEl('h2', null, 'Classement'));
     const chips = mkEl('div', 'chips acct-lv');
