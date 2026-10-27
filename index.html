@@ -2478,7 +2478,7 @@ function buildCustom(n, data) {
   // et enfin un trou partout où le parcours reste dans l'ombre. Les trous restent au-dessus de la salle.
   const mid = q => [(q.x0 + q.x1) / 2, (q.z0 + q.z1) / 2];
   // plus la salle est grande, plus les trous sont grands (et espacés) : une immense salle reste bien éclairée
-  const LK = clamp(Math.sqrt((R.x1 - R.x0) * (R.z1 - R.z0)) / 105, 1, 4);
+  const LK = clamp((Math.sqrt((R.x1 - R.x0) * (R.z1 - R.z0)) - 100) / 40, 1, 7);   // moyenne : 1 · immense : ~5,5 (un bon quart du plafond ouvert)
   const spots = [dep, arr];
   for (const q of Q.filter(q => q.b.type !== 'depart' && q.b.type !== 'arrivee' && q.y1 < R.top - 4).sort((a, c) => (c.x1 - c.x0) * (c.z1 - c.z0) - (a.x1 - a.x0) * (a.z1 - a.z0))) {
     if (spots.length >= 16) break;
