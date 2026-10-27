@@ -58,6 +58,8 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 #joy{position:fixed;width:110px;height:110px;margin:-55px 0 0 -55px;border-radius:50%;border:2px solid var(--line);background:rgba(255,255,255,.35);pointer-events:none}
 #joy i{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:var(--key);border:2px solid var(--line)}
 #gear,#menu{z-index:40}
+#vign{position:fixed;inset:0;pointer-events:none;z-index:1;background:radial-gradient(120% 95% at 50% 45%,rgba(20,26,38,0) 55%,rgba(20,26,38,.16) 100%)}
+#bWeekly .tx{font-size:.8em;white-space:nowrap}
 #toast{z-index:56} #flash{z-index:14}   /* le message passe au-dessus des menus (et de leur flou) */
 .close + .close{margin-top:-6px}
 .close.danger{background:var(--card);color:var(--red-deep);border-color:var(--red-deep);transition:background .2s,color .2s}
@@ -487,6 +489,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 <div id="cross" hidden></div>
 <div id="toast" class="card" style="opacity:0"></div>
 <div id="flash"></div>
+<div id="vign" aria-hidden="true"></div>
 <button id="bJump" class="tbtn" hidden>Sauter</button>
 <button id="bSL" class="tbtn" hidden>Camera<br>lock</button>
 <div id="joy" hidden><i></i></div>
@@ -707,6 +710,17 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 <script>
 (() => {
 'use strict';
+
+// ----- Rendu : brume de profondeur. Sous le niveau du sol, tout se fond peu à peu dans une brume bleutée (le vide
+// fonce vers le bas, les dessus où l'on marche restent blancs). Ajoutée au brouillard de three.js : toutes les
+// matières qui ont du brouillard en profitent, pour un coût nul (quelques opérations par pixel).
+{
+  const SC = THREE.ShaderChunk;
+  SC.fog_pars_vertex = SC.fog_pars_vertex.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\tvarying float vFogWorldY;');
+  SC.fog_vertex = SC.fog_vertex.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\t{ vec4 hwp = vec4(transformed, 1.0);\n\t#ifdef USE_INSTANCING\n\thwp = instanceMatrix * hwp;\n\t#endif\n\tvFogWorldY = (modelMatrix * hwp).y; }');
+  SC.fog_pars_fragment = SC.fog_pars_fragment.replace('#ifdef USE_FOG', '#ifdef USE_FOG\n\tvarying float vFogWorldY;');
+  SC.fog_fragment = SC.fog_fragment.replace(/#endif\s*$/, '\tfloat hFog = (1.0 - smoothstep(-38.0, 1.0, vFogWorldY)) * 0.72;\n\tgl_FragColor.rgb = mix(gl_FragColor.rgb, fogColor * vec3(0.66, 0.72, 0.82), hFog);\n#endif');
+}
 
 /* ---------- Réglages ----------
    Modèle inspiré du contrôleur de personnage de Roblox : le corps est un vrai solide
@@ -2533,8 +2547,8 @@ function setEnv(env) {
   scene.background.set(cave ? 0xf8f8f8 : 0xeef1f4);
   scene.fog.color.set(cave ? 0xececec : 0xeef1f4);
   [scene.fog.near, scene.fog.far] = cave ? env.fog : [170, 520];
-  hemi.color.set(0xffffff); hemi.groundColor.set(cave ? (env.bright ? 0xd2d2d2 : 0xcacaca) : 0xc9d0d8); hemi.intensity = cave ? (env.bright ? 0.98 : 0.94) : 0.55;   // ombres claires : une ambiance blanche, pas grise
-  sun.color.set(0xffffff); sun.intensity = cave ? 1.0 : 0.7;
+  hemi.color.set(0xffffff); hemi.groundColor.set(cave ? (env.bright ? 0xbcc6d4 : 0xb4becc) : 0xc9d0d8);   // ombres légèrement froides hemi.intensity = cave ? (env.bright ? 0.98 : 0.94) : 0.55;   // ombres claires : une ambiance blanche, pas grise
+  sun.color.set(0xfff3e4);   // soleil un peu chaud sun.intensity = cave ? 1.0 : 0.7;
   const sc = sun.shadow.camera;
   if (cave) {
     // Ombre fixe qui couvre toute la salle : le plafond doit faire de l'ombre partout, pas seulement près du perso.
