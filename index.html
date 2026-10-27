@@ -965,13 +965,15 @@ function touchGroups(list) {
   list.forEach((s, i) => { const r = f(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(s); });
   return [...groups.values()];
 }
-function unionGrid(boxes, grow) {
-  const uniq = arr => { arr.sort((p, q) => p - q); const o = []; for (const v of arr) if (!o.length || v - o[o.length - 1] > 1e-5) o.push(v); return o; };
+// tol : deux bornes plus proches que ça n'en font qu'une (dans un repère tourné, les positions arrondies au centième
+// ne tombent plus pile : des blocs qui se touchent laisseraient une fente d'un cheveu, avec ses traits)
+function unionGrid(boxes, grow, tol = 1e-5) {
+  const uniq = arr => { arr.sort((p, q) => p - q); const o = []; for (const v of arr) if (!o.length || v - o[o.length - 1] > tol) o.push(v); return o; };
   const X = [], Y = [], Z = [];
   for (const { b } of boxes) { X.push(b.c.x - b.h.x - grow, b.c.x + b.h.x + grow); Y.push(b.c.y - b.h.y - grow, b.c.y + b.h.y + grow); Z.push(b.c.z - b.h.z - grow, b.c.z + b.h.z + grow); }
   const A = [uniq(X), uniq(Y), uniq(Z)], n = A.map(v => v.length - 1);
   if (n[0] * n[1] * n[2] > 3e6) return { A, n, at: () => 0 };
-  const find = (arr, v) => { let lo = 0, hi = arr.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < v - 1e-5) lo = m + 1; else hi = m; } return lo; };
+  const find = (arr, v) => { let lo = 0, hi = arr.length - 1; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m] < v - tol) lo = m + 1; else hi = m; } return lo; };
   const cell = new Int32Array(n[0] * n[1] * n[2]);                // numéro du bloc + 1, 0 = vide
   const id = (i, j, k) => (i * n[1] + j) * n[2] + k;
   boxes.forEach(({ b }, m) => {
@@ -1094,6 +1096,62 @@ function prismGroups(list) {
   list.forEach((s, i) => { const r = f(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(s); });
   return [...groups.values()];
 }
+// Calcul dans un repère tourné de θ autour de la verticale : run(boxes tournés, sorties temporaires) remplit des
+// tampons, que l'on remet ensuite dans le monde (positions, normales, arêtes).
+function rotBoxes(boxes, th) {
+  const c = Math.cos(th), s = Math.sin(th);
+  return boxes.map(o => {
+    const b = o.b, y = Math.atan2(b.sn, b.cs) + th;
+    let cs = Math.cos(y), sn = Math.sin(y), h = b.h;
+    // presque aligné : on aligne exactement (un quart de tour échange largeur et profondeur)
+    const q = Math.round(y / (Math.PI / 2));
+    if (Math.abs(y - q * Math.PI / 2) < 1e-6) { cs = 1; sn = 0; if (q % 2) h = { x: b.h.z, y: b.h.y, z: b.h.x }; }
+    return { ...o, b: { ...b, c: { x: b.c.x * c + b.c.z * s, y: b.c.y, z: -b.c.x * s + b.c.z * c }, h, cs, sn, ax: [cs, 0, -sn], az: [sn, 0, cs] } };
+  });
+}
+function inFrame(th, out, E, run) {
+  if (th === 0) return run(out, E);
+  const c = Math.cos(th), s = Math.sin(th);
+  const T = { pos: [], nrm: out.nrm ? [] : null, col: [], bid: [], idx: [] }, TE = E ? { pos: [], bid: [] } : null;
+  if (run(T, TE) === false) return false;
+  const back = (src, dst) => { for (let i = 0; i < src.length; i += 3) { const x = src[i], z = src[i + 2]; dst.push(x * c - z * s, src[i + 1], x * s + z * c); } };
+  const base = out.pos.length / 3;
+  back(T.pos, out.pos);
+  if (out.nrm) back(T.nrm, out.nrm);
+  if (out.col) for (const v of T.col) out.col.push(v);
+  for (const v of T.bid) out.bid.push(v);
+  for (const v of T.idx) out.idx.push(v + base);
+  if (E) { back(TE.pos, E.pos); for (const v of TE.bid) E.bid.push(v); }
+  return true;
+}
+// Tous les blocs du groupe ont le même lacet (à un quart de tour près) ? Renvoie ce lacet, sinon null.
+function commonYaw(boxes) {
+  const Q = Math.PI / 2, y0 = Math.atan2(boxes[0].b.sn, boxes[0].b.cs);
+  for (const { b } of boxes) { const d = Math.atan2(b.sn, b.cs) - y0, r = d - Math.round(d / Q) * Q; if (Math.abs(r) > 1e-6) return null; }
+  return y0;
+}
+// Le découpage en bandes verticales supporte mal les arêtes presque verticales (un bloc tourné de 1° : pente énorme,
+// la moindre erreur d'abscisse décale tout en z). On le fait donc dans un repère tourné de θ, choisi pour que chaque
+// arête soit soit exactement parallèle à un axe, soit bien penchée.
+function prismAngle(boxes) {
+  const D = Math.PI / 180, yaws = boxes.map(({ b }) => Math.atan2(b.sn, b.cs));
+  const score = th => {
+    let m = Infinity;
+    for (const y of yaws) { const a = ((((y + th) / D) % 90) + 90) % 90, d = Math.min(a, 90 - a); if (d > 1e-4) m = Math.min(m, d); }
+    return m;
+  };
+  let th = 0, best = score(0);
+  if (best < 12) {
+    const cand = yaws.map(y => -y);
+    for (let k = 0; k < 180; k++) cand.push(k * 0.5 * D);
+    for (const c of cand) { const v = score(c); if (v > best + 1e-9) { best = v; th = c; } }
+  }
+  return th;
+}
+function prismUnionAny(boxes, grow, out, withColor, E) {
+  const th = prismAngle(boxes);
+  return inFrame(th, out, E, (o, e) => prismUnion(th ? rotBoxes(boxes, th) : boxes, grow, o, withColor, e));
+}
 // Coins vus de dessus d'un bloc (lacet seulement), gonflé de g : [x, z] × 4, dans l'ordre du pourtour
 function prismPts(b, g) {
   const hx = b.h.x + g, hz = b.h.z + g, out = [];
@@ -1104,7 +1162,7 @@ function prismPts(b, g) {
 // Maillage de l'union d'un groupe de blocs : faces (et arêtes si E) dans out. grow gonfle les blocs (contour noir).
 // Renvoie false si le groupe est trop compliqué (on garde alors les blocs séparés).
 function prismUnion(boxes, grow, out, withColor, E) {
-  const TX = 3e-3, TZ = 6e-3, TY = 1e-4, M = 0.02;
+  const TX = 0.012, TZ = 0.012, TY = 1e-4, M = 1e-3;   // M : marge du test « ce trapèze est dans ce bloc » (à 0,02, des pans fantômes sortaient des coins)
   const P = boxes.map(s => {
     const b = s.b;
     return { b, s, pts: prismPts(b, grow), y0: b.c.y - b.h.y - grow, y1: b.c.y + b.h.y + grow, hx: b.h.x + grow + M, hz: b.h.z + grow + M };
@@ -1312,19 +1370,21 @@ function buildStaticSet(list, merge, cast) {
   }
   for (const s of single) addSingle(s);
   // Fusion par groupe de blocs qui se touchent (un grand niveau reste rapide) ; un groupe démesuré reste en blocs séparés.
-  const gridUnion = comp => {
-    const G0 = unionGrid(comp, 0);
+  const gridUnion = (comp, th = 0) => {
+    const rc = th ? rotBoxes(comp, th) : comp;
+    const tol = th ? 0.02 : 1e-5, G0 = unionGrid(rc, 0, tol);
     if (G0.n[0] * G0.n[1] * G0.n[2] > 3e6) { for (const s of comp) addSingle(s); return; }
-    unionFaces(G0, comp, F, true);
-    unionFaces(unionGrid(comp, OUT), comp, H, false);
-    unionEdges(G0, comp, E);
+    inFrame(th, F, E, (o, e) => { unionFaces(G0, rc, o, true); unionEdges(G0, rc, e); });
+    inFrame(th, H, null, o => unionFaces(unionGrid(rc, OUT, tol), rc, o, false));
   };
   // Blocs tournés : un groupe qui en contient passe par le découpage en trapèzes (tous les angles) ; un groupe
   // tout droit garde la grille.
   if (merge === 2) for (const comp of prismGroups(aligned.concat(turned))) {
+    const cy = commonYaw(comp);
     if (comp.every(s => Math.abs(s.b.sn) < 1e-6)) gridUnion(comp);
-    else if (comp.length < 2 || !prismUnion(comp, 0, F, true, E)) for (const s of comp) addSingle(s);
-    else prismUnion(comp, OUT, H, false, null);
+    else if (comp.length > 1 && cy !== null) gridUnion(comp, -cy);      // tous tournés pareil : grille exacte dans leur repère
+    else if (comp.length < 2 || !prismUnionAny(comp, 0, F, true, E)) for (const s of comp) addSingle(s);
+    else prismUnionAny(comp, OUT, H, false, null);
   }
   else for (const comp of touchGroups(aligned)) gridUnion(comp);
   for (const s of aligned) if (s.seam) boxEdges(s.b);
