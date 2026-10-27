@@ -1031,10 +1031,231 @@ function unionEdges(G, boxes, out) {
     }
   }
 }
+// Union de blocs tournés (lacet seulement) : prismes verticaux. Vue de dessus, on découpe le plan en bandes
+// verticales aux abscisses de tous les coins et de tous les croisements d'arêtes ; dans une bande, les arêtes ne se
+// croisent plus et découpent des trapèzes. Ce découpage est commun à toutes les tranches de hauteur : on marque les
+// trapèzes pleins de chaque tranche, et on ne garde que les faces entre un plein et un vide (comme unionGrid).
+// Le maillage est fermé, sans jointure en T : chaque côté de trapèze garde un sommet à chaque coupure voisine.
+function prismGroups(list) {
+  const par = list.map((_, i) => i), f = i => { while (par[i] !== i) i = par[i] = par[par[i]]; return i; };
+  const cell = 24, grid = new Map(), E = 0.01;
+  const info = list.map(({ b }) => {
+    const ex = Math.abs(b.ax[0]) * b.h.x + Math.abs(b.az[0]) * b.h.z, ez = Math.abs(b.ax[2]) * b.h.x + Math.abs(b.az[2]) * b.h.z;
+    return { ex, ez, pts: prismPts(b, 0) };
+  });
+  list.forEach(({ b }, i) => {
+    const q = info[i];
+    for (let gx = Math.floor((b.c.x - q.ex) / cell); gx <= Math.floor((b.c.x + q.ex) / cell); gx++)
+      for (let gz = Math.floor((b.c.z - q.ez) / cell); gz <= Math.floor((b.c.z + q.ez) / cell); gz++) {
+        const k = gx + ',' + gz; if (!grid.has(k)) grid.set(k, []); grid.get(k).push(i);
+      }
+  });
+  const gap = (P, Q) => {     // écart de séparation de deux quadrilatères convexes (négatif : ils se chevauchent)
+    let g = -Infinity;
+    for (const S of [P, Q]) for (let i = 0; i < 2; i++) {
+      const a = S[i], c = S[i + 1], nx = c[1] - a[1], nz = a[0] - c[0], L = Math.hypot(nx, nz) || 1;
+      let p0 = Infinity, p1 = -Infinity, q0 = Infinity, q1 = -Infinity;
+      for (const v of P) { const d = (v[0] * nx + v[1] * nz) / L; if (d < p0) p0 = d; if (d > p1) p1 = d; }
+      for (const v of Q) { const d = (v[0] * nx + v[1] * nz) / L; if (d < q0) q0 = d; if (d > q1) q1 = d; }
+      g = Math.max(g, q0 - p1, p0 - q1);
+    }
+    return g;
+  };
+  for (const ids of grid.values()) for (let a = 0; a < ids.length; a++) for (let c = a + 1; c < ids.length; c++) {
+    const i = ids[a], j = ids[c], p = list[i].b, q = list[j].b, A = info[i], B = info[j];
+    if (f(i) === f(j)) continue;
+    if (Math.abs(p.c.y - q.c.y) > p.h.y + q.h.y + E || Math.abs(p.c.x - q.c.x) > A.ex + B.ex + E || Math.abs(p.c.z - q.c.z) > A.ez + B.ez + E) continue;
+    if (gap(A.pts, B.pts) <= E) par[f(i)] = f(j);
+  }
+  const groups = new Map();
+  list.forEach((s, i) => { const r = f(i); if (!groups.has(r)) groups.set(r, []); groups.get(r).push(s); });
+  return [...groups.values()];
+}
+// Coins vus de dessus d'un bloc (lacet seulement), gonflé de g : [x, z] × 4, dans l'ordre du pourtour
+function prismPts(b, g) {
+  const hx = b.h.x + g, hz = b.h.z + g, out = [];
+  for (const [sx, sz] of [[1, 1], [1, -1], [-1, -1], [-1, 1]])
+    out.push([b.c.x + sx * hx * b.ax[0] + sz * hz * b.az[0], b.c.z + sx * hx * b.ax[2] + sz * hz * b.az[2]]);
+  return out;
+}
+// Maillage de l'union d'un groupe de blocs : faces (et arêtes si E) dans out. grow gonfle les blocs (contour noir).
+// Renvoie false si le groupe est trop compliqué (on garde alors les blocs séparés).
+function prismUnion(boxes, grow, out, withColor, E) {
+  const TX = 3e-3, TZ = 6e-3, TY = 1e-4, M = 0.02;
+  const P = boxes.map(s => {
+    const b = s.b;
+    return { b, s, pts: prismPts(b, grow), y0: b.c.y - b.h.y - grow, y1: b.c.y + b.h.y + grow, hx: b.h.x + grow + M, hz: b.h.z + grow + M };
+  });
+  const uniq = (arr, t) => { arr.sort((p, q) => p - q); const o = []; for (const v of arr) if (!o.length || v - o[o.length - 1] > t) o.push(v); return o; };
+  // arêtes (non verticales) et abscisses de coupure
+  const edges = [], X = [];
+  for (const p of P) for (let i = 0; i < 4; i++) {
+    const a = p.pts[i], c = p.pts[(i + 1) % 4];
+    X.push(a[0]);
+    if (Math.abs(c[0] - a[0]) <= TX) continue;
+    const [l, r] = a[0] < c[0] ? [a, c] : [c, a];
+    edges.push({ x0: l[0], z0: l[1], x1: r[0], z1: r[1], k: (r[1] - l[1]) / (r[0] - l[0]) });
+  }
+  if (edges.length > 2400) return false;
+  for (let i = 0; i < edges.length; i++) for (let j = i + 1; j < edges.length; j++) {
+    const e = edges[i], g = edges[j], lo = Math.max(e.x0, g.x0), hi = Math.min(e.x1, g.x1);
+    if (hi - lo <= TX || Math.abs(e.k - g.k) < 1e-9) continue;
+    const x = (g.z0 - g.k * g.x0 - e.z0 + e.k * e.x0) / (e.k - g.k);
+    if (x > lo + TX && x < hi - TX) X.push(x);
+  }
+  const xs = uniq(X, TX), Ys = uniq(P.flatMap(p => [p.y0, p.y1]), TY), ny = Ys.length - 1;
+  const zAt = (e, x) => e.z0 + (x - e.x0) * e.k;
+  // bandes : arêtes triées de bas en haut
+  const strips = [];
+  for (let i = 0; i + 1 < xs.length; i++) {
+    const xa = xs[i], xb = xs[i + 1];
+    const segs = edges.filter(e => e.x0 <= xa + TX && e.x1 >= xb - TX).map(e => ({ zl: zAt(e, xa), zr: zAt(e, xb) }));
+    strips.push({ xa, xb, segs });
+  }
+  // coupures sur chaque ligne verticale x = xs[i] : bouts des arêtes des deux bandes voisines
+  const brk = xs.map((x, i) => {
+    const z = [];
+    if (i > 0) for (const s of strips[i - 1].segs) z.push(s.zr);
+    if (i < strips.length) for (const s of strips[i].segs) z.push(s.zl);
+    return uniq(z, TZ);
+  });
+  // chaque bout d'arête prend exactement la valeur de sa coupure : les faces voisines partagent les mêmes sommets ;
+  // deux arêtes confondues n'en font plus qu'une. Puis les trapèzes entre deux arêtes, et les blocs qui les couvrent.
+  const snap = (arr, v) => { let b = arr[0]; for (const w of arr) if (Math.abs(w - v) < Math.abs(b - v)) b = w; return b; };
+  let nCell = 0;
+  strips.forEach((st, i) => {
+    let segs = st.segs;
+    for (const s of segs) { s.zl = snap(brk[i], s.zl); s.zr = snap(brk[i + 1], s.zr); }
+    segs.sort((p, q) => (p.zl + p.zr) - (q.zl + q.zr) || p.zl - q.zl);
+    // deux arêtes qui se croisent tout près du bord de la bande : elles s'y rejoignent (jamais dans le désordre)
+    for (let j = 1; j < segs.length; j++) { if (segs[j].zl < segs[j - 1].zl) segs[j].zl = segs[j - 1].zl; if (segs[j].zr < segs[j - 1].zr) segs[j].zr = segs[j - 1].zr; }
+    segs = st.segs = segs.filter((s, j) => !j || s.zl !== segs[j - 1].zl || s.zr !== segs[j - 1].zr);
+    const cells = [null], xm = (st.xa + st.xb) / 2;
+    for (let j = 0; j + 1 < segs.length; j++) {
+      const zm = (segs[j].zl + segs[j].zr + segs[j + 1].zl + segs[j + 1].zr) / 4, cov = [];
+      for (let m = 0; m < P.length; m++) {
+        const b = P[m].b, dx = xm - b.c.x, dz = zm - b.c.z;
+        if (Math.abs(dx * b.ax[0] + dz * b.ax[2]) <= P[m].hx && Math.abs(dx * b.az[0] + dz * b.az[2]) <= P[m].hz) cov.push(m);
+      }
+      cells.push(cov.length ? cov : null);
+    }
+    cells.push(null);
+    st.cells = cells; nCell += cells.length;
+  });
+  if (nCell * ny > 4e6) return false;
+  // tranche k : le bloc qui remplit la case (index + 1), ou 0
+  const active = P.map(p => { const a = new Uint8Array(ny); for (let k = 0; k < ny; k++) a[k] = p.y0 <= Ys[k] + TY && p.y1 >= Ys[k + 1] - TY ? 1 : 0; return a; });
+  const own = (cov, k) => { if (!cov || k < 0 || k >= ny) return 0; for (const m of cov) if (active[m][k]) return m + 1; return 0; };
+  const cellAt = (st, side, z) => { let c = 0; for (const s of st.segs) if ((side ? s.zr : s.zl) < z) c++; return st.cells[c]; };
+  const col = new THREE.Color();
+  const vtx = (x, y, z, nx, ny2, nz, m) => {
+    out.pos.push(x, y, z);
+    if (out.nrm) out.nrm.push(nx, ny2, nz);
+    if (withColor) { col.set(P[m - 1].s.color); out.col.push(col.r, col.g, col.b); }
+    out.bid.push(P[m - 1].b.bid);
+  };
+  // mur : quadrilatère vertical de (x0, z0) à (x1, z1), normale (nx, nz)
+  const wall = (x0, z0, x1, z1, y0, y1, nx, nz, m) => {
+    if ((z1 - z0) * nx - (x1 - x0) * nz < 0) { [x0, x1] = [x1, x0]; [z0, z1] = [z1, z0]; }   // sens direct vu de dehors
+    const base = out.pos.length / 3;
+    vtx(x0, y0, z0, nx, 0, nz, m); vtx(x1, y0, z1, nx, 0, nz, m); vtx(x1, y1, z1, nx, 0, nz, m); vtx(x0, y1, z0, nx, 0, nz, m);
+    out.idx.push(base, base + 2, base + 1, base, base + 3, base + 2);
+  };
+  const line = (x0, y0, z0, x1, y1, z1, m) => { E.pos.push(x0, y0, z0, x1, y1, z1); const id = P[m - 1].b.bid; E.bid.push(id, id); };
+  const crease = (a0, b0, a1, b1) => {   // a : un côté, b : l'autre ; 0 : dessous, 1 : dessus
+    const A = !!a0, B = !!b0, Cc = !!a1, D = !!b1, n = A + B + Cc + D;
+    return n > 0 && !(n === 4 || (n === 2 && ((A && B) || (Cc && D) || (A && Cc) || (B && D))));
+  };
+  const pieces = E ? Array.from({ length: ny }, () => []) : null;   // bouts de murs de chaque tranche (pour les arêtes verticales)
+  // murs le long des arêtes, et dessus / dessous des trapèzes
+  for (const st of strips) {
+    const { xa, xb, segs, cells } = st;
+    for (let j = 0; j < segs.length; j++) {
+      const s = segs[j], lo = cells[j], hi = cells[j + 1];
+      const L = Math.hypot(xb - xa, s.zr - s.zl), tx = (xb - xa) / L, tz = (s.zr - s.zl) / L;   // normale vers le haut (z+) : (-tz, tx)
+      for (let k = 0; k < ny; k++) {
+        const a = own(lo, k), c = own(hi, k);
+        if (!a !== !c) {
+          const sg = a ? 1 : -1;
+          wall(xa, s.zl, xb, s.zr, Ys[k], Ys[k + 1], -tz * sg, tx * sg, a || c);
+          if (pieces) pieces[k].push([xa, s.zl, xb, s.zr, -tz * sg, tx * sg, a || c]);
+        }
+      }
+      if (E) for (let k = 0; k <= ny; k++) {
+        const a0 = own(lo, k - 1), c0 = own(hi, k - 1), a1 = own(lo, k), c1 = own(hi, k);
+        if (crease(a0, c0, a1, c1)) line(xa, Ys[k], s.zl, xb, Ys[k], s.zr, a0 || c0 || a1 || c1);
+      }
+    }
+    // dessus et dessous
+    const iA = xs.indexOf(xa), iB = iA + 1;
+    for (let j = 1; j + 1 < cells.length; j++) {
+      const cv = cells[j];
+      if (!cv) continue;
+      const s0 = segs[j - 1], s1 = segs[j];
+      let loop = null;
+      for (let k = 0; k <= ny; k++) {
+        const below = own(cv, k - 1), above = own(cv, k);
+        if (!below === !above) continue;
+        if (!loop) {
+          // pourtour : bas de gauche à droite, côté droit en montant, haut de droite à gauche, côté gauche en descendant
+          loop = [[xa, s0.zl], [xb, s0.zr]];
+          for (const z of brk[iB]) if (z > s0.zr + TZ && z < s1.zr - TZ) loop.push([xb, z]);
+          loop.push([xb, s1.zr], [xa, s1.zl]);
+          const lz = brk[iA].filter(z => z > s0.zl + TZ && z < s1.zl - TZ);
+          for (let q = lz.length - 1; q >= 0; q--) loop.push([xa, lz[q]]);
+        }
+        const up = !!below, m = below || above, y = Ys[k], ny2 = up ? 1 : -1, base = out.pos.length / 3, n = loop.length;
+        let cx = 0, cz = 0; for (const p of loop) { cx += p[0] / n; cz += p[1] / n; }
+        vtx(cx, y, cz, 0, ny2, 0, m);
+        for (const p of loop) vtx(p[0], y, p[1], 0, ny2, 0, m);
+        // ce pourtour tourne dans le sens qui regarde vers le bas : on l'inverse pour un dessus
+        for (let q = 0; q < n; q++) { const q1 = (q + 1) % n; if (up) out.idx.push(base, base + 1 + q1, base + 1 + q); else out.idx.push(base, base + 1 + q, base + 1 + q1); }
+      }
+    }
+  }
+  // murs sur les lignes verticales x = xs[i] (arêtes parallèles à z), découpés aux coupures des deux côtés
+  for (let i = 0; i < xs.length; i++) {
+    const x = xs[i], z = brk[i], L = i > 0 ? strips[i - 1] : null, R = i < strips.length ? strips[i] : null;
+    for (let q = 0; q + 1 < z.length; q++) {
+      const za = z[q], zb = z[q + 1], zm = (za + zb) / 2;
+      const cl = L ? cellAt(L, 1, zm) : null, cr = R ? cellAt(R, 0, zm) : null;
+      if (!cl && !cr) continue;
+      for (let k = 0; k < ny; k++) {
+        const a = own(cl, k), c = own(cr, k);
+        if (!a !== !c) {
+          wall(x, za, x, zb, Ys[k], Ys[k + 1], a ? 1 : -1, 0, a || c);
+          if (pieces) pieces[k].push([x, za, x, zb, a ? 1 : -1, 0, a || c]);
+        }
+      }
+      if (E) for (let k = 0; k <= ny; k++) {
+        const a0 = own(cl, k - 1), c0 = own(cr, k - 1), a1 = own(cl, k), c1 = own(cr, k);
+        if (crease(a0, c0, a1, c1)) line(x, Ys[k], za, x, Ys[k], zb, a0 || c0 || a1 || c1);
+      }
+    }
+  }
+  // arêtes verticales : là où le pourtour d'une tranche tourne (deux bouts de murs alignés et du même côté : rien)
+  if (E) for (let k = 0; k < ny; k++) {
+    const at = new Map();
+    const key = (x, z) => Math.round(x * 500) + ',' + Math.round(z * 500);
+    for (const p of pieces[k]) for (const e of [0, 1]) {
+      const x = e ? p[2] : p[0], z = e ? p[3] : p[1], ox = e ? p[0] : p[2], oz = e ? p[1] : p[3];
+      const L = Math.hypot(ox - x, oz - z); if (L < 1e-6) continue;
+      const kk = key(x, z); if (!at.has(kk)) at.set(kk, { x, z, d: [] });
+      at.get(kk).d.push([(ox - x) / L, (oz - z) / L, p[4], p[5], p[6]]);
+    }
+    for (const v of at.values()) {
+      const d = v.d;
+      if (d.length === 2 && d[0][0] * d[1][0] + d[0][1] * d[1][1] < -0.9995 && d[0][2] * d[1][2] + d[0][3] * d[1][3] > 0.9995) continue;
+      line(v.x, Ys[k], v.z, v.x, Ys[k + 1], v.z, d[0][4]);
+    }
+  }
+  return true;
+}
 // Tous les blocs fixes en trois maillages (faces, arêtes, contour) : quelques appels de dessin au lieu de
 // plus d'un millier. Chaque sommet garde le numéro de son bloc pour pouvoir masquer celui où entre la caméra.
-// En mode « fusion » (les niveaux), les blocs alignés forment un seul volume (voir unionGrid) ; les blocs
-// tournés restent à part, et quelques blocs « seam » gardent en plus tous leurs traits, exprès.
+// En mode « fusion » (les niveaux), les blocs alignés forment un seul volume (voir unionGrid) ; quelques blocs
+// « seam » gardent en plus tous leurs traits, exprès. Les blocs tournés restent à part, sauf dans le niveau de la
+// semaine (merge = 2) : là, ils fusionnent aussi avec ce qu'ils touchent (voir prismUnion).
 function buildStatic(merge) {
   buildStaticSet(staticBoxes.filter(s => !s.noShadow), merge, true);
   const open = staticBoxes.filter(s => s.noShadow);
@@ -1046,7 +1267,8 @@ function buildStaticSet(list, merge, cast) {
   const F = { pos: [], nrm: [], col: [], bid: [], idx: [] }, H = { pos: [], bid: [], idx: [] }, E = { pos: [], bid: [] };
   const col = new THREE.Color();
   const aligned = merge ? list.filter(s => Math.abs(s.b.sn) < 1e-6 && !s.b.tilt) : [];
-  const single = merge ? list.filter(s => Math.abs(s.b.sn) >= 1e-6 || s.b.tilt) : list;
+  const turned = merge === 2 ? list.filter(s => Math.abs(s.b.sn) >= 1e-6 && !s.b.tilt) : [];
+  const single = merge ? list.filter(s => s.b.tilt || (Math.abs(s.b.sn) >= 1e-6 && merge !== 2)) : list;
   const wput = (arr, b, x, y, z) => { const X = b.ax, Y = b.ay, Z = b.az; arr.push(b.c.x + x * X[0] + y * Y[0] + z * Z[0], b.c.y + x * X[1] + y * Y[1] + z * Z[1], b.c.z + x * X[2] + y * Y[2] + z * Z[2]); };
   const boxEdges = b => {
     const sx = b.h.x * 2, sy = b.h.y * 2, sz = b.h.z * 2;
@@ -1067,14 +1289,23 @@ function buildStaticSet(list, merge, cast) {
   }
   for (const s of single) addSingle(s);
   // Fusion par groupe de blocs qui se touchent (un grand niveau reste rapide) ; un groupe démesuré reste en blocs séparés.
-  for (const comp of touchGroups(aligned)) {
+  const gridUnion = comp => {
     const G0 = unionGrid(comp, 0);
-    if (G0.n[0] * G0.n[1] * G0.n[2] > 3e6) { for (const s of comp) addSingle(s); continue; }
+    if (G0.n[0] * G0.n[1] * G0.n[2] > 3e6) { for (const s of comp) addSingle(s); return; }
     unionFaces(G0, comp, F, true);
     unionFaces(unionGrid(comp, OUT), comp, H, false);
     unionEdges(G0, comp, E);
+  };
+  // Blocs tournés : un groupe qui en contient passe par le découpage en trapèzes (tous les angles) ; un groupe
+  // tout droit garde la grille.
+  if (merge === 2) for (const comp of prismGroups(aligned.concat(turned))) {
+    if (comp.every(s => Math.abs(s.b.sn) < 1e-6)) gridUnion(comp);
+    else if (comp.length < 2 || !prismUnion(comp, 0, F, true, E)) for (const s of comp) addSingle(s);
+    else prismUnion(comp, OUT, H, false, null);
   }
+  else for (const comp of touchGroups(aligned)) gridUnion(comp);
   for (const s of aligned) if (s.seam) boxEdges(s.b);
+  for (const s of turned) if (s.seam) boxEdges(s.b);
   if (!F.idx.length) return;
   const geo = (pos, bid, extra) => {
     const g = new THREE.BufferGeometry();
@@ -1095,155 +1326,208 @@ let CHECK = SPAWN;
 // Point de reprise : une dalle violette. Tomber dans le vide ramène au dernier touché.
 function checkpoint(x, z, y, yaw) { const b = box(x, y + 0.1, z, 5, 0.2, 5, { color: C.check }); b.check = { x, y: y + 0.2, z, yaw }; return b; }
 
-/* ---------- Carte : lobby d'entraînement ---------- */
+/* ---------- Carte : salle d'entraînement ----------
+   Une grande salle fermée, éclairée par le plafond comme les niveaux. Au centre, le départ ; de part et d'autre, une
+   longue allée de tapis roulants (la voie du nord s'éloigne du départ, celle du sud y ramène). Les zones s'alignent
+   le long de l'allée, chacune derrière son nom peint au sol, séparées par un muret qu'on enjambe :
+     nord : échelles · marches et saut en hauteur · saut en longueur · wall hop · écraseurs et tapis
+     sud  : formes · wraparounds (largeur) · wraparounds (longueur) · blocs mouvants */
+function beltAt(x0, x1, z0, z1, vx, vz) {
+  const tex = stripeTex.clone(); tex.needsUpdate = true;
+  box((x0 + x1) / 2, 0.25, (z0 + z1) / 2, x1 - x0, 0.5, z1 - z0, { stripe: toon(0xffffff, { map: tex }), surf: { x: vx, z: vz } });
+  belts.push({ tex, sx: vx, sz: vz });
+}
 function buildTraining() {
   SPAWN = { x: 0, y: 1, z: 0, yaw: 0 };
-  // Sol (dalles alignées sur la grille de 4), avec un trou pour le vide du wall hop.
-  const floorTile = (x0, x1, z0, z1) => box((x0 + x1) / 2, -1, (z0 + z1) / 2, x1 - x0, 2, z1 - z0, { map: gridTexture((x1 - x0) / 4, (z1 - z0) / 4) });
-  floorTile(-196, 172, -172, 52); floorTile(-196, 172, 112, 172); floorTile(-196, 60, 52, 112); floorTile(140, 172, 52, 112);
+  const X0 = -215, X1 = 215, Z0 = -140, Z1 = 115, TOP = 52, BOT = -40;
+  const PIT = [62, 132, -105, -55];                                                  // le vide du wall hop
+  // Lumière : une tache sur le départ et sur chaque zone, puis de quoi éclairer le reste
+  const holes = [], lit = [];
+  const light = (x, z, w, d) => {
+    if (holes.length >= 24) return;
+    const h = lightAt(TOP, x, z, w, d, 0, 0);
+    const sx = clamp((h[0] + h[1]) / 2, X0 + w / 2 + 1, X1 - w / 2 - 1) - (h[0] + h[1]) / 2, sz = clamp((h[2] + h[3]) / 2, Z0 + d / 2 + 1, Z1 - d / 2 - 1) - (h[2] + h[3]) / 2;
+    holes.push([h[0] + sx, h[1] + sx, h[2] + sz, h[3] + sz, h[4]]); lit.push([x, z]);
+  };
+  light(0, 0, 16, 16);
+  for (const [x, z] of [[-190, -36], [-178, -100], [-72, -45], [-72, -85], [-12, -60], [-2, -110], [85, -80], [100, -125], [175, -40],
+    [-180, 57], [-75, 45], [48, 45], [160, 40], [160, 75]]) light(x, z, 16, 16);
+  for (let i = 0; i < 12; i++) for (let j = 0; j < 8; j++) {
+    const x = X0 + (i + 0.5) * (X1 - X0) / 12, z = Z0 + (j + 0.5) * (Z1 - Z0) / 8;
+    if (!lit.some(([a, b]) => Math.hypot(x - a, z - b) < 30)) light(x, z, 12, 12);
+  }
+  const env = cave({ x0: X0, x1: X1, z0: Z0, z1: Z1, top: TOP, bot: BOT, holes, beams: [], pils: [],
+    floors: [{ r: [X0, X1, Z0, Z1], pits: [PIT] }], fog: [140, 720] });
+  env.bright = true;
 
-  // SPAWN
+  // ===== Le départ et l'allée de tapis =====
   box(0, 0.5, 0, 16, 1, 16);
+  const V = 28;
+  beltAt(12, 213, -9, -3, V, 0); beltAt(12, 213, 3, 9, -V, 0);                       // est : on part au nord, on revient au sud
+  beltAt(-213, -12, -9, -3, -V, 0); beltAt(-213, -12, 3, 9, V, 0);                   // ouest, pareil
+  // les zones : un nom au sol au bord de l'allée, un muret bas entre deux zones
+  const sign = (name, x, north) => label(name, x, 0.03, north ? -18 : 18, 26, 3.4, 150, north ? 0 : Math.PI, true);
+  const curb = (x, north) => north ? box(x, 0.3, -77, 1, 0.6, 126) : box(x, 0.3, 64.5, 1, 0.6, 101);
+  for (const x of [-120, -25, 40, 135]) curb(x, true);
+  for (const x of [-145, -10, 105]) curb(x, false);
 
-  // NORD — STEPS : monter en marchant (le capteur de sol enjambe jusqu'à 1,1)
+  // ===== NORD 1 — ÉCHELLES (x -215 à -120) : barreaux fins (moins de 1,2), on grimpe en avançant vers eux =====
+  sign('ÉCHELLES', -167.5, true);
+  // écartement des barreaux : 1,5 · 1 · 2,2
+  [[-205, 1.5], [-197, 1.0], [-189, 2.2]].forEach(([x, sp]) => {
+    box(x, 8, -36, 4, 16, 4);
+    for (let y = 15.4; y >= 0.8; y -= sp) rungZ(x, y, -34, 3, 1);
+    label(fr(sp), x, 0.03, -30.5, 2.4, 1.2, 170, 0, true);
+  });
+  // cheminée : des tronçons d'échelle alternés sur deux tours face à face, on saute de l'une à l'autre
+  box(-180, 12.5, -36, 4, 25, 4); box(-171, 12.5, -36, 4, 25, 4);
+  for (const [a, b, sx, dir] of [[1, 7, -178, 1], [7.5, 13, -173, -1], [13.5, 19, -178, 1], [19.5, 24.4, -173, -1]])
+    for (let y = b; y >= a - 0.01; y -= 1) rungX(sx, y, -36, 3, dir);
+  label('CHEMINÉE', -175.5, 0.03, -30.5, 7, 1.2, 150, 0, true);
+  // échelles face à face, de plus en plus écartées : 5 · 7 · 9
+  [[-205, 5], [-188, 7], [-169, 9]].forEach(([x0, d]) => {
+    box(x0 - 2, 7, -72, 4, 14, 4); box(x0 + d + 2, 7, -72, 4, 14, 4);
+    for (let y = 13.4; y >= 0.8; y -= 1.5) { rungX(x0, y, -72, 3, 1); rungX(x0 + d, y, -72, 3, -1); }
+    label(String(d), x0 + d / 2, 0.03, -66.5, 2.4, 1.2, 170, 0, true);
+  });
+  // échelle très large (palier au bout) ; échelle large coiffée d'un mur : on ne passe pas au-dessus
+  for (let y = 1; y <= 13.1; y += 1.5) box(-195, y, -112, 30, 0.4, 0.5);
+  box(-210.3, 7, -112, 0.6, 14, 0.6); box(-179.7, 7, -112, 0.6, 14, 0.6);
+  box(-175.4, 6.5, -112, 8, 13, 4);
+  for (let y = 1; y <= 10.1; y += 1.5) box(-145, y, -112, 30, 0.4, 0.5);
+  box(-145, 14.5, -112, 30, 8, 0.5);
+  box(-160.3, 9.25, -112, 0.6, 18.5, 0.6); box(-129.7, 9.25, -112, 0.6, 18.5, 0.6);
+
+  // ===== NORD 2 — MARCHES ET SAUT EN HAUTEUR (x -120 à -25) =====
+  sign('MARCHES · SAUT EN HAUTEUR', -72.5, true);
+  // monter en marchant : le capteur de sol enjambe jusqu'à 1,1
   [0.25, 0.5, 0.75, 1.0, 1.05, 1.1, 1.15, 1.2, 1.5, 2.0].forEach((h, i) => {
-    const x = -27 + i * 6;
-    box(x, h / 2, -33, 4, h, 4);
-    label(fr(h), x, 0.03, -29.6, 3, 1.4, 170, 0, true);                                // chiffre au sol, devant le bloc
+    const x = -99.5 + i * 6;
+    box(x, h / 2, -32, 4, h, 4);
+    label(fr(h), x, 0.03, -28.6, 3, 1.4, 170, 0, true);
   });
-  [[0.5, -18], [1.0, 0], [1.1, 18]].forEach(([h, x]) => {
-    for (let i = 1; i <= 6; i++) box(x, i * h / 2, -40 - (i - 0.5) * 2.5, 6, i * h, 2.5);
-    label(fr(h), x, 0.03, -38.7, 3, 1.3, 170, 0, true);
+  // escaliers de marches de 0,5 · 1 · 1,1
+  [[0.5, -90.5], [1.0, -72.5], [1.1, -54.5]].forEach(([h, x]) => {
+    for (let i = 1; i <= 6; i++) box(x, i * h / 2, -44 - (i - 0.5) * 2.5, 6, i * h, 2.5);
+    label(fr(h), x, 0.03, -42.7, 3, 1.3, 170, 0, true);
   });
-
-  // NORD (loin) — SAUT EN HAUTEUR : saut ≈ 6,4 + enjambée 1,1
+  // saut en hauteur : saut ≈ 6,4 + enjambée 1,1
   [4, 5, 5.5, 6, 6.25, 6.5, 6.75, 7, 7.25, 7.5, 8].forEach((h, i) => {
-    const x = -30 + i * 6;
-    box(x, h / 2, -70, 4, h, 4);
-    label(fr(h), x, 2.2, -67.98, 3.6, 1.5, 170);
+    const x = -102.5 + i * 6;
+    box(x, h / 2, -85, 4, h, 4);
+    label(fr(h), x, 2.2, -82.98, 3.6, 1.5, 170);
   });
 
-  // EST — SAUT EN LONGUEUR : planches suspendues, écart croissant d'une piste à l'autre
-  const GAPS = [4, 5, 6, 7, 8, 9, 10, 11, 11.5, 12, 12.25, 12.5, 12.75, 13];
-  for (let i = 1; i <= 8; i++) box(43, i / 2, -58 + (i - 0.5) * 2, 6, i, 2);           // escalier jusqu'au pont
-  box(43, 7.5, 0, 6, 1, 84);                                                         // pont de départ (hauteur 8)
-  GAPS.forEach((g, j) => {
-    const z = -39 + j * 6;
-    box(51, 7.5, z, 10, 1, 3);                                                       // planche d'élan
-    box(56 + g + 4, 7.5, z, 8, 1, 3);                                                // planche d'arrivée
-    label(fr(g), 49.5, 8.02, z, 2.8, 1.6, 170, -Math.PI / 2, true);
-    label(fr(g), 56 + g + 4, 8.02, z, 2.8, 1.6, 170, -Math.PI / 2, true);
+  // ===== NORD 3 — SAUT EN LONGUEUR (x -25 à 40) : planches suspendues, écart croissant d'une piste à l'autre =====
+  sign('SAUT EN LONGUEUR', 7.5, true);
+  for (let i = 1; i <= 8; i++) box(-17, i / 2, -16 - (i - 0.5) * 2, 6, i, 2);           // escalier jusqu'au pont
+  box(-17, 7.5, -74, 6, 1, 84);                                                      // pont de départ (hauteur 8)
+  [4, 5, 6, 7, 8, 9, 10, 11, 11.5, 12, 12.25, 12.5, 12.75, 13].forEach((g, j) => {
+    const z = -36 - j * 6;
+    box(-9, 7.5, z, 10, 1, 3);                                                       // planche d'élan
+    box(-4 + g + 4, 7.5, z, 8, 1, 3);                                                // planche d'arrivée
+    label(fr(g), -10.5, 8.02, z, 2.8, 1.6, 170, -Math.PI / 2, true);
+    label(fr(g), -4 + g + 4, 8.02, z, 2.8, 1.6, 170, -Math.PI / 2, true);
   });
 
-  // SUD-EST — WALL HOP : un long mur de bâtons empilés au-dessus du vide (à traverser), et un mur haut
-  checkpoint(55, 75, 0, -Math.PI / 2);
-  for (let y = -24; y < 14; y++) box(78, y + 0.5, 80, 52, 1, 1);                    // 52 de long, au-dessus du trou
+  // ===== NORD 4 — WALL HOP (x 40 à 135) : un long mur de bâtons au-dessus du vide, et un mur haut =====
+  sign('WALL HOP', 87.5, true);
+  checkpoint(57, -75, 0, -Math.PI / 2);
+  for (let y = -24; y < 14; y++) box(80, y + 0.5, -80, 52, 1, 1, { seam: true });      // 52 de long, au-dessus du vide
   for (let d = 0; d <= 40; d += 10) {
-    label(String(d), 60 + d, 2.5, 79.47, 1.8, 1.2, 170, Math.PI);
-    label(String(d), 60 + d, 2.5, 80.53, 1.8, 1.2, 170);
+    label(String(d), 62 + d, 2.5, -80.53, 1.8, 1.2, 170, Math.PI);
+    label(String(d), 62 + d, 2.5, -79.47, 1.8, 1.2, 170);
   }
-  box(112, -1, 80, 20, 2, 24);                                                       // arrivée
-  for (let i = 0; i < 36; i++) box(80, i + 0.5, 130, 20, 1, 1);
-  box(80, 35.5, 132.5, 20, 1, 4);                                                    // sommet
-  for (let h = 6; h <= 36; h += 6) label(String(h), 80, h - 0.5, 129.47, 1.6, 1, 170, Math.PI);
+  box(114, -1, -80, 20, 2, 24);                                                      // arrivée, au milieu du vide
+  for (let i = 0; i < 36; i++) box(100, i + 0.5, -125, 20, 1, 1, { seam: true });
+  box(100, 35.5, -127.5, 20, 1, 4);                                                  // sommet
+  for (let h = 6; h <= 36; h += 6) label(String(h), 100, h - 0.5, -124.47, 1.6, 1, 170);
 
-  // SUD — BLOCS MOUVANTS (tout ce qui bouge est rouge à rayures)
-  const SPEEDS = [['lent', 0.45], ['moyen', 0.9], ['rapide', 1.6]];
-  box(-42, 0.5, 54, 2, 1, 24); box(-40, 1, 54, 2, 2, 24);                           // marches
-  box(42, 0.5, 54, 2, 1, 24); box(40, 1, 54, 2, 2, 24);
-  SPEEDS.forEach(([nm, w], k) => {                                                   // plateformes qui font l'aller-retour
-    const z = 46 + k * 8;
-    box(-36, 1.5, z, 6, 3, 6); box(36, 1.5, z, 6, 3, 6);
-    box(0, 2.5, z, 6, 1, 6, { stripe: true, move: (b, t) => { b.c.x = 29.5 * Math.sin(t * w); } });
-  });
-  box(-22, 5, 88, 28, 10, 4);                                                        // palier des ascenseurs
-  SPEEDS.forEach(([nm, w], k) => {
-    const x = -30 + k * 8;
-    box(x, 0.5, 82, 5, 1, 5, { stripe: true, move: (b, t) => { b.c.y = 0.5 + 4.75 * (1 - Math.cos(t * w * 1.1)); } });
-  });
-  box(2, 0.75, 81, 10, 0.5, 10, { stripe: true, move: (b, t) => { b.yaw = t * 0.6; } });         // disques
-  box(18, 0.75, 81, 10, 0.5, 10, { stripe: true, move: (b, t) => { b.yaw = -t * 1.5; } });
-  box(32, 1.4, 81, 1, 2.8, 1);                                                       // barre tournante à grimper
-  box(32, 3.2, 81, 12, 0.8, 0.8, { stripe: true, move: (b, t) => { b.yaw = t * 0.7; } });
-  // écraseurs : un contre le sol, un contre un mur, un contre un plafond
-  box(-35.5, 6.25, 100, 1, 12.5, 1); box(-28.5, 6.25, 100, 1, 12.5, 1); box(-32, 13, 100, 8, 1, 1);
-  box(-32, 10, 100, 5, 3, 5, { stripe: true, move: (b, t) => { b.c.y = 1.5 + 4.25 * (1 + Math.cos(t * 0.9)); } });
-  box(-14, 5, 100, 1, 10, 7);                                                        // mur fixe
-  box(-20, 2.55, 100, 3, 5, 5, { stripe: true, move: (b, t) => { b.c.x = -16 - 4 * (1 + Math.cos(t * 0.9)); } });
-  for (const [ox, oz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) box(-2 + ox, 3.5, 100 + oz, 0.5, 7, 0.5);
-  box(-2, 7.5, 100, 6.5, 1, 6.5);                                                    // plafond fixe (dessous à 7)
-  box(-2, 0.5, 100, 5, 1, 5, { stripe: true, move: (b, t) => { b.c.y = 0.5 + 3 * (1 - Math.cos(t * 0.9)); } });
-  [4, 8, 16, 28].forEach((v, k) => {                                                 // tapis roulants
-    belt(4 + k * 6, 100, 18, v);
-    label(String(v), 4 + k * 6, 0.03, 89.6, 3, 1.4, 170, Math.PI, true);
-  });
-  box(36, 0.8, 100, 1, 1.6, 1);                                                      // barre au ras des jambes
-  box(36, 1.0, 100, 11, 0.6, 0.6, { stripe: true, move: (b, t) => { b.yaw = -t * 1.1; } });
-
-  // OUEST — ÉCHELLES : on grimpe des barreaux (moins de 1,2 d'épaisseur) en avançant vers eux
-  const rung = (x, y, z, len, dir) => box(x + dir * 0.3, y, z, 0.5, 0.4, len);          // barreau devant une face (dir = côté)
-  const tower = (x, z, w, H) => box(x, H / 2, z, 4, H, w + 1);
-  [[-24, 1.5], [-16, 1.0], [-8, 2.2]].forEach(([z, sp]) => {
-    tower(-52, z, 3, 16);
-    for (let y = 15.4; y >= 0.8; y -= sp) rung(-50, y, z, 3, 1);
-    label(fr(sp), -47, 0.03, z, 2.4, 1.2, 170, -Math.PI / 2, true);
-  });
-  // cheminée : des tronçons d'échelle alternés sur deux tours face à face, on saute de l'un à l'autre
-  tower(-52, 2, 3, 25); tower(-43, 2, 3, 25);
-  for (const [a, b, sx, dir] of [[1, 7, -50, 1], [7.5, 13, -45, -1], [13.5, 19, -50, 1], [19.5, 24.4, -45, -1]])
-    for (let y = b; y >= a - 0.01; y -= 1) rung(sx, y, 2, 3, dir);
-  [[14, 5], [20, 7], [26, 9]].forEach(([z, d]) => {                                  // échelles face à face
-    tower(-66, z, 3, 14); tower(-62 + d, z, 3, 14);
-    for (let y = 13.4; y >= 0.8; y -= 1.5) { rung(-64, y, z, 3, 1); rung(-64 + d, y, z, 3, -1); }
-    label(String(d), -64 + d / 2, 0.03, z, 2.4, 1.2, 170, -Math.PI / 2, true);
-  });
-  for (let y = 1; y <= 13.1; y += 1.5) box(-90, y, 0, 0.5, 0.4, 30);                  // échelle très large
-  box(-90, 7, -15.3, 0.6, 14, 0.6); box(-90, 7, 15.3, 0.6, 14, 0.6);
-  box(-91, 6.5, 19.6, 4, 13, 8);                                                       // palier au bout
-  for (let y = 1; y <= 10.1; y += 1.5) box(-108, y, 0, 0.5, 0.4, 30);                  // échelle large coiffée d'un mur :
-  box(-108, 14.5, 0, 0.5, 8, 30);                                                      // on ne peut pas passer au-dessus
-  box(-108, 9.25, -15.3, 0.6, 18.5, 0.6); box(-108, 9.25, 15.3, 0.6, 18.5, 0.6);
-
-  // NORD-OUEST — WRAPAROUNDS : des pistes côte à côte. Chaque piste (passerelle de 2 de large, au-dessus
-  // du vide) est barrée par un mur à contourner par la gauche ou la droite. Deux ponts séparés :
-  // les murs qui débordent sur les côtés (largeur), et les murs longs au ras de la passerelle (longueur).
-  // Les pistes sont placées d'après la largeur des murs : le même vide (GAP) sépare deux murs voisins.
-  const GAP = 6;
-  function wrapLanes(deckZ, xStart, walls, title) {
-    const xs = []; let x = xStart, prevW = 0;
-    for (const [, d] of walls) { const w = 2 + 2 * d; x -= prevW / 2 + (prevW ? GAP : 0) + w / 2; xs.push(x); prevW = w; }
-    const x0 = Math.max(...xs) + 9, x1 = Math.min(...xs) - 5;
-    box((x0 + x1) / 2, 7.5, deckZ - 3, x0 - x1, 1, 6);                                   // pont
-    walls.forEach(([L, d], k) => {
-      const X = xs[k], zs = deckZ - 6, zw = zs - 5, zb = zw - L, zEnd = zb - 6;
-      box(X, 7.5, (zs + zw) / 2, 2, 1, zs - zw);                                        // passerelle avant le mur
-      box(X, 7.5, (zb + zEnd) / 2, 2, 1, zb - zEnd);                                    // et après
-      box(X, 7.5, zEnd - 2, 4, 1, 4);                                                   // arrivée
-      box(X, 9, zw - L / 2, 2 + 2 * d, 14, L);                                          // le mur
-      const val = fr(d > 0 ? d : L);
-      label(val, X, 10.6, zw + 0.01, 1.9, 1.2, 170);
-      label(val, X, 8.02, deckZ - 3, 2.6, 1.3, 170, 0, true);
+  // ===== NORD 5 — ÉCRASEURS ET TAPIS (x 135 à 215) =====
+  sign('ÉCRASEURS · TAPIS', 175, true);
+  {
+    const z = -40, o = 172;
+    // écraseurs : un contre le sol, un contre un mur, un contre un plafond (tout ce qui bouge est rouge à rayures)
+    box(o - 35.5, 6.25, z, 1, 12.5, 1); box(o - 28.5, 6.25, z, 1, 12.5, 1); box(o - 32, 13, z, 8, 1, 1);
+    box(o - 32, 10, z, 5, 3, 5, { stripe: true, move: (b, t) => { b.c.y = 1.5 + 4.25 * (1 + Math.cos(t * 0.9)); } });
+    box(o - 14, 5, z, 1, 10, 7);                                                     // mur fixe
+    box(o - 20, 2.55, z, 3, 5, 5, { stripe: true, move: (b, t) => { b.c.x = o - 16 - 4 * (1 + Math.cos(t * 0.9)); } });
+    for (const [ox, oz] of [[-3, -3], [3, -3], [-3, 3], [3, 3]]) box(o - 2 + ox, 3.5, z + oz, 0.5, 7, 0.5);
+    box(o - 2, 7.5, z, 6.5, 1, 6.5);                                                 // plafond fixe (dessous à 7)
+    box(o - 2, 0.5, z, 5, 1, 5, { stripe: true, move: (b, t) => { b.c.y = 0.5 + 3 * (1 - Math.cos(t * 0.9)); } });
+    // tapis roulants, de plus en plus rapides (ils poussent vers l'allée)
+    [4, 8, 16, 28].forEach((v, k) => {
+      const x = o + 4 + k * 6;
+      beltAt(x - 2, x + 2, z - 9, z + 9, 0, v);
+      label(String(v), x, 0.03, z + 10.6, 3, 1.4, 170, 0, true);
     });
+    box(o + 36, 0.8, z, 1, 1.6, 1);                                                  // barre au ras des jambes
+    box(o + 36, 1.0, z, 11, 0.6, 0.6, { stripe: true, move: (b, t) => { b.yaw = -t * 1.1; } });
   }
-  for (let i = 1; i <= 8; i++) box(-45, i / 2, -30 - (i - 0.5) * 2, 6, i, 2);          // escalier du pont « largeur »
-  const WIDE = [1, 1.5, 2, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4];
-  wrapLanes(-46, -52, WIDE.map(d => [1, d]), 'LARGEUR');
-  for (let i = 1; i <= 8; i++) box(-40, i / 2, -64 - (i - 0.5) * 2, 6, i, 2);          // escalier du pont « longueur »
-  const LONG = [2, 3, 4, 5, 6, 7, 7.5, 8, 8.5, 9, 9.25, 9.5, 9.75, 10];
-  wrapLanes(-80, -47, LONG.map(L => [L, 0]), 'LONGUEUR');
 
-  // SUD-OUEST — FORMES : des blocs posés au hasard (toujours les mêmes) pour tester librement
+  // ===== SUD 1 — FORMES (x -215 à -145) : des blocs posés au hasard (toujours les mêmes) =====
+  sign('FORMES', -180, false);
   {
     let seed = 20261017;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
     for (let i = 0; i < 44; i++) {
-      const x = -122 + rnd() * 64, z = 50 + rnd() * 66, kind = rnd(), yaw = rnd() * Math.PI;
+      const x = -210 + rnd() * 64, z = 24 + rnd() * 66, kind = rnd(), yaw = rnd() * Math.PI;
       if (kind < 0.42) { const h = 0.5 + rnd() * 5; box(x, h / 2, z, 2 + rnd() * 7, h, 2 + rnd() * 7, { yaw }); }
       else if (kind < 0.62) { const h = 4 + rnd() * 11; box(x, h / 2, z, 1.5 + rnd() * 2, h, 1.5 + rnd() * 2, { yaw }); }
       else if (kind < 0.84) { const t = 0.5 + rnd(), y = 3 + rnd() * 6; box(x, y + t / 2, z, 4 + rnd() * 6, t, 3 + rnd() * 5, { yaw }); }
       else { let y = 0, w = 6 + rnd() * 3; for (let k = 0; k < 3; k++) { const h = 1 + rnd() * 2; box(x, y + h / 2, z, w, h, w, { yaw: yaw + k * 0.3 }); y += h; w *= 0.65; } }
     }
   }
+
+  // ===== SUD 2 et 3 — WRAPAROUNDS : des pistes côte à côte, chacune barrée par un mur à contourner par un côté =====
+  // (passerelles de 2 de large au-dessus du sol, à 8 de haut ; le même vide sépare deux murs voisins)
+  // largeur : le mur déborde de plus en plus sur les côtés ; longueur : le mur, au ras de la passerelle, s'allonge
+  const GAP = 5;
+  function wrapLanes(deckZ, xStart, walls) {
+    const xs = []; let x = xStart, prevW = 0;
+    for (const [, d] of walls) { const w = 2 + 2 * d; x -= prevW / 2 + (prevW ? GAP : 0) + w / 2; xs.push(x); prevW = w; }
+    const x0 = Math.max(...xs) + 9, x1 = Math.min(...xs) - 5;
+    for (let i = 1; i <= 8; i++) box(x0 - 3, i / 2, deckZ - 16 + (i - 0.5) * 2, 6, i, 2);   // escalier jusqu'au pont
+    box((x0 + x1) / 2, 7.5, deckZ + 3, x0 - x1, 1, 6);                                       // pont
+    walls.forEach(([L, d], k) => {
+      const X = xs[k], zs = deckZ + 6, zw = zs + 5, zb = zw + L, zEnd = zb + 6;
+      box(X, 7.5, (zs + zw) / 2, 2, 1, zw - zs);                                       // passerelle avant le mur
+      box(X, 7.5, (zb + zEnd) / 2, 2, 1, zEnd - zb);                                   // et après
+      box(X, 7.5, zEnd + 2, 4, 1, 4);                                                  // arrivée
+      box(X, 9, zw + L / 2, 2 + 2 * d, 14, L);                                         // le mur
+      const val = fr(d > 0 ? d : L);
+      label(val, X, 10.6, zw - 0.01, 1.9, 1.2, 170, Math.PI);
+      label(val, X, 8.02, deckZ + 3, 2.6, 1.3, 170, Math.PI, true);
+    });
+  }
+  sign('WRAPAROUND · LARGEUR', -77.5, false);
+  wrapLanes(34, -18, [1, 1.5, 2, 2.5, 2.75, 3, 3.25, 3.5, 3.75, 4].map(d => [1, d]));
+  sign('WRAPAROUND · LONGUEUR', 47.5, false);
+  wrapLanes(34, 95, [2, 3, 4, 5, 6, 7, 7.5, 8, 8.5, 9, 9.25, 9.5, 9.75, 10].map(L => [L, 0]));
+
+  // ===== SUD 4 — BLOCS MOUVANTS (x 105 à 215) =====
+  sign('BLOCS MOUVANTS', 160, false);
+  {
+    const o = 160, SPEEDS = [['lent', 0.45], ['moyen', 0.9], ['rapide', 1.6]];
+    box(o - 42, 0.5, 38, 2, 1, 24); box(o - 40, 1, 38, 2, 2, 24);                    // marches
+    box(o + 42, 0.5, 38, 2, 1, 24); box(o + 40, 1, 38, 2, 2, 24);
+    SPEEDS.forEach(([nm, w], k) => {                                                 // plateformes qui font l'aller-retour
+      const z = 30 + k * 8;
+      box(o - 36, 1.5, z, 6, 3, 6); box(o + 36, 1.5, z, 6, 3, 6);
+      box(o, 2.5, z, 6, 1, 6, { stripe: true, move: (b, t) => { b.c.x = o + 29.5 * Math.sin(t * w); } });
+      label(nm, o - 36, 3.02, z, 4, 1.3, 150, 0, true);
+    });
+    box(o - 22, 5, 72, 28, 10, 4);                                                   // palier des ascenseurs
+    SPEEDS.forEach(([nm, w], k) => {
+      const x = o - 30 + k * 8;
+      box(x, 0.5, 66, 5, 1, 5, { stripe: true, move: (b, t) => { b.c.y = 0.5 + 4.75 * (1 - Math.cos(t * w * 1.1)); } });
+    });
+    box(o + 2, 0.75, 65, 10, 0.5, 10, { stripe: true, move: (b, t) => { b.yaw = t * 0.6; } });          // disques
+    box(o + 18, 0.75, 65, 10, 0.5, 10, { stripe: true, move: (b, t) => { b.yaw = -t * 1.5; } });
+    box(o + 32, 1.4, 65, 1, 2.8, 1);                                                 // barre tournante à grimper
+    box(o + 32, 3.2, 65, 12, 0.8, 0.8, { stripe: true, move: (b, t) => { b.yaw = t * 0.7; } });
+  }
+  return env;
 }
 
 function resetKin() {
@@ -2107,12 +2391,39 @@ function getBuilder(n) {
 function boxesOf(blocs) {
   return blocs.map(b => { const h = b.taille.map(v => v / 2); return { b, x0: b.pos[0] - h[0], x1: b.pos[0] + h[0], y0: b.pos[1] - h[1], y1: b.pos[1] + h[1], z0: b.pos[2] - h[2], z1: b.pos[2] + h[2] }; });
 }
+// Niveau de la semaine : au départ, le perso regarde vers le début du parcours. Le générateur garde toujours un
+// grand vide entre deux parties qui ne se suivent pas : le bloc le plus proche de la plateforme de départ est donc
+// le premier obstacle. On regarde vers son point le plus proche.
+function weeklyFacing(blocs, sp, yBase) {
+  const corners = b => {
+    const hx = b.taille[0] / 2, hz = b.taille[2] / 2, a = (b.rotation ? b.rotation[1] : 0) * Math.PI / 180, cs = Math.cos(a), sn = Math.sin(a);
+    return [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([i, k]) => [b.pos[0] + i * hx * cs + k * hz * sn, b.pos[2] - i * hx * sn + k * hz * cs]);
+  };
+  const inXZ = (b, x, z) => {
+    const a = (b.rotation ? b.rotation[1] : 0) * Math.PI / 180, dx = x - b.pos[0], dz = z - b.pos[2];
+    return Math.abs(dx * Math.cos(a) - dz * Math.sin(a)) <= b.taille[0] / 2 && Math.abs(dx * Math.sin(a) + dz * Math.cos(a)) <= b.taille[2] / 2;
+  };
+  const top = b => b.pos[1] + b.taille[1] / 2, bot = b => b.pos[1] - b.taille[1] / 2;
+  const base = blocs.find(b => b.type === 'bloc' && Math.abs(top(b) - yBase) < 0.05 && inXZ(b, sp.x, sp.z));
+  if (!base) return null;
+  const P = corners(base);
+  let best = null, bd = Infinity;
+  for (const b of blocs) {
+    if (b === base || b.type === 'depart' || b.type === 'arrivee' || top(b) < yBase - 14 || bot(b) > yBase + 18) continue;
+    const [dist, , q] = wkClosest(P, corners(b));
+    if (dist < bd) { bd = dist; best = q; }
+  }
+  if (!best || bd > 30) return null;
+  const dx = best[0] - sp.x, dz = best[1] - sp.z;
+  return Math.hypot(dx, dz) < 0.5 ? null : Math.atan2(-dx, -dz);
+}
 // Murs à fente : un bloc dont le bas est séparé d'un autre bloc juste en dessous par une fente de 0,15 à 1,6.
 function buildCustom(n, data) {
   const d = data || CUSTOM[n], Q = boxesOf(d.blocs), R = roomBox(d.salle), sol = d.fond === 'sol';
   KILL_Y = -30;
   const dep = Q.find(q => q.b.type === 'depart'), arr = Q.find(q => q.b.type === 'arrivee');
   SPAWN = { x: (dep.x0 + dep.x1) / 2, y: dep.y1, z: (dep.z0 + dep.z1) / 2, yaw: rotOpts(dep.b).yaw };
+  if (n === WEEKLY_N) { const yw = weeklyFacing(d.blocs, SPAWN, dep.y0); if (yw !== null) SPAWN.yaw = yw; }
   // Lumière : le départ, l'arrivée, puis les plateformes (les plus grandes d'abord), espacées d'au moins 15,
   // et enfin un trou partout où le parcours reste dans l'ombre. Les trous restent au-dessus de la salle.
   const mid = q => [(q.x0 + q.x1) / 2, (q.z0 + q.z1) / 2];
@@ -2219,8 +2530,9 @@ function loadMap(name) {
   MAP = name;
   LEVEL = name === 'training' ? 0 : +name.slice(5);
   KILL_Y = -30;
-  const env = LEVEL ? getBuilder(LEVEL)() : (buildTraining(), null);
-  buildStatic(LEVEL > 0); resetKin(); worldTicks = 0;
+  const env = LEVEL ? getBuilder(LEVEL)() : buildTraining();
+  // le niveau de la semaine fusionne aussi ses blocs tournés (pas pendant sa vérification au robot : rien ne s'y voit)
+  buildStatic(LEVEL > 0 ? (LEVEL === WEEKLY_N && !WEEKLY_TRY ? 2 : 1) : 1);   // l'entraînement aussi : ses blocs collés font un seul volume resetKin(); worldTicks = 0;
   setEnv(env);
   const w = W, ls = labels.slice();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (W === w) ls.forEach(d => d()); });
