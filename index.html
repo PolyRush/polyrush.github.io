@@ -6392,7 +6392,7 @@ async function pvBoard(n) {
   list.textContent = '…';
   try {
     if (ACCT.user && !isAdmin()) { try { const m = await ACCT.db.collection('meta').doc('board').get(); ACCT.replays = m.exists && m.data().replays === true; } catch (e) {} }
-    const rows = await acctTop(n, 10);
+    const rows = await shownTop(n, 10);
     if (!PV || PV.n !== n) return;
     boardList(rows, list, n);
     if (isAdmin()) adminAudit(n, rows, list);
@@ -7888,6 +7888,36 @@ async function acctTop(n, k = 10) {
   const snap = await ACCT.db.collection('scores').doc(bkey(n)).collection('runs').orderBy('ms').limit(k).get();
   return snap.docs.map(d => ({ uid: d.id, ...d.data() }));
 }
+/* Chaque joueur vérifie lui-même les temps qu'il affiche : il lit le replay de chacun et le passe à validateGhost
+   (même contrôle que le panneau admin). Un temps dont le replay ne tient pas debout n'est montré à personne (sauf à
+   son auteur et à l'admin, qui le voit signalé). Le verdict est gardé dans le navigateur : un replay n'est lu qu'une fois.
+   Il faut le niveau chargé pour vérifier ; ailleurs, on s'appuie sur les verdicts déjà connus. */
+const VERD = (() => { try { return JSON.parse(localStorage.getItem('polyrush.verd') || '{}') || {}; } catch (e) { return {}; } })();
+const verdKey = (n, r) => bkey(n) + '|' + r.uid + '|' + r.ms + '|' + (r.at || 0);
+function saveVerd() {
+  try { const k = Object.keys(VERD); for (const x of k.slice(0, Math.max(0, k.length - 800))) delete VERD[x]; localStorage.setItem('polyrush.verd', JSON.stringify(VERD)); } catch (e) {}
+}
+async function verdictOf(n, r) {
+  const key = verdKey(n, r);
+  if (VERD[key]) return VERD[key];
+  if (MAP !== 'level' + n) return '?';
+  let g;
+  try { const d = await ACCT.db.collection('ghosts').doc(bkey(n)).collection('runs').doc(r.uid).get(); g = d.exists ? d.data() : null; }
+  catch (e) { return '?'; }                                   // replay illisible d'ici (règles) : on ne tranche pas
+  if (MAP !== 'level' + n) return '?';
+  if (g && g.ms !== r.ms) return '?';                         // il vient de refaire un temps : on vérifiera la prochaine fois
+  VERD[key] = validateGhost(g, n).length ? 'bad' : 'ok';
+  saveVerd();
+  return VERD[key];
+}
+// Haut du classement tel qu'on le montre : les temps dont le replay est faux sont écartés
+async function shownTop(n, k = 10) {
+  const rows = await acctTop(n, k + 10);
+  if (isAdmin()) return rows.slice(0, k);                     // l'admin voit tout (les suspects sont signalés)
+  const me = ACCT.user ? ACCT.user.uid : null;
+  const v = await Promise.all(rows.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
+  return rows.filter((r, i) => v[i] !== 'bad').slice(0, k);
+}
 function boardList(rows, el, lv) {
   el.textContent = '';
   if (!rows.length) { const p = document.createElement('p'); p.className = 'acct-empty'; p.textContent = 'Personne n’a encore de temps ici.'; el.appendChild(p); return; }
@@ -7924,7 +7954,7 @@ async function acctFinish(n, ms, better) {
     let gh = false;
     if (better && ACCT.user && REC && REC.rows.length > 1) gh = await uploadGhost(n, ms);   // d'abord le replay, puis le temps (qui le signale)
     if (better) await acctSubmit(n, ms, gh);
-    boardList(await acctTop(n, 5), box);
+    boardList(await shownTop(n, 5), box);
   }
   catch (e) { box.textContent = 'Classement indisponible.'; }
 }
@@ -8099,7 +8129,7 @@ function acctRender() {
     c.appendChild(chips);
     const box = mkEl('div', 'fb-l', '…'); c.appendChild(box);
     const lv = ACCT.boardLv;
-    acctTop(lv, 10).then(r => { if (ACCT.view === 'board' && ACCT.boardLv === lv) boardList(r, box); }).catch(() => { box.textContent = 'Classement indisponible.'; });
+    shownTop(lv, 10).then(r => { if (ACCT.view === 'board' && ACCT.boardLv === lv) boardList(r, box); }).catch(() => { box.textContent = 'Classement indisponible.'; });
     if (!ACCT.user) { const b = mkEl('button', 'ed-btn', 'Se connecter pour y apparaître'); b.addEventListener('click', () => acctOpen('login')); c.appendChild(b); }
   }
   c.appendChild(mkEl('p', 'acct-msg'));
