@@ -147,6 +147,12 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .tile.locked .corner{background:none;color:var(--lock)}
 .tile.locked .corner svg{width:80%;height:80%}
 .tile.locked:focus-visible{outline:3px solid var(--ink);outline-offset:2px}
+.tile.hard.open{background:var(--red);color:#fff}
+.tile.hard.open::before{background:var(--ink)}
+.tile.hard.open .corner{background:var(--ink)}
+.tile.hard.open:hover .corner,.tile.hard.open:focus-visible .corner{background:var(--red)}
+.tile.hard.locked{color:#e8a29c;border-color:#e8a29c;box-shadow:4px 4px 0 #e8a29c;background:repeating-linear-gradient(135deg,#fbe9e7 0 9px,#f7dcd8 9px 18px)}
+.tile.hard.locked .corner{color:#e8a29c}
 .screen.show .tile.shake{animation:shake .42s ease}
 @keyframes shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .screen.show .tile{animation:tileIn .55s var(--ease-pop) backwards;animation-delay:calc(var(--i) * 38ms + 180ms)}
@@ -3809,11 +3815,11 @@ function buildLevelGrid() {
     b.style.setProperty('--i', i - 1);
     // Un niveau s'ouvre quand le précédent est terminé.
     if (getBuilder(i) && (i === 1 || records[i - 1])) {
-      b.className = 'tile open'; b.setAttribute('aria-label', 'Niveau ' + i);
+      b.className = 'tile open' + (i >= 8 ? ' hard' : ''); b.setAttribute('aria-label', 'Niveau ' + i + (i >= 8 ? ', difficile' : ''));
       b.innerHTML = `<span class="num">${num}</span><span class="corner">${ICON_PLAY}</span><span class="best">${records[i] ? fmtT(records[i]) + ' s' : '—'}</span>`;
       b.addEventListener('click', () => openLevel(i));
     } else {
-      b.className = 'tile locked'; b.setAttribute('aria-label', `Niveau ${i}, verrouillé`); b.setAttribute('aria-disabled', 'true');
+      b.className = 'tile locked' + (i >= 8 ? ' hard' : ''); b.setAttribute('aria-label', `Niveau ${i}${i >= 8 ? ', difficile' : ''}, verrouillé`); b.setAttribute('aria-disabled', 'true');
       b.innerHTML = `<span class="num">${num}</span><span class="corner">${ICON_LOCK}</span>`;
       b.addEventListener('click', () => { b.classList.remove('shake'); void b.offsetWidth; b.classList.add('shake'); });
     }
