@@ -5,7 +5,11 @@ on:
   schedule:
     - cron: '7 4 * * *'        # chaque jour vers 5 h / 6 h (heure de Paris)
     - cron: '3 22,23 * * 0'    # dimanche soir UTC = lundi 00h03 à Paris (été / hiver)
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Essai sans rien enregistrer (1 = oui)'
+        default: '0'
 permissions:
   contents: write
 concurrency: { group: weekly, cancel-in-progress: false }
@@ -22,8 +26,10 @@ jobs:
       - run: node .github/scripts/weekly.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          DRY_RUN: ${{ github.event.inputs.dry_run || '0' }}
       # GitHub coupe les tâches planifiées d'un dépôt sans activité depuis 60 jours : une petite trace par mois l'évite
       - name: Garder la tâche active
+        if: ${{ github.event.inputs.dry_run != '1' }}
         run: |
           d=$(date -u +%Y-%m)
           if [ "$(cat .github/weekly-alive 2>/dev/null)" != "$d" ]; then
