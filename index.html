@@ -3950,7 +3950,7 @@ const SFX = {
   click() { sPlay('click2', 0.2, jit(0.92, 0.03), 0, 1800); },   // un « tic » feutré, à peine là
   page() { sNoise(0.18, 700, 2200, 0.035, { q: 0.8 }); },
   // rideau des chargements : il traverse l'écran de gauche à droite, le son aussi. À l'aller, un souffle qui enfle et
-  // un petit « toc » feutré quand le rideau se pose ; au retour, un souffle qui s'éloigne et une étincelle légère.
+  // un petit « toc » feutré quand le rideau se pose ; au retour, un souffle qui s'éloigne.
   wipeIn() {
     sNoise(0.5, 280, 2400, 0.06, { q: 0.75, a: 0.36, pan: [-0.85, 0.25] });
     sNoise(0.5, 900, 5200, 0.012, { type: 'highpass', a: 0.36, pan: [-0.85, 0.25] });
@@ -3959,7 +3959,6 @@ const SFX = {
   wipeOut() {
     sNoise(0.5, 2200, 420, 0.05, { q: 0.75, a: 0.05, pan: [-0.1, 0.9] });
     sNoise(0.42, 5000, 1200, 0.01, { type: 'highpass', a: 0.04, pan: [-0.1, 0.9] });
-    sTone(1568, 0.55, 'sine', 0.016, { t: 0.06, a: 0.01 }); sTone(2349.3, 0.5, 'sine', 0.01, { t: 0.11, a: 0.01 });
   },
   // saut : un « woosh » de vent qui monte et retombe, avec un frôlement de tissu par-dessus
   // (le même souffle que les changements de page des menus)
