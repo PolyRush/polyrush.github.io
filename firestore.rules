@@ -13,14 +13,31 @@ service cloud.firestore {
       return p is string && p.size() >= 3 && p.size() <= 16
         && get(/databases/$(database)/documents/pseudos/$(p.lower())).data.uid == request.auth.uid;
     }
+    // Un compte ne tient qu'un seul pseudo à la fois : le pseudo de son profil doit être réservé à son nom, et en
+    // changer libère l'ancien dans la même opération (sinon on pourrait réserver des dizaines de noms)
+    function pseudoDoc(p) { return /databases/$(database)/documents/pseudos/$(p.lower()); }
+    function claims(uid, p, old) {
+      return p is string && existsAfter(pseudoDoc(p)) && getAfter(pseudoDoc(p)).data.uid == uid
+        && (old == '' || old.lower() == p.lower() || !existsAfter(pseudoDoc(old)));
+    }
     match /users/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null && request.auth.uid == uid
+        && (!('pseudo' in request.resource.data) || claims(uid, request.resource.data.pseudo, ''));
+      allow update: if request.auth != null && request.auth.uid == uid
+        && (request.resource.data.get('pseudo', '') == resource.data.get('pseudo', '')
+            || claims(uid, request.resource.data.pseudo, resource.data.get('pseudo', '')));
     }
     match /pseudos/{name} {
       allow read: if true;
+      // réservé seulement en le mettant dans son profil en même temps
       allow create: if request.auth != null && request.resource.data.uid == request.auth.uid
-        && name == request.resource.data.pseudo.lower() && name.matches('^[a-z0-9_.-]{3,16}$');
-      allow delete: if request.auth != null && resource.data.uid == request.auth.uid;
+        && request.resource.data.keys().hasOnly(['uid', 'pseudo'])
+        && name == request.resource.data.pseudo.lower() && name.matches('^[a-z0-9_.-]{3,16}$')
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('pseudo', '') == request.resource.data.pseudo;
+      // libéré par son propriétaire (en changeant de pseudo), ou retiré par l'admin (pseudo insultant)
+      allow delete: if isAdmin() || (request.auth != null && resource.data.uid == request.auth.uid
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('pseudo', '').lower() != name);
     }
     match /meta/{doc} {
       allow read: if true;
