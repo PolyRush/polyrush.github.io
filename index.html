@@ -368,6 +368,11 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-list .board li.sus{box-shadow:inset 3px 0 0 var(--red-deep)}
 .adm-line{display:flex;gap:8px;align-items:stretch}
 .adm-line.top{align-items:flex-start}
+.wk-q{align-items:center}
+.wk-qt{flex:1;margin:0;font:600 12.5px/1.35 var(--font-ui);color:var(--muted)}
+.wk-qt b{color:var(--ink);font-family:var(--font-num)}
+.wk-qt.warn{color:var(--red-deep)}
+.acct-card .wk-q>.ed-btn{height:36px}
 .adm-line>.acct-toggle,.adm-line>.chips{flex:1;min-width:0}
 .acct-card .adm-line>.ed-btn{width:auto;flex:none;padding:0 16px;min-width:84px}
 .adm-line.top>.ed-btn{height:38px}
@@ -383,7 +388,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pl-tools span{font:700 12px var(--font-num);color:var(--muted);white-space:nowrap}
 .pl-list{display:grid;gap:4px;align-content:start;height:min(58vh,520px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
 .acct-card.wide{width:min(460px,100%)}
-.pl-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 6px 6px 10px;border:2px solid var(--ink);border-radius:8px;background:var(--card)}
+.pl-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:6px 6px 6px 10px;border:2px solid var(--ink);border-radius:8px;background:var(--card)}
 .pl-row.off{background:var(--lock-bg)}
 .pl-row.off .pl-n{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
 .pl-n{font:800 14px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -392,6 +397,10 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pl-row button{justify-content:center}
 .pl-row button.pub{min-width:96px}
 .pl-row button.rs{min-width:64px}
+.pl-row button.bn{min-width:70px}
+.pl-row button.bn.armed,.pl-row button.bn.on{background:var(--ink);color:#fff}
+.pl-row.ban{background:#f3e3e1}
+@media (max-width:440px){.pl-row{gap:5px;padding-left:8px}.pl-row button{padding:0 6px}.pl-row button svg{display:none}.pl-row button.pub{min-width:66px}.pl-row button.rs,.pl-row button.bn{min-width:0}}
 .pl-row button.pub.on{background:var(--go);color:#fff}
 .pl-row button.rs.armed{background:var(--red);color:#fff}
 .pl-empty{color:var(--muted);font-size:13px;margin:4px 0}
@@ -450,6 +459,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .board li .ps{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .board li.r1 .rk{color:var(--red)}
 .board li.me{border-color:var(--ink);background:var(--paper)}
+.board li.gap{display:block;border:0;padding:0 0 0 12px;height:12px;line-height:6px;font:800 14px/6px var(--font-num);color:var(--muted);background:none!important;box-shadow:none!important}
 .fin-board{width:100%;display:grid;gap:8px}
 .fin-board .fb-h{font:800 11.5px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .fin-board .ed-btn{width:100%}
@@ -6486,18 +6496,53 @@ const canRerollWeekly = () => ACCT.on ? isAdmin() : true;   // sans comptes (ape
 function weeklyMenu() {
   const b = $('bWeekly');
   b.hidden = !(canRerollWeekly() || (WEEKLY && WEEKLY.pub));
-  $('weekTag').textContent = WEEKLY ? 'S' + weekNum(WEEKLY.created) : '';
+  $('weekTag').textContent = WEEKLY ? 'S' + weekNum(WEEKLY.from || WEEKLY.created) : '';
 }
 function weeklyFrom(d) {
   try {
     const data = cleanLevel(typeof d.data === 'string' ? JSON.parse(d.data) : d.data);
     if (!data || !data.blocs.some(b => b.type === 'depart') || !data.blocs.some(b => b.type === 'arrivee')) return null;
-    return { id: String(d.id), data, created: +d.created || Date.now(), pub: !!d.pub, info: d.info || null };
+    const created = +d.created || Date.now();
+    return { id: String(d.id), data, created, from: +d.from || weekStart(created), pub: !!d.pub, info: d.info || null };
   } catch (e) { return null; }
 }
+/* Niveau de la semaine : il change tout seul le lundi à 00h00 (heure de Paris). Sans serveur, les niveaux des semaines
+   à venir sont préparés d'avance par l'admin (meta/wk_AAAA-MM-JJ, un par lundi) ; à partir de son lundi, chacun prend
+   celui de la semaine en cours à la place de l'ancien. L'admin, en passant, le range comme niveau courant. */
+function parisParts(ts) {
+  const o = {}; for (const p of new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Paris', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23', weekday: 'short' }).formatToParts(ts)) o[p.type] = p.value;
+  return o;
+}
+function parisOffset(ts) { const o = parisParts(ts); return Date.UTC(+o.year, +o.month - 1, +o.day, +o.hour, +o.minute, +o.second) - Math.floor(ts / 1000) * 1000; }
+// Lundi 00h00 (Paris) de la semaine de ts, en ms
+function weekStart(ts) {
+  const o = parisParts(ts), wd = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(o.weekday);
+  const local = Date.UTC(+o.year, +o.month - 1, +o.day) - wd * 864e5;   // lundi, minuit « à l'heure de Paris » vu comme UTC
+  let t = local - parisOffset(local); t = local - parisOffset(t);       // deux passes : l'heure d'été qui change ce jour-là
+  return t;
+}
+const wkKey = t => { const o = parisParts(t + 6 * 3600e3); return 'wk_' + o.year + '-' + o.month + '-' + o.day; };   // nom du doc d'un lundi
+const fmtMonday = t => new Date(t + 6 * 3600e3).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Europe/Paris' });
 async function loadWeekly() {
   if (ACCT.on) {
-    try { const m = await ACCT.db.collection('meta').doc('weekly').get(); WEEKLY = m.exists ? weeklyFrom(m.data()) : null; } catch (e) { console.warn(e); }
+    try {
+      const db = ACCT.db, m = await db.collection('meta').doc('weekly').get();
+      WEEKLY = m.exists ? weeklyFrom(m.data()) : null;
+      const now = weekStart(Date.now());
+      if (!WEEKLY || WEEKLY.from < now) {
+        // nouvelle semaine : le niveau préparé pour ce lundi, s'il existe (il garde la visibilité choisie par l'admin)
+        const q = await db.collection('meta').doc(wkKey(now)).get();
+        const nx = q.exists ? weeklyFrom({ ...q.data(), from: now, pub: WEEKLY ? WEEKLY.pub : !!q.data().pub }) : null;
+        if (nx) {
+          WEEKLY = nx;
+          if (isAdmin()) {
+            const doc = { ...q.data(), from: now, pub: nx.pub };
+            await db.collection('meta').doc('weekly').set(doc);
+            await db.collection('meta').doc(wkKey(now)).delete().catch(() => {});
+          }
+        }
+      }
+    } catch (e) { console.warn(e); }
   } else {
     try { const d = JSON.parse(localStorage.getItem('polyrush.weekly') || 'null'); WEEKLY = d ? weeklyFrom(d) : null; } catch (e) { WEEKLY = null; }
   }
@@ -6508,24 +6553,57 @@ async function saveWeekly(doc) {
   else try { localStorage.setItem('polyrush.weekly', JSON.stringify(doc)); } catch (e) {}
 }
 // Nouveau tirage : on génère, on vérifie au robot, on enregistre ; tout le monde reçoit le même niveau
+// Génère un niveau vérifié au robot ; renvoie le document à enregistrer (ou null)
+async function genWeeklyDoc(label, from) {
+  const txt = $('bootTxt');
+  let res = null;
+  try { res = await makeWeekly(k => { txt.textContent = label + ' (essai ' + (k + 1) + ')'; }); }
+  catch (e) { console.error(e); }
+  if (!res) return null;
+  return { id: Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), data: JSON.stringify({ blocs: res.G.blocs, salle: res.G.salle, fond: 'vide', grille: 1 }),
+    created: Date.now(), from, pub: !!(WEEKLY && WEEKLY.pub), info: { t: Math.round(res.t * 10) / 10, sc: res.shortcuts.length, seed: res.G.seed, arch: res.G.arch } };
+}
+// Fin d'une génération : retour sur la fiche du niveau de la semaine
+function weeklyGenDone() {
+  weeklyMenu();
+  loadMap(WEEKLY ? 'level' + WEEKLY_N : 'level1'); setupPreview(WEEKLY ? WEEKLY_N : 1);
+  UI.busy = false; $('boot').classList.add('done');
+  if (WEEKLY) openLevelUI(WEEKLY_N); else showScreen('title', true);
+}
+// Nouveau tirage pour la semaine en cours : on génère, on vérifie au robot, on enregistre ; tout le monde reçoit le même niveau
 async function rerollWeekly() {
   if (UI.busy || !canRerollWeekly()) return;
   UI.busy = true;
-  const boot = $('boot'), txt = $('bootTxt');
-  boot.classList.remove('done'); txt.textContent = 'Génération du niveau…';
-  let res = null;
-  try { res = await makeWeekly(k => { txt.textContent = 'Génération du niveau… (essai ' + (k + 1) + ')'; }); }
-  catch (e) { console.error(e); }
-  if (res) {
-    const doc = { id: Date.now().toString(36) + Math.floor(Math.random() * 1e4).toString(36), data: JSON.stringify({ blocs: res.G.blocs, salle: res.G.salle, fond: 'vide', grille: 1 }),
-      created: Date.now(), pub: !!(WEEKLY && WEEKLY.pub), info: { t: Math.round(res.t * 10) / 10, sc: res.shortcuts.length, seed: res.G.seed, arch: res.G.arch } };
-    try { await saveWeekly(doc); WEEKLY = weeklyFrom(doc); } catch (e) { console.warn(e); toast('Enregistrement impossible (règles Firestore ?)', 2400); }
-  } else toast('Génération ratée, réessaie', 1600);
-  weeklyMenu();
-  // retour sur la fiche du nouveau niveau
-  loadMap(WEEKLY ? 'level' + WEEKLY_N : 'level1'); setupPreview(WEEKLY ? WEEKLY_N : 1);
-  UI.busy = false; boot.classList.add('done');
-  if (WEEKLY) openLevelUI(WEEKLY_N); else showScreen('title', true);
+  $('boot').classList.remove('done'); $('bootTxt').textContent = 'Génération du niveau…';
+  const doc = await genWeeklyDoc('Génération du niveau…', weekStart(Date.now()));
+  if (doc) { try { await saveWeekly(doc); WEEKLY = weeklyFrom(doc); } catch (e) { console.warn(e); toast('Enregistrement impossible (règles Firestore ?)', 2400); } }
+  else toast('Génération ratée, réessaie', 1600);
+  weeklyGenDone();
+}
+// Les lundis qui viennent (jusqu'à n) : lesquels ont déjà leur niveau
+async function weeklyQueue(n = 6) {
+  const t0 = weekStart(Date.now()), out = [];
+  for (let i = 1; i <= n; i++) { const t = weekStart(t0 + i * 7 * 864e5 + 12 * 3600e3); out.push({ t, key: wkKey(t) }); }
+  await Promise.all(out.map(async w => { try { w.ok = (await ACCT.db.collection('meta').doc(w.key).get()).exists; } catch (e) { w.ok = false; } }));
+  return out;
+}
+// Prépare les niveaux des prochains lundis qui n'en ont pas (4 semaines d'avance)
+async function prepareWeeks(n = 4) {
+  if (UI.busy || !isAdmin()) return;
+  UI.busy = true;
+  const boot = $('boot'); boot.classList.remove('done');
+  let made = 0;
+  try {
+    const q = (await weeklyQueue(n)).filter(w => !w.ok);
+    for (let i = 0; i < q.length; i++) {
+      const lab = `Semaine du ${fmtMonday(q[i].t)} (${i + 1}/${q.length})…`;
+      $('bootTxt').textContent = lab;
+      const doc = await genWeeklyDoc(lab, q[i].t);
+      if (doc) { await ACCT.db.collection('meta').doc(q[i].key).set(doc); made++; }
+    }
+  } catch (e) { console.warn(e); toast('Préparation interrompue', 1800); }
+  if (made) toast(made + ' semaine' + (made > 1 ? 's' : '') + ' préparée' + (made > 1 ? 's' : ''), 1800);
+  weeklyGenDone();
 }
 function weeklyAdminUI(wk) {
   const box = $('pvWeek'); box.hidden = !(wk && !ACCT.on);   // avec les comptes, tout se fait dans le panneau admin
@@ -6535,6 +6613,12 @@ function weeklyAdminUI(wk) {
   const t = $('bWeekPub'); t.hidden = !ACCT.on; t.classList.toggle('on', !!(WEEKLY && WEEKLY.pub));
 }
 let rrArmed = 0;
+// Page restée ouverte le lundi à 00h00 : on relit le niveau de la semaine dès qu'on est dans les menus
+setInterval(() => {
+  if (!ACCT.on || !WEEKLY || UI.busy || UI.mode !== 'menu' || weekStart(Date.now()) <= WEEKLY.from) return;
+  if (loadWeekly.at && Date.now() - loadWeekly.at < 10 * 60e3) return;
+  loadWeekly.at = Date.now(); loadWeekly();
+}, 60e3);
 $('bReroll').addEventListener('click', () => {
   const b = $('bReroll');
   if (!rrArmed) { b.textContent = 'Sûr ?'; b.classList.add('armed'); rrArmed = setTimeout(() => { rrArmed = 0; b.textContent = 'Reroll'; b.classList.remove('armed'); }, 4000); return; }
@@ -6613,7 +6697,7 @@ async function pvBoard(n) {
     if (ACCT.user && !isAdmin()) { try { const m = await ACCT.db.collection('meta').doc('board').get(); ACCT.replays = m.exists && m.data().replays === true; } catch (e) {} }
     const rows = await shownTop(n, 10);
     if (!PV || PV.n !== n) return;
-    boardList(rows, list, n);
+    boardList(rows, list, n); boardMine(n, rows, list);
     if (isAdmin()) adminAudit(n, rows, list);
   } catch (e) { list.textContent = 'Classement indisponible.'; }
 }
@@ -6766,6 +6850,11 @@ function adminPanel(n, r, bad) {
 async function adminDelete(n, uid) {
   const db = ACCT.db;
   for (const col of ['scores', 'ghosts']) { try { await db.collection(col).doc(bkey(n)).collection('runs').doc(uid).delete(); } catch (e) { console.warn(e); } }
+}
+async function adminUnban(uid) {
+  const ref = ACCT.db.collection('meta').doc('bans');
+  const d = await ref.get(), uids = d.exists && Array.isArray(d.data().uids) ? d.data().uids : [];
+  await ref.set({ uids: uids.filter(x => x !== uid) });
 }
 async function adminBan(uid) {
   const ref = ACCT.db.collection('meta').doc('bans');
@@ -8157,6 +8246,24 @@ async function shownTop(n, k = 10) {
   const v = await Promise.all(vis.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
   return vis.filter((r, i) => v[i] !== 'bad').slice(0, k);
 }
+// Hors du haut du classement : on ajoute sa propre ligne en bas, avec son vrai rang (les joueurs masqués ne comptent pas)
+async function boardMine(n, rows, el) {
+  if (!ACCT.on || !ACCT.user) return;
+  const uid = ACCT.user.uid;
+  if (rows.some(r => r.uid === uid)) return;
+  try {
+    const col = ACCT.db.collection('scores').doc(bkey(n)).collection('runs');
+    const mine = await col.doc(uid).get();
+    if (!mine.exists) return;
+    const ms = mine.data().ms, [snap, bm] = await Promise.all([col.where('ms', '<', ms).limit(2000).get(), boardMeta()]);
+    const ahead = snap.docs.filter(d => d.id !== uid && !bm.hidden.has(d.id)).length;
+    const ol = el.querySelector('ol.board'); if (!ol || !el.isConnected) return;
+    const gap = mkEl('li', 'gap', '⋯'), li = mkEl('li', 'me mine');
+    li.append(mkEl('span', 'rk', String(ahead + 1 + (snap.size >= 2000 ? '+' : ''))), mkEl('span', 'ps', mine.data().pseudo || ACCT.pseudo || '?'), mkEl('span', 'tm', fmtT(ms) + ' s'));
+    li.title = 'Ta place au classement';
+    ol.append(gap, li);
+  } catch (e) { console.warn(e); }
+}
 function boardList(rows, el, lv) {
   el.textContent = '';
   if (!rows.length) { const p = document.createElement('p'); p.className = 'acct-empty'; p.textContent = 'Personne n’a encore de temps ici.'; el.appendChild(p); return; }
@@ -8195,7 +8302,7 @@ async function acctFinish(n, ms, better) {
     let gh = false;
     if (better && ACCT.user && REC && REC.rows.length > 1) gh = await uploadGhost(n, ms);   // d'abord le replay, puis le temps (qui le signale)
     if (better) await acctSubmit(n, ms, gh);
-    boardList(await shownTop(n, 5), box);
+    const top = await shownTop(n, 5); boardList(top, box); boardMine(n, top, box);
   }
   catch (e) { box.textContent = 'Classement indisponible.'; }
 }
@@ -8344,6 +8451,20 @@ function acctRender() {
       acctClose(); if (UI.mode === 'menu') rerollWeekly();
     });
     wl.appendChild(rr); c.appendChild(wl);
+    // Semaines à venir : le niveau change tout seul chaque lundi à 00h00 s'il a été préparé
+    const ql = mkEl('div', 'adm-line wk-q'), qt = mkEl('p', 'wk-qt', 'Prochains lundis…'), qb = mkEl('button', 'ed-btn', 'Préparer');
+    qb.title = 'Génère les niveaux des 4 prochains lundis qui n’en ont pas';
+    qb.addEventListener('click', () => { acctClose(); if (UI.mode === 'menu') prepareWeeks(4); });
+    ql.append(qt, qb); c.appendChild(ql);
+    weeklyQueue(4).then(q => {
+      if (!qt.isConnected) return;
+      const ok = q.filter(w => w.ok).length; let until = null;
+      for (const w of q) { if (!w.ok) break; until = w.t; }
+      qt.textContent = '';
+      qt.append(mkEl('b', null, ok + '/4'), document.createTextNode(' lundis prêts' + (until ? ' · jusqu’au ' + fmtMonday(until) : '')));
+      if (!q[0].ok) { qt.classList.add('warn'); qt.append(mkEl('br'), document.createTextNode('Rien de prêt pour le ' + fmtMonday(q[0].t) + ' : le niveau ne changera pas')); }
+      qb.disabled = ok === 4;
+    });
     c.appendChild(toggle('Replays', ACCT.replays, async () => {
       const v2 = !ACCT.replays;
       await ACCT.db.collection('meta').doc('board').set({ replays: v2 }, { merge: true });
@@ -8414,14 +8535,25 @@ function acctRender() {
             acctMsg(pl.pseudo + ' : temps effacés.', true); draw();
           });
         });
-        row.append(nm, pub, rs); list.appendChild(row);
+        // Bannir : plus aucun temps accepté (règles du serveur), ses temps effacés partout ; « Banni » pour le gracier
+        const isBan = A.bans && A.bans.has(pl.uid), bn = mkEl('button', 'bn' + (isBan ? ' on' : ''), isBan ? 'Banni' : 'Bannir'); let bArmed = 0;
+        bn.title = isBan ? 'Banni : clic pour lever le bannissement' : 'Bannir : il ne pourra plus envoyer de temps';
+        bn.addEventListener('click', () => {
+          if (isBan) { acctDo(async () => { await adminUnban(pl.uid); A.bans.delete(pl.uid); acctMsg(pl.pseudo + ' n’est plus banni.', true); draw(); }); return; }
+          if (!bArmed) { bn.textContent = 'Sûr ?'; bn.classList.add('armed'); bArmed = setTimeout(() => { bArmed = 0; bn.textContent = 'Bannir'; bn.classList.remove('armed'); }, 3500); return; }
+          clearTimeout(bArmed); bArmed = 0;
+          acctDo(async () => { await adminBan(pl.uid); (A.bans || (A.bans = new Set())).add(pl.uid); acctMsg(pl.pseudo + ' banni.', true); draw(); });
+        });
+        if (isBan) row.classList.add('ban');
+        row.append(nm, pub, rs, bn); list.appendChild(row);
       }
     };
     q.addEventListener('input', () => { A.q = q.value; draw(); });
     if (A.players) draw();                                     // la liste d'avant tout de suite, puis à jour
     (async () => {
       try {
-        const [snap] = await Promise.all([ACCT.db.collection('pseudos').get(), boardMeta(true)]);
+        const [snap, bans] = await Promise.all([ACCT.db.collection('pseudos').get(), ACCT.db.collection('meta').doc('bans').get(), boardMeta(true)]);
+        A.bans = new Set(bans.exists && Array.isArray(bans.data().uids) ? bans.data().uids : []);
         A.players = snap.docs.map(d => ({ uid: d.data().uid, pseudo: d.data().pseudo || d.id })).filter(p => p.uid).sort((p, r) => p.pseudo.localeCompare(r.pseudo, 'fr', { sensitivity: 'base' }));
       } catch (e) { list.textContent = ''; list.appendChild(mkEl('p', 'pl-empty', 'Liste des joueurs indisponible.')); return; }
       if (ACCT.view === 'players' && list.isConnected) draw();
@@ -8437,7 +8569,7 @@ function acctRender() {
     c.appendChild(chips);
     const box = mkEl('div', 'fb-l', '…'); c.appendChild(box);
     const lv = ACCT.boardLv;
-    shownTop(lv, 10).then(r => { if (ACCT.view === 'board' && ACCT.boardLv === lv) boardList(r, box); }).catch(() => { box.textContent = 'Classement indisponible.'; });
+    shownTop(lv, 10).then(r => { if (ACCT.view === 'board' && ACCT.boardLv === lv) { boardList(r, box); boardMine(lv, r, box); } }).catch(() => { box.textContent = 'Classement indisponible.'; });
     if (!ACCT.user) { const b = mkEl('button', 'ed-btn', 'Se connecter pour y apparaître'); b.addEventListener('click', () => acctOpen('login')); c.appendChild(b); }
   }
   c.appendChild(mkEl('p', 'acct-msg'));
