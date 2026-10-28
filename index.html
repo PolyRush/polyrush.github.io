@@ -272,7 +272,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .ed-btn.primary{background:var(--red);color:#fff}
 .ed-btn.primary:hover,.ed-btn.primary:focus-visible{background:var(--red-deep)}
 .ed-btn.danger{color:var(--red-deep);border-color:var(--red-deep);box-shadow:2px 2px 0 var(--red-deep)}
-.ed-btn.danger.armed{background:var(--red);color:#fff}
+.ed-btn.danger.armed,.ed-btn.armed{background:var(--red);color:#fff}
 .ed-btn:disabled{opacity:.4;pointer-events:none}
 .ed-panel{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));width:276px;max-height:calc(100% - 80px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;padding:14px;display:grid;grid-template-columns:minmax(0,1fr);gap:16px;font-size:13px}
 .ed-sec{display:grid;grid-template-columns:minmax(0,1fr);gap:8px}
@@ -6534,7 +6534,13 @@ function weeklyAdminUI(wk) {
   $('pvWeekInfo').textContent = WEEKLY ? `Tiré le ${new Date(WEEKLY.created).toLocaleDateString('fr-FR')} · ${i ? `${i.arch ? ({ sauts: 'Sauts', wraps: 'Wraps', grimpe: 'Grimpe', equilibre: 'Équilibre', mixte: 'Mixte' }[i.arch] || '') + ' · ' : ''}${i.sc} raccourci${i.sc > 1 ? 's' : ''} caché${i.sc > 1 ? 's' : ''} · robot : ${String(i.t).replace('.', ',')} s` : ''}` : '';
   const t = $('bWeekPub'); t.hidden = !ACCT.on; t.classList.toggle('on', !!(WEEKLY && WEEKLY.pub));
 }
-$('bReroll').addEventListener('click', () => rerollWeekly());
+let rrArmed = 0;
+$('bReroll').addEventListener('click', () => {
+  const b = $('bReroll');
+  if (!rrArmed) { b.textContent = 'Sûr ?'; b.classList.add('armed'); rrArmed = setTimeout(() => { rrArmed = 0; b.textContent = 'Reroll'; b.classList.remove('armed'); }, 4000); return; }
+  clearTimeout(rrArmed); rrArmed = 0; b.textContent = 'Reroll'; b.classList.remove('armed');
+  rerollWeekly();
+});
 $('bWeekPub').addEventListener('click', async () => {
   if (!WEEKLY || !isAdmin()) return;
   const v = !WEEKLY.pub;
@@ -8329,9 +8335,14 @@ function acctRender() {
       await ACCT.db.collection('meta').doc('weekly').set({ pub: v2 }, { merge: true });
       WEEKLY.pub = v2; weeklyMenu(); acctRender();
     }));
-    const rr = mkEl('button', 'ed-btn', 'Reroll');
+    // Reroll : un premier clic arme le bouton (« Sûr ? »), un second dans les 4 s lance le nouveau tirage
+    const rr = mkEl('button', 'ed-btn', 'Reroll'); let rArmed = 0;
     rr.title = WEEKLY ? 'Tiré le ' + new Date(WEEKLY.created).toLocaleDateString('fr-FR') : 'Aucun niveau tiré';
-    rr.addEventListener('click', () => { acctClose(); if (UI.mode === 'menu') rerollWeekly(); });
+    rr.addEventListener('click', () => {
+      if (!rArmed) { rr.textContent = 'Sûr ?'; rr.classList.add('armed'); rArmed = setTimeout(() => { rArmed = 0; rr.textContent = 'Reroll'; rr.classList.remove('armed'); }, 4000); return; }
+      clearTimeout(rArmed); rArmed = 0;
+      acctClose(); if (UI.mode === 'menu') rerollWeekly();
+    });
     wl.appendChild(rr); c.appendChild(wl);
     c.appendChild(toggle('Replays', ACCT.replays, async () => {
       const v2 = !ACCT.replays;
