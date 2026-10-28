@@ -766,6 +766,10 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
     <input id="sens" type="range" min="0.2" max="3" step="0.05" value="1">
   </div>
   <div class="row">
+    <label for="vol">Volume <output id="volOut">60 %</output></label>
+    <input id="vol" type="range" min="0" max="1" step="0.05" value="0.6">
+  </div>
+  <div class="row">
     <span class="lab">Touches <button id="kbReset" class="kb-reset" hidden>Par défaut</button></span>
     <div class="kb">
       <div class="kb-move">
@@ -3141,7 +3145,7 @@ function step() {
   const dx = (-sy * iz + cy * ix) * CFG.speed, dz = (-cy * iz - sy * ix) * CFG.speed;
   P.moveSpeed = Math.hypot(dx, dz);
   // Le chrono part au premier mouvement (déplacement ou saut) : ce pas compte déjà.
-  if (run.state === 'ready' && (mag > 0.05 || P.jumpBuf > 0 || input.jumpHeld)) { run.state = 'run'; run.start = worldTicks - 1; }
+  if (run.state === 'ready' && (mag > 0.05 || P.jumpBuf > 0 || input.jumpHeld)) { run.state = 'run'; run.start = worldTicks - 1; if (LEVEL) sfx('start', 0, true); }
 
   // Shiftlock : le corps est calé sur la caméra (rotation imposée, comme le CFrame sur Roblox).
   // Une rotation brusque contre un mur y enfonce un instant le coin des jambes : c'est ce qui
@@ -3203,10 +3207,13 @@ function step() {
   }
   const wasG = P.grounded;
   P.grounded = !!gB; P.ground = gB;
+  // atterrissage : la plus forte vitesse de chute du vol (le choc contre le sol l'a déjà annulée à ce stade)
+  if (gB && !wasG && (P.fallV || 0) < -18) sfx('land', -P.fallV, true);
+  P.fallV = gB ? 0 : Math.min(P.fallV || 0, P.vy, P.lastVy);
   let gvx = 0, gvy = 0, gvz = 0, gw = 0;
   if (gB) { followVel(gB, P.x, P.z, _v); gvx = _v.x; gvy = _v.y; gvz = _v.z; gw = gB.w; }
   if (P.grounded) { P.coyote = CFG.coyote; P.inhX = gvx; P.inhZ = gvz; P.ledgeY = g; }
-  if (gB && gB.check && CHECK !== gB.check) { CHECK = gB.check; toast('Point de reprise', 900); }
+  if (gB && gB.check && CHECK !== gB.check) { CHECK = gB.check; toast('Point de reprise', 900); sfx('check', 0, true); }
   if (gB && gB.finish && run.state === 'run') finishRun();
   else if (P.coyote > 0) P.coyote -= DT;
 
@@ -3272,6 +3279,7 @@ function step() {
     }
   }
   P.climbB = cB;
+  if (P.climb && !wasClimb) sfx('grab', 0, true);
   // Lâché en se tournant de plus de 20° par rapport à la paroi : on ne se raccroche pas aussitôt.
   if (wasClimb && !P.climb && fvx * P.cdx + fvz * P.cdz <= cone) P.letGo = 0.3;
   // Grimper n'est qu'un état : on suit ce à quoi on est accroché (plateforme qui bouge, qui tourne).
@@ -3292,6 +3300,7 @@ function step() {
     const late = !P.grounded && !P.climb ? 0.5 * clamp((P.ledgeY ?? feetY) - feetY, 0, 1.8) : 0;
     P.vy = Math.sqrt(CFG.jumpV * CFG.jumpV + 2 * CFG.gravity * late) + Math.max(0, gvy);
     P.grounded = false; P.ground = null; P.coyote = 0; P.jumpBuf = 0; P.jumpT = 0.12;
+    sfx(P.climb ? 'walljump' : 'jump', 0, true);
     // Sauter depuis une prise : on se repousse vers l'arrière du corps (à l'opposé de là où le perso
     // regarde), comme le saut mural neutre de Celeste. L'élan s'éteint tout seul ; les touches restent actives.
     if (P.climb) {
@@ -3479,7 +3488,7 @@ function step() {
     const l = Math.hypot(nw, nx, ny, nz);
     q.w = nw / l; q.x = nx / l; q.y = ny / l; q.z = nz / l;
   }
-  if (P.y < KILL_Y) die('');
+  if (P.y < KILL_Y) { sfx('fall', 0, true); die(''); }
 }
 
 // R : retour au spawn du lobby. Chute dans le vide : retour au dernier point de reprise.
@@ -3835,9 +3844,87 @@ function render(a, fdt) {
 
 /* ---------- Entrées ---------- */
 /* Réglages (gardés dans le navigateur) */
-const settings = { sens: 1, slCode: 'Shift', slLabel: 'Maj', keys: null, fps: false, perf: false };
+const settings = { sens: 1, slCode: 'Shift', slLabel: 'Maj', keys: null, fps: false, perf: false, vol: 0.6 };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('obby.settings') || '{}')); } catch (e) {}
 function saveSettings() { try { localStorage.setItem('obby.settings', JSON.stringify(settings)); } catch (e) {} }
+/* ---------- Sons ----------
+   Tout est synthétisé à la volée (Web Audio) : pas de fichier à charger. Des sons courts et doux : boutons, pages,
+   saut, atterrissage, point de reprise, chute, recommencer, arrivée (et record). Les simulations (robot du niveau de
+   la semaine) ne font aucun bruit : seule la boucle du jeu peut en jouer (SND.live). */
+const SND = { ctx: null, out: null, noise: null, live: false, last: {} };
+function sndInit() {
+  if (SND.ctx) { if (SND.ctx.state === 'suspended') SND.ctx.resume().catch(() => {}); return; }
+  const AC = window.AudioContext || window.webkitAudioContext; if (!AC) return;
+  try {
+    const c = SND.ctx = new AC();
+    const comp = c.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4; comp.connect(c.destination);
+    SND.out = c.createGain(); SND.out.gain.value = settings.vol; SND.out.connect(comp);
+    const n = c.createBuffer(1, c.sampleRate, c.sampleRate), d = n.getChannelData(0);
+    for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+    SND.noise = n;
+  } catch (e) { SND.ctx = null; }
+}
+['pointerdown', 'keydown', 'touchstart'].forEach(ev => addEventListener(ev, sndInit, { capture: true, passive: true }));
+// note : fréquence f (→ f1), durée d, forme, volume v, attaque a, départ dans t secondes
+function sTone(f, d, type = 'sine', v = 0.2, o = {}) {
+  const c = SND.ctx, t = c.currentTime + (o.t || 0), osc = c.createOscillator(), g = c.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(f, t);
+  if (o.f1) osc.frequency.exponentialRampToValueAtTime(o.f1, t + d);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + (o.a || 0.005)); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  osc.connect(g); g.connect(SND.out); osc.start(t); osc.stop(t + d + 0.02);
+}
+// souffle : bruit filtré (passe-bande de f0 → f1), durée d, volume v
+function sNoise(d, f0, f1, v = 0.15, o = {}) {
+  const c = SND.ctx, t = c.currentTime + (o.t || 0), src = c.createBufferSource(), fl = c.createBiquadFilter(), g = c.createGain();
+  src.buffer = SND.noise; src.loop = true;
+  fl.type = o.type || 'bandpass'; fl.Q.value = o.q ?? 1.1; fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(f1, t + d);
+  g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + (o.a || d * 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+  src.connect(fl); fl.connect(g); g.connect(SND.out); src.start(t, Math.random() * 0.5); src.stop(t + d + 0.02);
+}
+const jit = (v, k = 0.06) => v * (1 + (Math.random() * 2 - 1) * k);   // un peu de variété : jamais deux fois le même son
+const SFX = {
+  hover() { sTone(jit(1900, 0.03), 0.035, 'sine', 0.025); },
+  click() { sTone(jit(760, 0.03), 0.07, 'triangle', 0.09, { f1: 560 }); sNoise(0.02, 5000, 3000, 0.03, { type: 'highpass', a: 0.002 }); },
+  page() { sNoise(0.2, 700, 2600, 0.06, { q: 0.8 }); },
+  wipe() { sNoise(0.5, 260, 1700, 0.09, { q: 0.7, a: 0.22 }); sNoise(0.35, 1700, 300, 0.05, { q: 0.7, t: 0.22 }); },
+  jump() { sNoise(0.17, jit(520), jit(1900), 0.11, { q: 1.3, a: 0.03 }); sTone(jit(200), 0.09, 'sine', 0.035, { f1: 300 }); },
+  walljump() { sNoise(0.2, jit(700), jit(2400), 0.12, { q: 1.4, a: 0.03 }); sTone(jit(260), 0.1, 'triangle', 0.04, { f1: 420 }); },
+  land(v) {
+    // atterrissage : un petit appui pour un saut normal, un vrai choc sourd pour une grande chute
+    const k = Math.min(1, Math.max(0, (v - 52) / 50));
+    if (k <= 0) { sNoise(0.06, 900, 400, 0.035, { type: 'lowpass', q: 0.7, a: 0.004 }); return; }
+    sTone(jit(110, 0.04), 0.2 + 0.1 * k, 'sine', 0.12 + 0.2 * k, { f1: 42, a: 0.004 });
+    sNoise(0.14 + 0.08 * k, 1200, 180, 0.07 + 0.12 * k, { type: 'lowpass', q: 0.8, a: 0.004 });
+  },
+  grab() { sNoise(0.03, 3000, 2000, 0.04, { type: 'highpass', a: 0.002 }); sTone(jit(430), 0.04, 'triangle', 0.035); },
+  start() { sTone(660, 0.07, 'triangle', 0.06); },
+  check() { sTone(784, 0.25, 'sine', 0.1); sTone(1175, 0.4, 'sine', 0.1, { t: 0.09 }); },
+  fall() { sNoise(0.45, 1600, 220, 0.09, { q: 0.8, a: 0.05 }); sTone(320, 0.4, 'sine', 0.06, { f1: 90 }); },
+  restart() { sNoise(0.22, 2400, 500, 0.07, { q: 0.9, a: 0.02 }); sTone(700, 0.16, 'triangle', 0.05, { f1: 260 }); },
+  finish(rec) {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => { sTone(f, 0.55, 'triangle', 0.09, { t: i * 0.075 }); sTone(f * 2, 0.4, 'sine', 0.025, { t: i * 0.075 }); });
+    sNoise(0.6, 5000, 9000, 0.03, { type: 'highpass', t: 0.25, a: 0.1 });
+    if (rec) [1318.5, 1568, 2093].forEach((f, i) => sTone(f, 0.7, 'sine', 0.06, { t: 0.42 + i * 0.09 }));
+  },
+};
+// Boutons de l'interface : un petit clic ; survol (souris) des grands boutons : un effleurement
+addEventListener('click', e => {
+  const b = e.target.closest && e.target.closest('button, .tile, label.sw, a');
+  if (b && !b.disabled && !b.matches('#gear') && b !== canvas) sfx('click');
+}, true);
+$('gear').addEventListener('click', () => sfx('click'));
+addEventListener('pointerover', e => {
+  if (e.pointerType !== 'mouse' || !e.target.closest) return;
+  const b = e.target.closest('.mbtn, .tile.open, .pv-play, .acct-chip');
+  if (b && !(e.relatedTarget && b.contains(e.relatedTarget))) sfx('hover');
+});
+// Jouer un son. Ceux du perso seulement en partie (pas dans les simulations ni en fond de menu) ; anti-rafale par son.
+function sfx(name, arg, game) {
+  if (!SND.ctx || SND.ctx.state !== 'running' || settings.vol <= 0) return;
+  if (game && (!SND.live || UI.mode !== 'play')) return;
+  const now = performance.now(); if (now - (SND.last[name] || 0) < 45) return; SND.last[name] = now;
+  try { SFX[name](arg); } catch (e) {}
+}
 /* Touches : déplacement, saut et camera lock se changent dans les réglages. On garde le code physique de la touche
    (une touche reste à sa place quelle que soit la disposition du clavier) et son nom tel qu'il est écrit dessus.
    Les flèches marchent toujours en plus (avancer, reculer, tourner la caméra). */
@@ -3890,6 +3977,11 @@ menu.addEventListener('change', e => { if (UI.mode === 'play' && e.target.type =
 menuClose.addEventListener('click', () => openMenu(false));
 backBtn.addEventListener('click', () => { if (!menu.hidden) openMenu(false); quitToMenu(); });
 sensIn.addEventListener('input', () => { settings.sens = +sensIn.value; sensOut.textContent = fmt2(settings.sens); saveSettings(); });
+const volIn = $('vol'), volOut = $('volOut');
+const showVol = () => { volIn.value = settings.vol; volOut.textContent = settings.vol > 0 ? Math.round(settings.vol * 100) + ' %' : 'Coupé'; };
+showVol();
+volIn.addEventListener('input', () => { settings.vol = +volIn.value; showVol(); if (SND.out) SND.out.gain.value = settings.vol; saveSettings(); });
+volIn.addEventListener('change', () => sfx('click'));
 function endBind() { binding = false; slHint.hidden = true; for (const el of kcEls) el.classList.remove('wait'); }
 for (const el of kcEls) el.addEventListener('click', () => {
   if (binding === el.dataset.act) { endBind(); return; }
@@ -3984,7 +4076,7 @@ addEventListener('keydown', e => {
   const k = keyAct(e.code);
   if (k) { input[k] = 1; e.preventDefault(); return; }
   if (isSL(e) && !e.repeat) { e.preventDefault(); if (!menu.hidden) openMenu(false); setShiftlock(!shiftlock); return; }   // le camera lock prend la souris : il ferme les réglages
-  if (e.code === 'KeyR' && !e.repeat) restart();
+  if (e.code === 'KeyR' && !e.repeat) { if (playing()) sfx('restart'); restart(); }
   if (e.code === 'KeyI' && playing()) zoomBy(0.8);           // comme Roblox : I rapproche, O éloigne
   if (e.code === 'KeyO' && playing()) zoomBy(1.25);
 });
@@ -4232,6 +4324,7 @@ function focusScreen() {
   else if (document.activeElement && document.activeElement !== document.body && uiEl.contains(document.activeElement)) document.activeElement.blur();
 }
 function showScreen(name, back) {
+  if (UI.screen !== name) sfx('page');
   UI.screen = name;
   uiEl.classList.toggle('pvmode', name === 'level');
   for (const k in scr) {
@@ -4278,10 +4371,11 @@ $('bBack').addEventListener('click', () => { if (!UI.busy) showScreen('title', t
 $('bEditor').addEventListener('click', () => { if (!UI.busy) { buildEditorGrid(); showScreen('editor'); } });
 $('bBackEd').addEventListener('click', () => { if (!UI.busy) showScreen('title', true); });
 $('finQuit').addEventListener('click', quitToMenu);
-$('finRetry').addEventListener('click', e => { e.currentTarget.blur(); if (playing()) { restart(); canvas.focus(); } });
+$('finRetry').addEventListener('click', e => { e.currentTarget.blur(); if (playing()) { sfx('restart'); restart(); canvas.focus(); } });
 
 // Volet : rouge puis blanc couvrent l'écran, on change de carte dessous, puis ils repartent.
 function wipe(mid) {
+  sfx('wipe');
   UI.busy = true; wipeEl.className = 'in'; PERF.cool = 3;   // un chargement n'est pas un ralentissement
   setTimeout(() => {
     try { mid(); renderer.compile(scene, camera); } catch (err) { console.error(err); }
@@ -6892,6 +6986,7 @@ function onFinish() {
   // Un essai depuis l'éditeur ne compte pas comme record.
   const prev = ED.test ? 0 : records[recKey(LEVEL)], better = !ED.test && (!prev || ms < prev);
   if (better) { records[recKey(LEVEL)] = ms; saveRecords(); }
+  sfx('finish', better && !!prev);
   tMain.textContent = fmtT(ms); timerEl.className = 'card done';
   winflash.classList.remove('go'); void winflash.offsetWidth; winflash.classList.add('go');
   if (W && W.onFinish) W.onFinish();
@@ -8046,7 +8141,9 @@ function frame(now) {
   let n = 0;
   if (UI.mode === 'edit') acc = 0;
   if (UI.mode === 'replay') { replayFrame(fdt); acc = 0; }
+  SND.live = true;
   while (acc >= DT && n < 30) { step(); acc -= DT; n++; }
+  SND.live = false;
   if (n >= 30) acc = 0;
   if (pendingFinish) { pendingFinish = false; onFinish(); }
   render(acc / DT, fdt);
