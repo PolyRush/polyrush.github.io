@@ -356,8 +356,8 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-list .board li{border:0;border-radius:10px;padding:9px 10px;background:transparent;grid-template-columns:30px 1fr auto;transition:background .2s}
 .pv-list .board li:nth-child(odd){background:rgba(255,255,255,.42)}
 .pv-list .board li .rk{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:rgba(17,17,17,.07);color:var(--ink);font-size:12px}
-.pv-list .board li:nth-child(1) .rk{background:var(--red);color:#fff}
-.pv-list .board li:nth-child(2) .rk,.pv-list .board li:nth-child(3) .rk{background:var(--ink);color:#fff}
+.pv-list .board li.r1 .rk{background:var(--red);color:#fff}
+.pv-list .board li.r2 .rk,.pv-list .board li.r3 .rk{background:var(--ink);color:#fff}
 .pv-list .board li.me{background:rgba(240,68,58,.14);box-shadow:inset 3px 0 0 var(--red)}
 .pv-list .acct-empty{padding:8px 6px;margin:0}
 .pv-week{display:grid;gap:8px;margin-top:6px;padding:12px 12px 4px;border-top:1.5px solid rgba(17,17,17,.1)}
@@ -372,7 +372,8 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pl-tools{display:flex;gap:8px;align-items:center}
 .pl-tools input{flex:1;min-width:0;box-sizing:border-box;font:600 14px/1.2 var(--font-ui);padding:9px 11px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);user-select:text;-webkit-user-select:text}
 .pl-tools span{font:700 12px var(--font-num);color:var(--muted);white-space:nowrap}
-.pl-list{display:grid;gap:4px;max-height:260px;overflow-y:auto;overscroll-behavior:contain;padding-right:2px}
+.pl-list{display:grid;gap:4px;align-content:start;height:min(58vh,520px);overflow-y:auto;overscroll-behavior:contain;padding-right:4px}
+.acct-card.wide{width:min(460px,100%)}
 .pl-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 6px 6px 10px;border:2px solid var(--ink);border-radius:8px;background:var(--card)}
 .pl-row.off{background:var(--lock-bg)}
 .pl-row.off .pl-n{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
@@ -438,7 +439,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .board li{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:8px;padding:7px 10px;border:2px solid var(--lock-bg2);border-radius:8px;font:700 14px/1 var(--font-ui)}
 .board li .rk{font:800 13px/1 var(--font-num);color:var(--muted)} .board li .tm{font:800 13.5px/1 var(--font-num);font-variant-numeric:tabular-nums}
 .board li .ps{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.board li:first-child .rk{color:var(--red)}
+.board li.r1 .rk{color:var(--red)}
 .board li.me{border-color:var(--ink);background:var(--paper)}
 .fin-board{width:100%;display:grid;gap:8px}
 .fin-board .fb-h{font:800 11.5px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
@@ -8131,7 +8132,11 @@ async function boardMeta(force) {
 async function shownTop(n, k = 10) {
   const [rows, bm] = await Promise.all([acctTop(n, k + 10), boardMeta()]);
   // l'admin voit tout : les suspects sont signalés, les joueurs masqués apparaissent en gris
-  if (isAdmin()) return rows.slice(0, k).map(r => bm.hidden.has(r.uid) ? { ...r, hidden: true } : r);
+  if (isAdmin()) {
+    const out = []; let vis = 0;
+    for (const r of rows) { const h = bm.hidden.has(r.uid); if (!h && vis >= k) break; out.push(h ? { ...r, hidden: true } : r); if (!h) vis++; }
+    return out;
+  }
   const me = ACCT.user ? ACCT.user.uid : null;
   const vis = rows.filter(r => r.uid === me || !bm.hidden.has(r.uid));   // un joueur masqué voit quand même ses temps
   const v = await Promise.all(vis.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
@@ -8141,10 +8146,11 @@ function boardList(rows, el, lv) {
   el.textContent = '';
   if (!rows.length) { const p = document.createElement('p'); p.className = 'acct-empty'; p.textContent = 'Personne n’a encore de temps ici.'; el.appendChild(p); return; }
   const ol = document.createElement('ol'); ol.className = 'board';
-  rows.forEach((r, i) => {
+  let rank = 0;                                              // un temps masqué (vu par l'admin) ne prend pas de place
+  rows.forEach(r => {
     const li = document.createElement('li'); if (ACCT.user && r.uid === ACCT.user.uid) li.className = 'me';
-    if (r.hidden) { li.classList.add('hid'); li.title = 'Masqué : seul toi le vois'; }
-    const a = document.createElement('span'); a.className = 'rk'; a.textContent = i + 1;
+    if (r.hidden) { li.classList.add('hid'); li.title = 'Masqué : seul toi le vois'; } else { rank++; if (rank <= 3) li.classList.add('r' + rank); }
+    const a = document.createElement('span'); a.className = 'rk'; a.textContent = r.hidden ? '–' : rank;
     const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
     const c = document.createElement('span'); c.className = 'tm'; c.textContent = fmtT(r.ms) + ' s';
     li.append(a, b, c);
@@ -8222,7 +8228,7 @@ function acctRender() {
   if (ACCT.on) $('bEditor').hidden = !isAdmin();
   weeklyMenu();
   if (acctEl.hidden) return;
-  const c = acctCard; c.textContent = '';
+  const c = acctCard; c.textContent = ''; c.classList.remove('wide');
   const x = mkEl('button', 'acct-x', '×'); x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', acctClose); c.appendChild(x);
   const v = ACCT.view;
   if (v === 'login') {
@@ -8338,9 +8344,18 @@ function acctRender() {
       A.sel.clear(); acctRender(); acctMsg(`Reset fait (${k} temps effacés).`, true);
     });
     go.disabled = !A.sel.size; c.appendChild(go);
+    // Joueurs : la liste s'ouvre à part (elle peut être longue)
+    const pl = mkEl('button', 'ed-btn', A.players ? 'Joueurs (' + A.players.length + ')' : 'Joueurs');
+    pl.addEventListener('click', () => { ACCT.view = 'players'; acctRender(); });
+    c.appendChild(pl);
+  } else if (v === 'players' && isAdmin()) {
+    const A = ACCT.adm || (ACCT.adm = { sel: new Set() });
+    c.classList.add('wide');
+    c.appendChild(mkEl('h2', null, 'Joueurs'));
+    const back = mkEl('button', 'acct-link', '← Admin');
+    back.addEventListener('click', () => { ACCT.view = 'admin'; acctRender(); }); c.appendChild(back);
     // Joueurs : tous les pseudos. « Public » : ses temps apparaissent au classement (sinon masqués à tous, gris pour
     // l'admin). « Reset » : ses temps du classement et ses replays effacés, ses records remis à zéro à sa prochaine visite.
-    c.appendChild(mkEl('h3', 'acct-sub', 'Joueurs'));
     const tools = mkEl('div', 'pl-tools'), q = mkEl('input'), cnt = mkEl('span');
     q.type = 'search'; q.placeholder = 'Chercher un pseudo'; q.value = A.q || ''; q.setAttribute('aria-label', 'Chercher un pseudo');
     tools.append(q, cnt); c.appendChild(tools);
@@ -8387,7 +8402,7 @@ function acctRender() {
         const [snap] = await Promise.all([ACCT.db.collection('pseudos').get(), boardMeta(true)]);
         A.players = snap.docs.map(d => ({ uid: d.data().uid, pseudo: d.data().pseudo || d.id })).filter(p => p.uid).sort((p, r) => p.pseudo.localeCompare(r.pseudo, 'fr', { sensitivity: 'base' }));
       } catch (e) { list.textContent = ''; list.appendChild(mkEl('p', 'pl-empty', 'Liste des joueurs indisponible.')); return; }
-      if (ACCT.view === 'admin' && list.isConnected) draw();
+      if (ACCT.view === 'players' && list.isConnected) draw();
     })();
   } else if (v === 'board') {
     c.appendChild(mkEl('h2', null, 'Classement'));
