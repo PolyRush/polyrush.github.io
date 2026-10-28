@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Parkour 3D dans le navigateur : des parcours chronométrés, un niveau de la semaine et un classement entre potes."><meta name="theme-color" content="#111111"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta property="og:type" content="website"><meta property="og:site_name" content="Poly Rush"><meta property="og:title" content="Poly Rush"><meta property="og:description" content="Parkour 3D dans le navigateur : bats le chrono, grimpe au classement, nouveau niveau chaque semaine."><meta property="og:url" content="https://polyrush.github.io/"><meta property="og:image" content="https://polyrush.github.io/og.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://polyrush.github.io/og.png">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Parkour 3D dans le navigateur : des parcours chronométrés, un niveau de la semaine et un classement entre potes."><meta name="theme-color" content="#111111"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta property="og:type" content="website"><meta property="og:site_name" content="Poly Rush"><meta property="og:title" content="Poly Rush"><meta property="og:description" content="Parkour 3D dans le navigateur : bats le chrono, grimpe au classement, nouveau niveau chaque semaine."><meta property="og:url" content="https://polyrush.github.io/"><meta property="og:image" content="https://polyrush.github.io/og-v2.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://polyrush.github.io/og-v2.png">
 <style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -46,7 +46,38 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-of
 input[type=range]{width:100%;accent-color:var(--ink)}
 .bind{font:inherit;font-weight:800;background:var(--key);border:2px solid var(--line);border-bottom-width:4px;border-radius:8px;padding:8px 12px;cursor:pointer;text-align:left}
 .bind.wait{background:var(--accent);color:var(--on-accent)}
+.kb{display:flex;gap:10px;align-items:stretch}
+.kb-move{display:grid;grid-template-columns:repeat(3,42px);grid-auto-rows:42px;gap:5px}
+.kb-side{display:grid;grid-auto-rows:1fr;gap:5px;flex:1;min-width:0}
+.kc{position:relative;font:inherit;font-weight:800;font-size:14px;background:var(--key);color:var(--ink);border:2px solid var(--line);border-bottom-width:4px;border-radius:8px;cursor:pointer;padding:0;display:grid;place-items:center;min-width:0;transition:transform .08s,background .15s}
+.kc:active{transform:translateY(2px);border-bottom-width:2px}
+.kc i{position:absolute;left:5px;top:2px;font-style:normal;font-size:9.5px;font-weight:700;color:var(--muted);letter-spacing:.02em;text-transform:uppercase}
+.kc b{font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%;padding:0 4px}
+.kc.wide b{padding-top:8px}
+.kc.wait{background:var(--accent);color:var(--on-accent);animation:kcPulse 1s ease-in-out infinite}
+.kc.wait i{color:rgba(255,255,255,.75)}
+.kc.flash{background:#ffe2df}
+@keyframes kcPulse{50%{transform:translateY(-1px);box-shadow:0 0 0 4px rgba(123,92,255,.25)}}
+.kb-reset{float:right;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .hint{color:var(--muted);font-size:12px;line-height:1.45;margin:0}
+#menu{max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain}
+.opts{display:grid;gap:9px;padding-top:2px}
+.sw{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700}
+.sw input{position:absolute;opacity:0;pointer-events:none}
+.sw-ui{flex:none;width:38px;height:22px;border-radius:99px;border:2px solid var(--line);background:var(--lock-bg);position:relative;transition:background .18s}
+.sw-ui::after{content:'';position:absolute;left:2px;top:2px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .2s var(--ease-out)}
+.sw input:checked+.sw-ui{background:var(--red)}
+.sw input:checked+.sw-ui::after{transform:translateX(16px);background:#fff}
+.sw input:focus-visible+.sw-ui{outline:3px solid var(--accent);outline-offset:2px}
+.sw-t{display:grid;line-height:1.25}
+.sw-t small{font-weight:500;font-size:11.5px;color:var(--muted)}
+#fpsG{position:fixed;right:calc(12px + env(safe-area-inset-right,0px));bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:30;padding:7px 9px 8px;width:168px;pointer-events:none;font-family:var(--font-num)}
+@media (pointer:coarse){#fpsG{bottom:auto;top:calc(64px + env(safe-area-inset-top,0px))}}
+.fg-h{display:flex;align-items:baseline;gap:5px;margin-bottom:5px}
+.fg-h b{font-size:20px;font-weight:800;line-height:1;min-width:2ch;transition:color .2s}
+.fg-h span{font-size:10.5px;font-weight:700;color:var(--muted)}
+.fg-h em{margin-left:auto;font-style:normal;font-size:10.5px;font-weight:700;color:var(--muted)}
+#fpsC{display:block;width:150px;height:34px}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:12.5px}
 .keys kbd{justify-self:start}
 .keys span{color:var(--muted)}
@@ -490,6 +521,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 <div id="toast" class="card" style="opacity:0"></div>
 <div id="flash"></div>
 <div id="vign" aria-hidden="true"></div>
+<div id="fpsG" class="card" hidden aria-hidden="true"><div class="fg-h"><b id="fpsNow">0</b><span>FPS</span><em id="fpsMax"></em></div><canvas id="fpsC" width="150" height="34"></canvas></div>
 <button id="bJump" class="tbtn" hidden>Sauter</button>
 <button id="bSL" class="tbtn" hidden>Camera<br>lock</button>
 <div id="joy" hidden><i></i></div>
@@ -690,17 +722,30 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
     <input id="sens" type="range" min="0.2" max="3" step="0.05" value="1">
   </div>
   <div class="row">
-    <span class="lab">Touche du camera lock</span>
-    <button id="slBind" class="bind">Maj</button>
-    <p id="slHint" class="hint">Clique puis appuie sur une touche. Échap pour annuler.</p>
+    <span class="lab">Touches <button id="kbReset" class="kb-reset" hidden>Par défaut</button></span>
+    <div class="kb">
+      <div class="kb-move">
+        <button class="kc" data-act="fwd" style="grid-area:1/2" aria-label="Avancer"><i>↑</i><b></b></button>
+        <button class="kc" data-act="left" style="grid-area:2/1" aria-label="Aller à gauche"><i>←</i><b></b></button>
+        <button class="kc" data-act="back" style="grid-area:2/2" aria-label="Reculer"><i>↓</i><b></b></button>
+        <button class="kc" data-act="right" style="grid-area:2/3" aria-label="Aller à droite"><i>→</i><b></b></button>
+      </div>
+      <div class="kb-side">
+        <button class="kc wide" data-act="jump" aria-label="Sauter"><i>Saut</i><b></b></button>
+        <button class="kc wide" data-act="sl" aria-label="Camera lock"><i>Cam lock</i><b></b></button>
+      </div>
+    </div>
+    <p id="slHint" class="hint" hidden></p>
   </div>
   <div class="keys">
-    <kbd>Z Q S D</kbd><span>Se déplacer</span>
-    <kbd>Espace</kbd><span>Sauter (maintenir pour enchaîner)</span>
     <kbd>Clic droit</kbd><span>Tourner la caméra</span>
     <kbd>Molette</kbd><span>Zoom</span>
     <kbd>R</kbd><span>Recommencer</span>
     <kbd>Échap</kbd><span>Réglages</span>
+  </div>
+  <div class="opts">
+    <label class="sw"><input type="checkbox" id="optPerf"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Mode performance<small>Sans ombres ni rayons de lumière</small></span></label>
+    <label class="sw"><input type="checkbox" id="optFps"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Graphe des FPS</span></label>
   </div>
   <button id="menuClose" class="close">Reprendre</button>
   <button id="resetScores" class="close danger">Réinitialiser les scores</button>
@@ -741,7 +786,7 @@ if (FX) {
 const DT = 1 / 120;
 const CFG = {
   speed: 16, jumpV: 50, gravity: 196.2,
-  coyote: 0.1, buffer: 0.12,
+  coyote: 0.13, buffer: 0.12,               // coyote : on peut encore sauter un court instant après avoir quitté le bord
   driveAccel: 960,                         // moteur de marche : vitesse atteinte en 2 pas
   step: 1.1,                               // hauteur que les jambes enjambent (capteur de sol)
   probe: 0.3,                              // le capteur suit une descente de 0,3 sans décoller
@@ -1781,7 +1826,7 @@ function lightShafts(holes, top, mat) {
     g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
     g.setAttribute('keep', new THREE.Float32BufferAttribute(keep, 2));
     g.setIndex(idx); g.computeBoundingSphere();
-    const m = new THREE.Mesh(g, mat); m.renderOrder = 2;
+    const m = new THREE.Mesh(g, mat); m.renderOrder = 2; m.userData.fx = true;   // effet : coupé en mode performance
     W.add(m);
   }
   for (const h of holes) shaftDust(h, top);
@@ -1795,7 +1840,7 @@ function shaftDust(h, top) {
   pg.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
   pg.setAttribute('seed', new THREE.BufferAttribute(seed, 4));
   const pts = new THREE.Points(pg, dustMat(w, d, top, bot));
-  pts.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); pts.frustumCulled = false; pts.renderOrder = 3;
+  pts.position.set((x0 + x1) / 2, 0, (z0 + z1) / 2); pts.frustumCulled = false; pts.renderOrder = 3; pts.userData.fx = true;
   W.add(pts);
 }
 // Trou du plafond qui éclaire une tache (px, pz) de w × d, sur une surface à la hauteur y. « bas » : où s'arrête le rayon.
@@ -3097,7 +3142,7 @@ function step() {
   P.grounded = !!gB; P.ground = gB;
   let gvx = 0, gvy = 0, gvz = 0, gw = 0;
   if (gB) { followVel(gB, P.x, P.z, _v); gvx = _v.x; gvy = _v.y; gvz = _v.z; gw = gB.w; }
-  if (P.grounded) { P.coyote = CFG.coyote; P.inhX = gvx; P.inhZ = gvz; }
+  if (P.grounded) { P.coyote = CFG.coyote; P.inhX = gvx; P.inhZ = gvz; P.ledgeY = g; }
   if (gB && gB.check && CHECK !== gB.check) { CHECK = gB.check; toast('Point de reprise', 900); }
   if (gB && gB.finish && run.state === 'run') finishRun();
   else if (P.coyote > 0) P.coyote -= DT;
@@ -3168,7 +3213,7 @@ function step() {
   if (wasClimb && !P.climb && fvx * P.cdx + fvz * P.cdz <= cone) P.letGo = 0.3;
   // Grimper n'est qu'un état : on suit ce à quoi on est accroché (plateforme qui bouge, qui tourne).
   if (P.climb) {
-    P.coyote = CFG.coyote; P.grounded = false; P.ground = null;
+    P.coyote = CFG.coyote; P.grounded = false; P.ground = null; P.ledgeY = feetY;
     followVel(cB, P.x, P.z, _v);
     gvx = _v.x; gvy = _v.y; gvz = _v.z; gw = cB.w; P.inhX = gvx; P.inhZ = gvz;
   }
@@ -3179,7 +3224,10 @@ function step() {
   // Saut
   if (P.jumpBuf > 0) P.jumpBuf -= DT;
   if ((P.jumpBuf > 0 || input.jumpHeld) && (P.grounded || P.coyote > 0) && P.jumpT <= 0) {
-    P.vy = CFG.jumpV + Math.max(0, gvy);
+    // Saut un peu après avoir quitté le bord : on a déjà commencé à tomber. Le saut rattrape ce qu'on a perdu,
+    // pour culminer à la même hauteur que si l'on avait sauté pile au bord (plus on est en retard, plus il pousse).
+    const late = !P.grounded && !P.climb ? clamp((P.ledgeY ?? feetY) - feetY, 0, 1.8) : 0;
+    P.vy = Math.sqrt(CFG.jumpV * CFG.jumpV + 2 * CFG.gravity * late) + Math.max(0, gvy);
     P.grounded = false; P.ground = null; P.coyote = 0; P.jumpBuf = 0; P.jumpT = 0.12;
     // Sauter depuis une prise : on se repousse vers l'arrière du corps (à l'opposé de là où le perso
     // regarde), comme le saut mural neutre de Celeste. L'élan s'éteint tout seul ; les touches restent actives.
@@ -3718,29 +3766,56 @@ function render(a, fdt) {
   if (W) for (const f of W.ticks) f(fdt, tw);
   if (UI.mode === 'replay') replayHud(); else updateTimer(a);
   // L'ombre ne se recalcule que si quelque chose qui la porte bouge : soleil qui suit (dehors), éditeur, blocs mobiles
-  if (shadowDirty || sunFollow || kin.length) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
+  if (sun.castShadow && (shadowDirty || sunFollow || kin.length)) { renderer.shadowMap.needsUpdate = true; shadowDirty = false; }
   renderer.render(scene, camera);
 }
 
 /* ---------- Entrées ---------- */
-const KEYMAP = { KeyW: 'fwd', ArrowUp: 'fwd', KeyS: 'back', ArrowDown: 'back', KeyA: 'left', KeyD: 'right', ArrowLeft: 'camL', ArrowRight: 'camR' };
 /* Réglages (gardés dans le navigateur) */
-const settings = { sens: 1, slCode: 'Shift', slLabel: 'Maj' };
+const settings = { sens: 1, slCode: 'Shift', slLabel: 'Maj', keys: null, fps: false, perf: false };
 try { Object.assign(settings, JSON.parse(localStorage.getItem('obby.settings') || '{}')); } catch (e) {}
 function saveSettings() { try { localStorage.setItem('obby.settings', JSON.stringify(settings)); } catch (e) {} }
-const menu = $('menu'), gear = $('gear'), sensIn = $('sens'), sensOut = $('sensOut'), slBind = $('slBind'), slHint = $('slHint');
+/* Touches : déplacement, saut et camera lock se changent dans les réglages. On garde le code physique de la touche
+   (une touche reste à sa place quelle que soit la disposition du clavier) et son nom tel qu'il est écrit dessus.
+   Les flèches marchent toujours en plus (avancer, reculer, tourner la caméra). */
+const KEY_ACTS = ['fwd', 'back', 'left', 'right', 'jump', 'sl'];
+const keyNorm = c => /^(Shift|Control|Alt|Meta)(Left|Right)$/.test(c) ? c.replace(/(Left|Right)$/, '') : c;
+const KEY_FIXED = { ArrowUp: 'fwd', ArrowDown: 'back', ArrowLeft: 'camL', ArrowRight: 'camR' };
+const KEY_RESERVED = ['Escape', 'KeyR', 'KeyI', 'KeyO', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+const azerty = /^fr/i.test(navigator.language || '');
+const KEY_DEFAULT = () => ({ fwd: { c: 'KeyW', l: azerty ? 'Z' : 'W' }, back: { c: 'KeyS', l: 'S' }, left: { c: 'KeyA', l: azerty ? 'Q' : 'A' },
+  right: { c: 'KeyD', l: 'D' }, jump: { c: 'Space', l: 'Espace' }, sl: { c: keyNorm(settings.slCode || 'Shift'), l: settings.slLabel || 'Maj' } });
+if (!settings.keys || KEY_ACTS.some(a => !settings.keys[a] || !settings.keys[a].c)) settings.keys = Object.assign(KEY_DEFAULT(), settings.keys || {});
+const keyIs = (e, a) => keyNorm(e.code) === settings.keys[a].c;
+const keyAct = code => { const n = keyNorm(code); for (const a of ['fwd', 'back', 'left', 'right']) if (settings.keys[a].c === n) return a; return KEY_FIXED[code] || null; };
+// Noms écrits sur les touches par défaut, d'après la vraie disposition du clavier quand le navigateur la donne
+try { if (navigator.keyboard && navigator.keyboard.getLayoutMap) navigator.keyboard.getLayoutMap().then(m => {
+  let ch = false;
+  for (const a of ['fwd', 'back', 'left', 'right']) { const k = settings.keys[a], v = m.get(k.c); if (v && /^Key/.test(k.c) && k.l !== v.toUpperCase()) { k.l = v.toUpperCase(); ch = true; } }
+  if (ch) { saveSettings(); showSettings(); }
+}).catch(() => {}); } catch (e) {}
+const menu = $('menu'), gear = $('gear'), sensIn = $('sens'), sensOut = $('sensOut'), slHint = $('slHint');
 const menuClose = $('menuClose'), resetBtn = $('resetScores'), backBtn = $('backBtn');
 const fmt2 = v => v.toFixed(2).replace('.', ',') + '×';
+const kcEls = [...document.querySelectorAll('#menu .kc')], kbReset = $('kbReset');
 function showSettings() {
   sensIn.value = settings.sens; sensOut.textContent = fmt2(settings.sens);
-  slBind.textContent = settings.slLabel;
+  const D = KEY_DEFAULT();
+  for (const el of kcEls) {
+    const a = el.dataset.act, l = settings.keys[a].l, small = !el.classList.contains('wide');
+    // petite touche : nom court (« Espace » → « Esp »), et plus petit s'il reste long
+    const t = small ? ({ Espace: 'Esp', Entrée: 'Ent', 'Verr. maj': 'Verr', Retour: '⌫', Suppr: 'Suppr' }[l] || l) : l;
+    const b = el.querySelector('b'); b.textContent = t; b.style.fontSize = small && t.length > 2 ? '11px' : '';
+    el.title = l; el.classList.toggle('wait', binding === a);
+  }
+  kbReset.hidden = KEY_ACTS.every(a => a === 'sl' ? settings.keys.sl.c === 'Shift' : settings.keys[a].c === D[a].c);
 }
-showSettings();
 let binding = false;
+showSettings();
 function clearInput() { for (const k in input) input[k] = k === 'jumpHeld' ? false : 0; joy.x = joy.y = 0; P.jumpBuf = 0; }
 function openMenu(open) {
   menu.hidden = !open; gear.setAttribute('aria-expanded', String(open));
-  binding = false; slBind.classList.remove('wait'); slHint.textContent = 'Clique puis appuie sur une touche. Échap pour annuler.';
+  endBind();
   clearInput();
   const inGame = UI.mode === 'play';
   menuClose.textContent = inGame ? 'Reprendre' : 'Fermer'; disarmReset();
@@ -3761,16 +3836,30 @@ resetBtn.addEventListener('click', () => {
   setTimeout(() => { if (!resetArmed) resetBtn.textContent = 'Réinitialiser les scores'; }, 1600);
 });
 sensIn.addEventListener('input', () => { settings.sens = +sensIn.value; sensOut.textContent = fmt2(settings.sens); saveSettings(); });
-slBind.addEventListener('click', () => { binding = true; slBind.classList.add('wait'); slBind.textContent = 'Appuie sur une touche…'; });
+function endBind() { binding = false; slHint.hidden = true; for (const el of kcEls) el.classList.remove('wait'); }
+for (const el of kcEls) el.addEventListener('click', () => {
+  if (binding === el.dataset.act) { endBind(); return; }
+  binding = el.dataset.act; showSettings();
+  slHint.hidden = false; slHint.textContent = 'Appuie sur la nouvelle touche · Échap pour annuler';
+});
+kbReset.addEventListener('click', () => { const D = KEY_DEFAULT(); D.sl = { c: 'Shift', l: 'Maj' }; settings.keys = D; saveSettings(); endBind(); showSettings(); });
 const keyName = e => {
-  if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') return 'Maj';
-  if (e.code === 'ControlLeft' || e.code === 'ControlRight') return 'Ctrl';
-  if (e.code === 'AltLeft' || e.code === 'AltRight') return 'Alt';
-  if (e.code === 'Tab') return 'Tab';
-  if (e.code === 'CapsLock') return 'Verr. maj';
-  return e.key && e.key.length === 1 ? e.key.toUpperCase() : (e.key || e.code);
+  const c = keyNorm(e.code);
+  const named = { Shift: 'Maj', Control: 'Ctrl', Alt: 'Alt', Meta: 'Cmd', Space: 'Espace', Tab: 'Tab', CapsLock: 'Verr. maj', Enter: 'Entrée', Backspace: 'Retour', Delete: 'Suppr' };
+  if (named[c]) return named[c];
+  if (/^Numpad\d$/.test(c)) return 'Pavé ' + c.slice(6);
+  return e.key && e.key.length === 1 && e.key !== ' ' ? e.key.toUpperCase() : (e.key || e.code);
 };
-const isSL = e => settings.slCode === 'Shift' ? (e.code === 'ShiftLeft' || e.code === 'ShiftRight') : e.code === settings.slCode;
+// Nouvelle touche pour l'action en attente. Déjà prise par une autre action : les deux échangent leurs touches.
+function bindKey(e) {
+  const a = binding, c = keyNorm(e.code);
+  if (KEY_RESERVED.includes(e.code)) { slHint.textContent = keyName(e) + ' sert déjà (recommencer, zoom, flèches) · essaie une autre'; return false; }
+  const other = KEY_ACTS.find(o => o !== a && settings.keys[o].c === c);
+  if (other) { settings.keys[other] = settings.keys[a]; const el = kcEls.find(x => x.dataset.act === other); if (el) { el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 600); } }
+  settings.keys[a] = { c, l: keyName(e) };
+  saveSettings(); return true;
+}
+const isSL = e => keyIs(e, 'sl');
 
 // Souris : verrouillée (cachée, elle ne peut plus sortir de la fenêtre) pendant le shiftlock et la
 // rotation au clic droit, rendue ensuite. Le reste du temps, c'est le curseur normal.
@@ -3815,14 +3904,12 @@ document.addEventListener('pointerlockchange', () => {
 const playing = () => UI.mode === 'play' && !fly && !UI.busy;
 addEventListener('keydown', e => {
   if (binding) {
-    e.preventDefault();
-    if (e.code !== 'Escape') {
-      if (KEYMAP[e.code] || e.code === 'Space' || e.code === 'KeyR') { slHint.textContent = 'Cette touche sert déjà à autre chose.'; return; }
-      settings.slCode = (e.code === 'ShiftLeft' || e.code === 'ShiftRight') ? 'Shift' : e.code; settings.slLabel = keyName(e); saveSettings();
-    }
-    binding = false; slBind.classList.remove('wait'); showSettings(); return;
+    e.preventDefault(); e.stopPropagation();
+    if (e.code !== 'Escape' && !bindKey(e)) return;
+    if (document.activeElement && document.activeElement.blur) document.activeElement.blur();   // sinon Espace/Entrée relâchée re-cliquerait la touche
+    endBind(); showSettings(); return;
   }
-  if (UI.busy) { if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); return; }
+  if (UI.busy) { if (e.code === 'Space' || keyIs(e, 'jump') || e.code.startsWith('Arrow')) e.preventDefault(); return; }
   if (UI.mode === 'edit') {
     if (!menu.hidden) { if (e.code === 'Escape') openMenu(false); return; }
     editorKey(e, true); return;
@@ -3838,9 +3925,9 @@ addEventListener('keydown', e => {
   if (UI.mode === 'menu') { menuNav(e); return; }
   if (UI.mode === 'replay') { if ((e.code === 'KeyR' || (e.code === 'Enter' && RP.done)) && !e.repeat) { e.preventDefault(); replayRestart(); } return; }
   if (fly) { if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); return; }
-  const k = KEYMAP[e.code];
+  if (keyIs(e, 'jump')) { e.preventDefault(); if (!e.repeat) P.jumpBuf = CFG.buffer; input.jumpHeld = true; return; }
+  const k = keyAct(e.code);
   if (k) { input[k] = 1; e.preventDefault(); return; }
-  if (e.code === 'Space') { e.preventDefault(); if (!e.repeat) P.jumpBuf = CFG.buffer; input.jumpHeld = true; return; }
   if (isSL(e) && !e.repeat) { e.preventDefault(); setShiftlock(!shiftlock); return; }
   if (e.code === 'KeyR' && !e.repeat) restart();
   if (e.code === 'KeyI' && playing()) zoomBy(0.8);           // comme Roblox : I rapproche, O éloigne
@@ -3848,8 +3935,8 @@ addEventListener('keydown', e => {
 });
 addEventListener('keyup', e => {
   if (UI.mode === 'edit') editorKey(e, false);
-  const k = KEYMAP[e.code]; if (k) input[k] = 0;
-  if (e.code === 'Space') input.jumpHeld = false;
+  const k = keyAct(e.code); if (k) input[k] = 0;
+  if (keyIs(e, 'jump')) input.jumpHeld = false;
 });
 addEventListener('blur', () => { clearInput(); endRmb(); ED.keys = {}; ED.look = false; });
 // Première personne (comme Roblox) : on y entre en zoomant au maximum, on en sort en dézoomant.
@@ -3931,7 +4018,9 @@ bSL.addEventListener('click', e => { if (e.detail === 0 && playing()) setShiftlo
 
 // Résolution adaptative : si les images dépassent ~18,5 ms en moyenne, on baisse un peu la définition (jusqu'à 0,6×) ;
 // si tout est fluide pendant un moment, on remonte. Le jeu vise 60 images/s sur un PC moyen.
-const DPR_MAX = Math.min(devicePixelRatio || 1, 1.5), PERF = { dpr: DPR_MAX, ema: 1 / 60, slow: 0, fast: 0, cool: 2 };
+const DPR_HW = Math.min(devicePixelRatio || 1, 1.5);
+let DPR_MAX = DPR_HW;
+const PERF = { dpr: DPR_MAX, ema: 1 / 60, slow: 0, fast: 0, cool: 2 };
 function perfTick(fdt) {
   if (document.hidden || fdt <= 0 || fdt > 0.2) return;
   PERF.ema += (fdt - PERF.ema) * 0.05;
@@ -3944,9 +4033,63 @@ function perfTick(fdt) {
   if (next !== PERF.dpr) {
     PERF.dpr = Math.round(next * 100) / 100; PERF.slow = PERF.fast = 0; PERF.cool = 2.5;
     renderer.setPixelRatio(PERF.dpr); resize();
-    document.body.classList.toggle('lowfx', PERF.dpr < 0.95);   // effets de flou des menus coupés
+    document.body.classList.toggle('lowfx', settings.perf || PERF.dpr < 0.95);   // effets de flou des menus coupés
   }
 }
+/* Mode performance : pas d'ombres (le soleil n'en projette plus, les matières se recompilent sans), pas de rayons ni
+   de poussière de lumière, définition plafonnée à 1×, ni vignette ni flou derrière les menus. */
+function applyPerf() {
+  const on = !!settings.perf;
+  sun.castShadow = !on; shadowDirty = true;
+  DPR_MAX = on ? Math.min(DPR_HW, 1) : DPR_HW;
+  PERF.dpr = DPR_MAX; PERF.slow = PERF.fast = 0; PERF.cool = 2;
+  renderer.setPixelRatio(PERF.dpr); resize();
+  document.body.classList.toggle('lowfx', on || PERF.dpr < 0.95);
+  $('vign').hidden = on;
+}
+// Les effets de chaque carte suivent le réglage (une carte neuve, ou le réglage qui change)
+function syncFx() {
+  if (!W || W.userData.fxOff === !!settings.perf) return;
+  W.userData.fxOff = !!settings.perf;
+  W.traverse(o => { if (o.userData.fx) o.visible = !settings.perf; });
+}
+/* Graphe des FPS (réglages) : une barre par ~1/15 s sur les 6 dernières secondes. Sa hauteur : les images/s par rapport
+   au maximum de l'écran (le plus haut tenu récemment, 60, 144…). Sa couleur : la pire image de la tranche — un à-coup
+   passe à l'orange puis au rouge, même si la moyenne tient. */
+const FG = { el: $('fpsG'), c: $('fpsC'), now: $('fpsNow'), max: $('fpsMax'), bars: [], t: 0, n: 0, worst: 0, top: 60, ctx: null };
+function fgColor(r) { return r >= 0.85 ? '#111111' : r >= 0.6 ? '#ff9f1a' : '#f0443a'; }
+function fpsTick(fdt) {
+  if (!settings.fps || fdt <= 0 || fdt > 1 || document.hidden) return;
+  FG.t += fdt; FG.n++; FG.worst = Math.max(FG.worst, fdt);
+  if (FG.t < 1 / 15) return;
+  const fps = FG.n / FG.t, low = 1 / FG.worst;
+  FG.t = 0; FG.n = 0; FG.worst = 0;
+  FG.bars.push([fps, low]); if (FG.bars.length > 90) FG.bars.shift();
+  // maximum de l'écran : ce qu'on a tenu de mieux, qui redescend très lentement (un écran 144 Hz qui passe à 60 suit)
+  let best = 0; for (const b of FG.bars) best = Math.max(best, b[0]);
+  FG.top = Math.max(best, FG.top * 0.997, 30);
+  const c = FG.c, dpr = Math.min(devicePixelRatio || 1, 2);
+  if (!FG.ctx || c.width !== 150 * dpr) { c.width = 150 * dpr; c.height = 34 * dpr; FG.ctx = c.getContext('2d'); }
+  const g = FG.ctx, W2 = c.width, H2 = c.height, bw = W2 / 90;
+  g.clearRect(0, 0, W2, H2);
+  g.fillStyle = 'rgba(17,17,17,.07)'; g.fillRect(0, 0, W2, H2);
+  FG.bars.forEach(([f, l], i) => {
+    const h = Math.max(1, Math.min(1, f / FG.top) * H2);
+    g.fillStyle = fgColor(Math.min(f, l * 1.15) / FG.top);
+    g.fillRect(W2 - (FG.bars.length - i) * bw, H2 - h, Math.max(1, bw - dpr * 0.6), h);
+  });
+  g.fillStyle = 'rgba(17,17,17,.35)'; g.fillRect(0, 0, W2, dpr);                 // ligne du maximum
+  FG.now.textContent = Math.round(fps); FG.now.style.color = fgColor(Math.min(fps, low * 1.15) / FG.top);
+  FG.max.textContent = 'max ' + Math.round(FG.top);
+}
+function showPerfOpts() {
+  $('optPerf').checked = !!settings.perf; $('optFps').checked = !!settings.fps;
+  FG.el.hidden = !settings.fps;
+}
+$('optPerf').addEventListener('change', e => { settings.perf = e.target.checked; saveSettings(); applyPerf(); });
+$('optFps').addEventListener('change', e => { settings.fps = e.target.checked; FG.bars = []; FG.t = FG.n = FG.worst = 0; saveSettings(); showPerfOpts(); });
+showPerfOpts();
+if (settings.perf) applyPerf();
 function resize() {
   renderer.setSize(innerWidth, innerHeight, false);
   camera.aspect = innerWidth / Math.max(1, innerHeight);
@@ -7734,7 +7877,7 @@ let last = performance.now(), acc = 0;
 function frame(now) {
   requestAnimationFrame(frame);
   let fdt = (now - last) / 1000; last = now;
-  perfTick(fdt);
+  perfTick(fdt); fpsTick(fdt); syncFx();
   if (fdt > 0.25) fdt = 0.25;
   if (fdt < 0) fdt = 0;
   acc += fdt;
