@@ -306,9 +306,8 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .board li .rp{height:26px;margin-left:8px;border:2px solid var(--ink);border-radius:7px;background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:0 8px 0 6px;font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.04em}
 .board li .rp svg{width:10px;height:10px}
 .acct-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;padding:10px 12px;border:2px solid var(--ink);border-radius:8px;background:var(--card);color:var(--ink);font:800 13.5px/1 var(--font-ui);cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
-.acct-toggle i{position:relative;flex:none;width:40px;height:22px;border-radius:99px;background:var(--lock-bg2);border:2px solid var(--ink);transition:background .2s}
-.acct-toggle i::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .2s var(--ease-pop),background .2s}
-.acct-toggle.on i{background:var(--go)} .acct-toggle.on i::after{transform:translateX(18px);background:#fff}
+.acct-toggle i{flex:none;box-sizing:border-box;width:42px;height:24px;border-radius:99px;border:2px solid var(--ink);background:var(--lock-bg2) radial-gradient(circle 7px at center,var(--ink) 6.4px,transparent 7px) no-repeat 1px 50%/18px 18px;transition:background-position .2s var(--ease-out),background-color .2s}
+.acct-toggle.on i{background-color:var(--go);background-image:radial-gradient(circle 7px at center,#fff 6.4px,transparent 7px);background-position:calc(100% - 1px) 50%}
 .board li .rp:hover,.board li .rp:focus-visible{background:var(--ink);color:#fff;outline:none}
 .pv-list .board li.adm{grid-template-columns:30px 1fr auto auto}
 /* Chargement : tant que le jeu et le compte ne sont pas prêts */
@@ -367,6 +366,25 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-list .board li.aud{cursor:pointer}
 .pv-list .board li.sus .ps::after{content:" ⚠";color:var(--red-deep)}
 .pv-list .board li.sus{box-shadow:inset 3px 0 0 var(--red-deep)}
+.acct-sub{margin:8px 0 0;font:italic 900 17px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
+.board li.hid{opacity:.45;filter:grayscale(1)}
+.board li.hid .ps::after{content:" · masqué";font-weight:600;font-size:.85em}
+.pl-tools{display:flex;gap:8px;align-items:center}
+.pl-tools input{flex:1;min-width:0;box-sizing:border-box;font:600 14px/1.2 var(--font-ui);padding:9px 11px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);user-select:text;-webkit-user-select:text}
+.pl-tools span{font:700 12px var(--font-num);color:var(--muted);white-space:nowrap}
+.pl-list{display:grid;gap:4px;max-height:260px;overflow-y:auto;overscroll-behavior:contain;padding-right:2px}
+.pl-row{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:6px 6px 6px 10px;border:2px solid var(--ink);border-radius:8px;background:var(--card)}
+.pl-row.off{background:var(--lock-bg)}
+.pl-row.off .pl-n{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
+.pl-n{font:800 14px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl-row button{height:30px;border:2px solid var(--ink);border-radius:7px;background:var(--card);color:var(--ink);font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.04em;padding:0 9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+.pl-row button svg{width:14px;height:14px}
+.pl-row button{justify-content:center}
+.pl-row button.pub{min-width:96px}
+.pl-row button.rs{min-width:64px}
+.pl-row button.pub.on{background:var(--go);color:#fff}
+.pl-row button.rs.armed{background:var(--red);color:#fff}
+.pl-empty{color:var(--muted);font-size:13px;margin:4px 0}
 .pv-admin{display:grid;gap:8px;margin-top:8px;padding:10px;border-radius:12px;background:rgba(255,255,255,.7);border:1.5px solid rgba(17,17,17,.12)}
 .pv-admin .pa-h{display:flex;justify-content:space-between;align-items:baseline;font:800 14px/1 var(--font-ui)} .pv-admin .pa-h span{font:800 13px/1 var(--font-num)}
 .pv-admin .pa-bad{margin:0;padding-left:18px;color:var(--red-deep);font:700 12px/1.45 var(--font-ui)}
@@ -7993,6 +8011,13 @@ async function acctUser(u) {
         await ref.update({ records: {} }).catch(() => {});
       }
       // Remise à zéro de certains niveaux seulement : leurs records d'avant disparaissent (ici et sur le compte)
+      // Remise à zéro de ce joueur (panneau admin, liste des joueurs) : ses records d'avant disparaissent
+      const mine = m.exists && m.data().userResets ? +m.data().userResets[u.uid] || 0 : 0;
+      if (mine && (+d.seenMe || 0) < mine) {
+        records = {}; cloud = {}; saveRecords();
+        await ref.set({ records: {}, seenMe: mine, maj: Date.now() }, { merge: true });
+        await ref.update({ records: {} }).catch(() => {});
+      }
       const lv = m.exists && m.data().resets || {}, seenLv = { ...(d.seenLv || {}) };
       let cut = false;
       for (const k in lv) if ((+seenLv[k] || 0) < +lv[k]) { delete records[k]; delete cloud[k]; seenLv[k] = +lv[k]; cut = true; }
@@ -8096,12 +8121,21 @@ async function verdictOf(n, r) {
   return VERD[key];
 }
 // Haut du classement tel qu'on le montre : les temps dont le replay est faux sont écartés
+// Réglages du classement posés par l'admin (meta/board) : joueurs masqués, remises à zéro… relus au plus toutes les 30 s
+async function boardMeta(force) {
+  if (!force && ACCT.bm && Date.now() - ACCT.bm.t < 30000) return ACCT.bm;
+  try { const m = await ACCT.db.collection('meta').doc('board').get(), d = m.exists ? m.data() : {}; ACCT.bm = { t: Date.now(), d, hidden: new Set(Array.isArray(d.hidden) ? d.hidden : []) }; }
+  catch (e) { if (!ACCT.bm) ACCT.bm = { t: 0, d: {}, hidden: new Set() }; }
+  return ACCT.bm;
+}
 async function shownTop(n, k = 10) {
-  const rows = await acctTop(n, k + 10);
-  if (isAdmin()) return rows.slice(0, k);                     // l'admin voit tout (les suspects sont signalés)
+  const [rows, bm] = await Promise.all([acctTop(n, k + 10), boardMeta()]);
+  // l'admin voit tout : les suspects sont signalés, les joueurs masqués apparaissent en gris
+  if (isAdmin()) return rows.slice(0, k).map(r => bm.hidden.has(r.uid) ? { ...r, hidden: true } : r);
   const me = ACCT.user ? ACCT.user.uid : null;
-  const v = await Promise.all(rows.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
-  return rows.filter((r, i) => v[i] !== 'bad').slice(0, k);
+  const vis = rows.filter(r => r.uid === me || !bm.hidden.has(r.uid));   // un joueur masqué voit quand même ses temps
+  const v = await Promise.all(vis.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
+  return vis.filter((r, i) => v[i] !== 'bad').slice(0, k);
 }
 function boardList(rows, el, lv) {
   el.textContent = '';
@@ -8109,6 +8143,7 @@ function boardList(rows, el, lv) {
   const ol = document.createElement('ol'); ol.className = 'board';
   rows.forEach((r, i) => {
     const li = document.createElement('li'); if (ACCT.user && r.uid === ACCT.user.uid) li.className = 'me';
+    if (r.hidden) { li.classList.add('hid'); li.title = 'Masqué : seul toi le vois'; }
     const a = document.createElement('span'); a.className = 'rk'; a.textContent = i + 1;
     const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
     const c = document.createElement('span'); c.className = 'tm'; c.textContent = fmtT(r.ms) + ' s';
@@ -8303,6 +8338,57 @@ function acctRender() {
       A.sel.clear(); acctRender(); acctMsg(`Reset fait (${k} temps effacés).`, true);
     });
     go.disabled = !A.sel.size; c.appendChild(go);
+    // Joueurs : tous les pseudos. « Public » : ses temps apparaissent au classement (sinon masqués à tous, gris pour
+    // l'admin). « Reset » : ses temps du classement et ses replays effacés, ses records remis à zéro à sa prochaine visite.
+    c.appendChild(mkEl('h3', 'acct-sub', 'Joueurs'));
+    const tools = mkEl('div', 'pl-tools'), q = mkEl('input'), cnt = mkEl('span');
+    q.type = 'search'; q.placeholder = 'Chercher un pseudo'; q.value = A.q || ''; q.setAttribute('aria-label', 'Chercher un pseudo');
+    tools.append(q, cnt); c.appendChild(tools);
+    const list = mkEl('div', 'pl-list'); list.appendChild(mkEl('p', 'pl-empty', 'Chargement…')); c.appendChild(list);
+    const EYE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>';
+    const EYE_OFF = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3l18 18M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4.1M6.6 6.6A17 17 0 0 0 2 12s3.6 7 10 7a9.6 9.6 0 0 0 4.4-1"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/></svg>';
+    const draw = () => {
+      const P = A.players || [], bm = ACCT.bm || { hidden: new Set() }, f = (A.q || '').trim().toLowerCase();
+      const shown = f ? P.filter(p => p.pseudo.toLowerCase().includes(f)) : P;
+      cnt.textContent = (f ? shown.length + '/' : '') + P.length + ' joueur' + (P.length > 1 ? 's' : '');
+      list.textContent = '';
+      if (!shown.length) { list.appendChild(mkEl('p', 'pl-empty', P.length ? 'Aucun pseudo ne correspond.' : 'Aucun joueur pour l’instant.')); return; }
+      for (const pl of shown) {
+        const off = bm.hidden.has(pl.uid), row = mkEl('div', 'pl-row' + (off ? ' off' : ''));
+        const nm = mkEl('span', 'pl-n', pl.pseudo); nm.title = pl.pseudo;
+        const pub = mkEl('button', 'pub' + (off ? '' : ' on'));
+        pub.innerHTML = (off ? EYE_OFF : EYE) + (off ? 'Masqué' : 'Public');
+        pub.title = off ? 'Ses temps sont cachés du classement : clic pour les montrer' : 'Ses temps sont au classement : clic pour les cacher';
+        pub.addEventListener('click', () => acctDo(async () => {
+          const h = new Set((await boardMeta(true)).hidden);
+          off ? h.delete(pl.uid) : h.add(pl.uid);
+          await ACCT.db.collection('meta').doc('board').set({ hidden: [...h] }, { merge: true });
+          ACCT.bm.hidden = h; draw();
+        }));
+        const rs = mkEl('button', 'rs', 'Reset'); let armed = 0;
+        rs.title = 'Effacer ses temps et ses replays de tous les niveaux';
+        rs.addEventListener('click', () => {
+          if (!armed) { rs.textContent = 'Sûr ?'; rs.classList.add('armed'); armed = setTimeout(() => { armed = 0; rs.textContent = 'Reset'; rs.classList.remove('armed'); }, 3500); return; }
+          clearTimeout(armed); armed = 0;
+          acctDo(async () => {
+            await ACCT.db.collection('meta').doc('board').set({ userResets: { [pl.uid]: Date.now() } }, { merge: true });
+            for (const n of boardLevels()) await adminDelete(n, pl.uid);
+            for (const k in VERD) if (k.includes('|' + pl.uid + '|')) delete VERD[k];
+            acctMsg(pl.pseudo + ' : temps effacés.', true); draw();
+          });
+        });
+        row.append(nm, pub, rs); list.appendChild(row);
+      }
+    };
+    q.addEventListener('input', () => { A.q = q.value; draw(); });
+    if (A.players) draw();                                     // la liste d'avant tout de suite, puis à jour
+    (async () => {
+      try {
+        const [snap] = await Promise.all([ACCT.db.collection('pseudos').get(), boardMeta(true)]);
+        A.players = snap.docs.map(d => ({ uid: d.data().uid, pseudo: d.data().pseudo || d.id })).filter(p => p.uid).sort((p, r) => p.pseudo.localeCompare(r.pseudo, 'fr', { sensitivity: 'base' }));
+      } catch (e) { list.textContent = ''; list.appendChild(mkEl('p', 'pl-empty', 'Liste des joueurs indisponible.')); return; }
+      if (ACCT.view === 'admin' && list.isConnected) draw();
+    })();
   } else if (v === 'board') {
     c.appendChild(mkEl('h2', null, 'Classement'));
     const chips = mkEl('div', 'chips acct-lv');
