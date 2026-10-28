@@ -64,10 +64,10 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .opts{display:grid;gap:9px;padding-top:2px}
 .sw{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700}
 .sw input{position:absolute;opacity:0;pointer-events:none}
-.sw-ui{flex:none;box-sizing:border-box;width:40px;height:24px;padding:0 3px;border-radius:99px;border:2px solid var(--line);background:var(--lock-bg);display:flex;align-items:center;transition:background .18s}
-.sw-ui::after{content:'';flex:none;width:14px;height:14px;border-radius:50%;background:var(--ink);transition:transform .2s var(--ease-out),background .18s}
-.sw input:checked+.sw-ui{background:var(--red)}
-.sw input:checked+.sw-ui::after{transform:translateX(16px);background:#fff}
+/* le rond est dessiné dans le fond même de l'interrupteur (pas un élément à part) : il ne peut pas se décaler d'un pixel
+   à l'arrondi, quel que soit l'écran */
+.sw-ui{flex:none;box-sizing:border-box;width:40px;height:24px;border-radius:99px;border:2px solid var(--line);background:var(--lock-bg) radial-gradient(circle 7px at center,var(--ink) 6.4px,transparent 7px) no-repeat 1px 50%/18px 18px;transition:background-position .2s var(--ease-out),background-color .18s}
+.sw input:checked+.sw-ui{background-color:var(--red);background-image:radial-gradient(circle 7px at center,#fff 6.4px,transparent 7px);background-position:calc(100% - 1px) 50%}
 .sw input:focus-visible+.sw-ui{outline:3px solid var(--accent);outline-offset:2px}
 .sw-t{display:grid;line-height:1.25}
 .sw-t small{font-weight:500;font-size:11.5px;color:var(--muted)}
