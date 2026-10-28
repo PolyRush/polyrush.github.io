@@ -744,10 +744,10 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
     <kbd>Échap</kbd><span>Réglages</span>
   </div>
   <div class="opts">
-    <label class="sw"><input type="checkbox" id="optPerf"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Mode performance<small>Sans ombres ni rayons de lumière</small></span></label>
+    <label class="sw"><input type="checkbox" id="optPerf"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Mode performance<small id="perfHint">Moins de détails, bien plus fluide</small></span></label>
     <label class="sw"><input type="checkbox" id="optFps"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Graphe des FPS</span></label>
   </div>
-  <button id="menuClose" class="close">Reprendre</button>
+  <button id="menuClose" class="close">Fermer</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -842,7 +842,9 @@ const C = {
 /* ---------- Rendu ---------- */
 const canvas = document.getElementById('game');
 const coarse = matchMedia('(pointer:coarse)').matches;
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+// Mode performance (réglage gardé) : sans anticrénelage, qui coûte cher aux petites cartes graphiques. Ne change qu'au chargement.
+const PERF_AT_LOAD = (() => { try { return !!JSON.parse(localStorage.getItem('obby.settings') || '{}').perf; } catch (e) { return false; } })();
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !PERF_AT_LOAD, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.5));
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFShadowMap;
@@ -1399,7 +1401,17 @@ function buildStatic(merge) {
 function buildStaticSet(list, merge, cast) {
   const unit = new THREE.BoxGeometry(1, 1, 1), up = unit.attributes.position.array, un = unit.attributes.normal.array, ui = unit.index.array;
   const eu = new THREE.EdgesGeometry(unit).attributes.position.array;
-  const F = { pos: [], nrm: [], col: [], bid: [], idx: [] }, H = { pos: [], bid: [], idx: [] }, E = { pos: [], bid: [] };
+  // Le décor est rangé par carrés de 64 studs (selon le centre de chaque bloc ou groupe fusionné) : un maillage par
+  // carré, que three.js écarte quand il est hors de vue ou au-delà de la distance d'affichage (mode performance).
+  const CH = 64, chunks = new Map();
+  let F, H, E;
+  const use = (x, z) => {
+    const k = Math.floor(x / CH) + ',' + Math.floor(z / CH);
+    let c = chunks.get(k);
+    if (!c) chunks.set(k, c = { F: { pos: [], nrm: [], col: [], bid: [], idx: [] }, H: { pos: [], bid: [], idx: [] }, E: { pos: [], bid: [] } });
+    F = c.F; H = c.H; E = c.E;
+  };
+  const useComp = comp => { let x = 0, z = 0; for (const { b } of comp) { x += b.c.x; z += b.c.z; } use(x / comp.length, z / comp.length); };
   const col = new THREE.Color();
   const aligned = merge ? list.filter(s => Math.abs(s.b.sn) < 1e-6 && !s.b.tilt) : [];
   const turned = merge === 2 ? list.filter(s => Math.abs(s.b.sn) >= 1e-6 && !s.b.tilt) : [];
@@ -1409,7 +1421,8 @@ function buildStaticSet(list, merge, cast) {
     const sx = b.h.x * 2, sy = b.h.y * 2, sz = b.h.z * 2;
     for (let v = 0; v < eu.length / 3; v++) { wput(E.pos, b, eu[v * 3] * sx, eu[v * 3 + 1] * sy, eu[v * 3 + 2] * sz); E.bid.push(b.bid); }
   };
-  function addSingle({ b, color }) {
+  function addSingle({ b, color }, keep) {
+    if (!keep) use(b.c.x, b.c.z);
     const sx = b.h.x * 2, sy = b.h.y * 2, sz = b.h.z * 2, base = F.pos.length / 3, hb = H.pos.length / 3;
     col.set(color);
     const put = (arr, kx, ky, kz, v) => wput(arr, b, up[v * 3] * kx, up[v * 3 + 1] * ky, up[v * 3 + 2] * kz);
@@ -1428,6 +1441,7 @@ function buildStaticSet(list, merge, cast) {
     const rc = th ? rotBoxes(comp, th) : comp;
     const tol = th ? 0.02 : 1e-5, G0 = unionGrid(rc, 0, tol);
     if (G0.n[0] * G0.n[1] * G0.n[2] > 3e6) { for (const s of comp) addSingle(s); return; }
+    useComp(comp);
     inFrame(th, F, E, (o, e) => { unionFaces(G0, rc, o, true); unionEdges(G0, rc, e); });
     inFrame(th, H, null, o => unionFaces(unionGrid(rc, OUT, tol), rc, o, false));
   };
@@ -1437,25 +1451,29 @@ function buildStaticSet(list, merge, cast) {
     const cy = commonYaw(comp);
     if (comp.every(s => Math.abs(s.b.sn) < 1e-6)) gridUnion(comp);
     else if (comp.length > 1 && cy !== null) gridUnion(comp, -cy);      // tous tournés pareil : grille exacte dans leur repère
-    else if (comp.length < 2 || !prismUnionAny(comp, 0, F, true, E)) for (const s of comp) addSingle(s);
+    else if (comp.length < 2 || (useComp(comp), !prismUnionAny(comp, 0, F, true, E))) for (const s of comp) addSingle(s);
     else prismUnionAny(comp, OUT, H, false, null);
   }
   else for (const comp of touchGroups(aligned)) gridUnion(comp);
-  for (const s of aligned) if (s.seam) boxEdges(s.b);
-  for (const s of turned) if (s.seam) boxEdges(s.b);
-  if (!F.idx.length) return;
+  for (const s of aligned) if (s.seam) { use(s.b.c.x, s.b.c.z); boxEdges(s.b); }
+  for (const s of turned) if (s.seam) { use(s.b.c.x, s.b.c.z); boxEdges(s.b); }
   const geo = (pos, bid, extra) => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('bid', new THREE.Float32BufferAttribute(bid, 1));
     if (extra) extra(g);
     g.computeBoundingSphere(); return g;
   };
-  const faces = new THREE.Mesh(geo(F.pos, F.bid, g => { g.setAttribute('normal', new THREE.Float32BufferAttribute(F.nrm, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(F.col, 3)); g.setIndex(F.idx); }),
-    hideable(toon(0xffffff, { vertexColors: true })));
-  faces.castShadow = cast; faces.receiveShadow = true;
-  const hull = new THREE.Mesh(geo(H.pos, H.bid, g => g.setIndex(H.idx)), hideable(new THREE.MeshBasicMaterial({ color: C.ink, side: THREE.BackSide })));
-  const edges = new THREE.LineSegments(geo(E.pos, E.bid), hideable(new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.9 })));
-  W.add(faces, hull, edges);
+  const mF = hideable(toon(0xffffff, { vertexColors: true })), mH = hideable(new THREE.MeshBasicMaterial({ color: C.ink, side: THREE.BackSide }));
+  const mE = hideable(new THREE.LineBasicMaterial({ color: C.ink, transparent: true, opacity: 0.9 }));
+  for (const { F, H, E } of chunks.values()) {
+    if (F.idx.length) {
+      const faces = new THREE.Mesh(geo(F.pos, F.bid, g => { g.setAttribute('normal', new THREE.Float32BufferAttribute(F.nrm, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(F.col, 3)); g.setIndex(F.idx); }), mF);
+      faces.castShadow = cast; faces.receiveShadow = true;
+      W.add(faces);
+    }
+    if (H.idx.length) { const hull = new THREE.Mesh(geo(H.pos, H.bid, g => g.setIndex(H.idx)), mH); hull.userData.hull = true; W.add(hull); }
+    if (E.pos.length) W.add(new THREE.LineSegments(geo(E.pos, E.bid), mE));
+  }
 }
 
 let SPAWN = { x: 0, y: 1, z: 0, yaw: 0 };
@@ -2741,7 +2759,7 @@ function buildCustom(n, data) {
 const RAMP = { day: [150, 205, 255], cave: [0, 0, 0, 150, 205, 255] };
 function setRamp(v) { toonRamp.image = { data: new Uint8Array(v), width: v.length, height: 1 }; toonRamp.needsUpdate = true; }
 const _ax = new THREE.Vector3(), _ay = new THREE.Vector3(), _up = new THREE.Vector3(0, 0, -1), _cn = new THREE.Vector3();
-let curEnv = null;
+let curEnv = null, FOG0 = null;
 function setEnv(env) {
   curEnv = env; shadowDirty = true;
   const cave = !!env;
@@ -2749,6 +2767,8 @@ function setEnv(env) {
   scene.background.set(cave ? 0xf8f8f8 : 0xeef1f4);
   scene.fog.color.set(cave ? 0xececec : 0xeef1f4);
   [scene.fog.near, scene.fog.far] = cave ? env.fog : [170, 520];
+  FOG0 = { near: scene.fog.near, far: scene.fog.far, bg: scene.background.getHex() };
+  if (typeof applyDrawDist === 'function') applyDrawDist();
   hemi.color.set(0xffffff); hemi.groundColor.set(cave ? (FX ? (env.bright ? 0xd0d5dd : 0xc8ced8) : (env.bright ? 0xd2d2d2 : 0xcacaca)) : 0xc9d0d8);   // ombres à peine froides
   hemi.intensity = cave ? (env.bright ? 0.66 : 0.63) : 0.6;   // ombres bien marquées, juste un peu moins sombres
   sun.color.set(FX ? 0xfff7ee : 0xffffff);   // soleil à peine chaud sun.intensity = cave ? 1.0 : 0.7;
@@ -3815,13 +3835,14 @@ function clearInput() { for (const k in input) input[k] = k === 'jumpHeld' ? fal
 function openMenu(open) {
   menu.hidden = !open; gear.setAttribute('aria-expanded', String(open));
   endBind();
-  clearInput();
   const inGame = UI.mode === 'play';
-  menuClose.textContent = inGame ? 'Reprendre' : 'Fermer';
   if (open) { endRmb(); if (shiftlock) setShiftlock(false); unlockPointer(); }
   else if (inGame) canvas.focus();
 }
 gear.addEventListener('click', () => openMenu(menu.hidden));
+// Un clic de souris dans les réglages ne garde pas le focus : Espace sauterait sur l'interrupteur au lieu de faire sauter
+menu.addEventListener('pointerup', () => { if (UI.mode !== 'play') return; setTimeout(() => { const a = document.activeElement; if (a && menu.contains(a) && a.type !== 'range' && !binding) a.blur(); }, 0); });
+menu.addEventListener('change', e => { if (UI.mode === 'play' && e.target.type === 'range') setTimeout(() => e.target.blur(), 0); });
 menuClose.addEventListener('click', () => openMenu(false));
 backBtn.addEventListener('click', () => { if (!menu.hidden) openMenu(false); quitToMenu(); });
 sensIn.addEventListener('input', () => { settings.sens = +sensIn.value; sensOut.textContent = fmt2(settings.sens); saveSettings(); });
@@ -3910,14 +3931,15 @@ addEventListener('keydown', e => {
     if (!fly) openMenu(true);
     return;
   }
-  if (!menu.hidden) return;
+  // Réglages ouverts pendant une partie : le jeu continue et les commandes aussi (sauf sur un champ des réglages)
+  if (!menu.hidden && (UI.mode !== 'play' || menu.contains(e.target) && /^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName))) return;
   if (UI.mode === 'menu') { menuNav(e); return; }
   if (UI.mode === 'replay') { if ((e.code === 'KeyR' || (e.code === 'Enter' && RP.done)) && !e.repeat) { e.preventDefault(); replayRestart(); } return; }
   if (fly) { if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault(); return; }
   if (keyIs(e, 'jump')) { e.preventDefault(); if (!e.repeat) P.jumpBuf = CFG.buffer; input.jumpHeld = true; return; }
   const k = keyAct(e.code);
   if (k) { input[k] = 1; e.preventDefault(); return; }
-  if (isSL(e) && !e.repeat) { e.preventDefault(); setShiftlock(!shiftlock); return; }
+  if (isSL(e) && !e.repeat) { e.preventDefault(); if (!menu.hidden) openMenu(false); setShiftlock(!shiftlock); return; }   // le camera lock prend la souris : il ferme les réglages
   if (e.code === 'KeyR' && !e.repeat) restart();
   if (e.code === 'KeyI' && playing()) zoomBy(0.8);           // comme Roblox : I rapproche, O éloigne
   if (e.code === 'KeyO' && playing()) zoomBy(1.25);
@@ -3947,14 +3969,14 @@ function endRmb() { if (!rmb) return; rmb = false; if (!shiftlock) unlockPointer
 canvas.addEventListener('mousedown', e => {
   if (!playing()) return;
   canvas.focus();
-  if (e.button === 2 && menu.hidden) { rmb = true; lookReset(); if (!shiftlock) lockPointer(); }
+  if (e.button === 2 && (menu.hidden || UI.mode === 'play')) { rmb = true; lookReset(); if (!shiftlock) lockPointer(); }
   else if (e.button === 0 && (shiftlock || cam.fp) && !locked()) lockPointer();   // re-verrouiller au clic
 });
 addEventListener('mouseup', e => { if (e.button === 2) endRmb(); });
 addEventListener('mousemove', e => {
   if (UI.mode === 'edit') { edMouseMove(e); return; }
   if (rmb && !locked() && !(e.buttons & 2)) { endRmb(); return; }                 // relâché hors de la fenêtre
-  if (!menu.hidden || !(rmb || shiftlock || cam.fp) || !playing()) return;
+  if (!playing() || !(rmb || (menu.hidden && (shiftlock || cam.fp)))) return;   // réglages ouverts : seul le clic droit tourne la caméra
   if (skipMove > 0) { skipMove--; lookReset(); return; }
   const m = lookDelta(e); if (!m) return;
   const s = 0.0042 * settings.sens;
@@ -4017,7 +4039,8 @@ function perfTick(fdt) {
   if (PERF.cool > 0) return;
   if (PERF.ema > 0.0185) { PERF.slow += fdt; PERF.fast = 0; } else if (PERF.ema < 0.0172) { PERF.fast += fdt; PERF.slow = 0; } else { PERF.slow = PERF.fast = 0; }
   let next = PERF.dpr;
-  if (PERF.slow > 1.2 && PERF.dpr > 0.6) next = Math.max(0.6, PERF.dpr - 0.15);
+  const floor = settings.perf ? 0.5 : 0.6;
+  if (PERF.slow > 1.2 && PERF.dpr > floor) next = Math.max(floor, PERF.dpr - 0.15);
   else if (PERF.fast > 6 && PERF.dpr < DPR_MAX) next = Math.min(DPR_MAX, PERF.dpr + 0.1);
   if (next !== PERF.dpr) {
     PERF.dpr = Math.round(next * 100) / 100; PERF.slow = PERF.fast = 0; PERF.cool = 2.5;
@@ -4025,22 +4048,38 @@ function perfTick(fdt) {
     document.body.classList.toggle('lowfx', settings.perf || PERF.dpr < 0.95);   // effets de flou des menus coupés
   }
 }
-/* Mode performance : pas d'ombres (le soleil n'en projette plus, les matières se recompilent sans), pas de rayons ni
-   de poussière de lumière, définition plafonnée à 1×, ni vignette ni flou derrière les menus. */
+/* Mode performance : tout ce qui coûte sans changer le jeu.
+   · pas d'ombres (le soleil n'en projette plus, les matières se recompilent sans), ni rayons ni poussière de lumière
+   · définition plafonnée à 0,75× (et la résolution adaptative peut descendre jusqu'à 0,5×), sans anticrénelage
+   · décor affiché jusqu'à ~150 studs seulement : au-delà, le brouillard le cache et il n'est plus dessiné du tout
+   · contour épais des blocs remplacé par leurs seules arêtes ; ni vignette ni flou derrière les menus */
+const PERF_DIST = 150;
 function applyPerf() {
   const on = !!settings.perf;
   sun.castShadow = !on; shadowDirty = true;
-  DPR_MAX = on ? Math.min(DPR_HW, 1) : DPR_HW;
+  sun.intensity = on ? 0.3 : 0.7;          // sans ombres, tout prendrait le plein soleil : on le baisse pour garder l'ambiance de la grotte
+  DPR_MAX = on ? Math.min(DPR_HW, 0.75) : DPR_HW;
   PERF.dpr = DPR_MAX; PERF.slow = PERF.fast = 0; PERF.cool = 2;
   renderer.setPixelRatio(PERF.dpr); resize();
   document.body.classList.toggle('lowfx', on || PERF.dpr < 0.95);
   $('vign').hidden = on;
+  applyDrawDist();
+}
+// Distance d'affichage : le brouillard se referme avant le plan du fond de la caméra, et le fond prend sa couleur
+function applyDrawDist() {
+  if (!FOG0 || UI.mode === 'edit') return;
+  const on = !!settings.perf;
+  scene.fog.near = on ? Math.min(FOG0.near, PERF_DIST * 0.35) : FOG0.near;
+  scene.fog.far = on ? Math.min(FOG0.far, PERF_DIST) : FOG0.far;
+  scene.background.set(on ? scene.fog.color.getHex() : FOG0.bg);
+  camera.far = on ? scene.fog.far + 4 : 1200; camera.updateProjectionMatrix();
 }
 // Les effets de chaque carte suivent le réglage (une carte neuve, ou le réglage qui change)
 function syncFx() {
   if (!W || W.userData.fxOff === !!settings.perf) return;
   W.userData.fxOff = !!settings.perf;
-  W.traverse(o => { if (o.userData.fx) o.visible = !settings.perf; });
+  W.traverse(o => { if (o.userData.fx || o.userData.hull) o.visible = !settings.perf; });
+  applyDrawDist();
 }
 /* Graphe des FPS (réglages) : une barre par ~1/15 s sur les 6 dernières secondes. Sa hauteur : les images/s par rapport
    au maximum de l'écran (le plus haut tenu récemment, 60, 144…). Sa couleur : la pire image de la tranche — un à-coup
@@ -4073,9 +4112,10 @@ function fpsTick(fdt) {
 }
 function showPerfOpts() {
   $('optPerf').checked = !!settings.perf; $('optFps').checked = !!settings.fps;
+  $('perfHint').textContent = !!settings.perf !== PERF_AT_LOAD ? 'Effet complet en rechargeant la page' : 'Moins de détails, bien plus fluide';
   FG.el.hidden = !settings.fps;
 }
-$('optPerf').addEventListener('change', e => { settings.perf = e.target.checked; saveSettings(); applyPerf(); });
+$('optPerf').addEventListener('change', e => { settings.perf = e.target.checked; saveSettings(); applyPerf(); showPerfOpts(); });
 $('optFps').addEventListener('change', e => { settings.fps = e.target.checked; FG.bars = []; FG.t = FG.n = FG.worst = 0; saveSettings(); showPerfOpts(); });
 showPerfOpts();
 if (settings.perf) applyPerf();
