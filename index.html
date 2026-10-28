@@ -748,7 +748,6 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
     <label class="sw"><input type="checkbox" id="optFps"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Graphe des FPS</span></label>
   </div>
   <button id="menuClose" class="close">Reprendre</button>
-  <button id="resetScores" class="close danger">Réinitialiser les scores</button>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -3795,7 +3794,7 @@ try { if (navigator.keyboard && navigator.keyboard.getLayoutMap) navigator.keybo
   if (ch) { saveSettings(); showSettings(); }
 }).catch(() => {}); } catch (e) {}
 const menu = $('menu'), gear = $('gear'), sensIn = $('sens'), sensOut = $('sensOut'), slHint = $('slHint');
-const menuClose = $('menuClose'), resetBtn = $('resetScores'), backBtn = $('backBtn');
+const menuClose = $('menuClose'), backBtn = $('backBtn');
 const fmt2 = v => v.toFixed(2).replace('.', ',') + '×';
 const kcEls = [...document.querySelectorAll('#menu .kc')], kbReset = $('kbReset');
 function showSettings() {
@@ -3818,23 +3817,13 @@ function openMenu(open) {
   endBind();
   clearInput();
   const inGame = UI.mode === 'play';
-  menuClose.textContent = inGame ? 'Reprendre' : 'Fermer'; disarmReset();
+  menuClose.textContent = inGame ? 'Reprendre' : 'Fermer';
   if (open) { endRmb(); if (shiftlock) setShiftlock(false); unlockPointer(); }
   else if (inGame) canvas.focus();
 }
 gear.addEventListener('click', () => openMenu(menu.hidden));
 menuClose.addEventListener('click', () => openMenu(false));
 backBtn.addEventListener('click', () => { if (!menu.hidden) openMenu(false); quitToMenu(); });
-// Effacer les records : un premier clic arme le bouton, un second (dans les 3,5 s) confirme.
-let resetArmed = 0;
-function disarmReset() { clearTimeout(resetArmed); resetArmed = 0; resetBtn.classList.remove('armed'); resetBtn.textContent = 'Réinitialiser les scores'; }
-resetBtn.addEventListener('click', () => {
-  if (!resetArmed) { resetBtn.classList.add('armed'); resetBtn.textContent = 'Confirmer : tout effacer'; resetArmed = setTimeout(disarmReset, 3500); return; }
-  clearTimeout(resetArmed); resetArmed = 0;
-  records = {}; saveRecords(); buildLevelGrid(); acctReset();
-  resetBtn.classList.remove('armed'); resetBtn.textContent = 'Scores effacés';
-  setTimeout(() => { if (!resetArmed) resetBtn.textContent = 'Réinitialiser les scores'; }, 1600);
-});
 sensIn.addEventListener('input', () => { settings.sens = +sensIn.value; sensOut.textContent = fmt2(settings.sens); saveSettings(); });
 function endBind() { binding = false; slHint.hidden = true; for (const el of kcEls) el.classList.remove('wait'); }
 for (const el of kcEls) el.addEventListener('click', () => {
