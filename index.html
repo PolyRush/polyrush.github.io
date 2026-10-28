@@ -3956,10 +3956,7 @@ const SFX = {
     sNoise(0.5, 900, 5200, 0.012, { type: 'highpass', a: 0.36, pan: [-0.85, 0.25] });
     sNoise(0.06, 1100, 500, 0.05, { type: 'lowpass', q: 0.6, a: 0.004, t: 0.5 });
   },
-  wipeOut() {
-    sNoise(0.5, 2200, 420, 0.05, { q: 0.75, a: 0.05, pan: [-0.1, 0.9] });
-    sNoise(0.42, 5000, 1200, 0.01, { type: 'highpass', a: 0.04, pan: [-0.1, 0.9] });
-  },
+  wipeOut() { sNoise(0.45, 2000, 450, 0.05, { q: 0.75, a: 0.1, pan: [-0.1, 0.9] }); },   // un seul souffle, qui s'éloigne
   // saut : un « woosh » de vent qui monte et retombe, avec un frôlement de tissu par-dessus
   // (le même souffle que les changements de page des menus)
   jump() { SFX.page(); },
