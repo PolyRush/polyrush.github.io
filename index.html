@@ -112,7 +112,10 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 @keyframes kcPulse{50%{transform:translateY(-1px);box-shadow:0 0 0 4px rgba(123,92,255,.25)}}
 .kb-reset{letter-spacing:.04em;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .hint{color:var(--muted);font-size:12px;line-height:1.45;margin:0}
-#menu{max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain}
+#menu{box-sizing:border-box;max-height:calc(100vh - 64px - 18px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));max-height:calc(100dvh - 64px - 18px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+/* fenêtre basse : réglages plus serrés, et l'aide des touches (clic droit, molette…) s'efface pour que tout tienne */
+@media (max-height:760px){#menu{gap:9px;padding:13px 16px 14px}#menu .keys{display:none}.mn-sec{padding-top:8px}.kb-move{grid-auto-rows:38px;grid-template-columns:repeat(3,38px)}#menu .close{padding:9px 12px}}
+@media (max-height:560px){#menu{top:calc(60px + env(safe-area-inset-top,0px))}#menu .mn-sec{display:none}#menu .row{gap:4px}}
 .opts{display:grid;gap:9px;padding-top:2px}
 .sw{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:700}
 .sw input{position:absolute;opacity:0;pointer-events:none}
