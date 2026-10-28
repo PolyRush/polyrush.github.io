@@ -4085,7 +4085,10 @@ function syncFx() {
    au maximum de l'écran (le plus haut tenu récemment, 60, 144…). Sa couleur : la pire image de la tranche — un à-coup
    passe à l'orange puis au rouge, même si la moyenne tient. */
 const FG = { el: $('fpsG'), c: $('fpsC'), now: $('fpsNow'), max: $('fpsMax'), bars: [], t: 0, n: 0, worst: 0, top: 60, ctx: null };
-function fgColor(r) { return r >= 0.85 ? '#111111' : r >= 0.6 ? '#ff9f1a' : '#f0443a'; }
+function fgColor(r) { return r >= 0.85 ? '#1fbf5f' : r >= 0.6 ? '#ff9f1a' : '#f0443a'; }
+// La couleur se juge sur 60 images/s (ou le max de l'écran s'il est plus bas) : un téléphone 120 Hz qui redescend à
+// 60 quand rien ne bouge (le système économise la batterie) n'est pas un ralentissement. La hauteur, elle, suit le max.
+const fgRef = () => Math.min(FG.top, 60);
 function fpsTick(fdt) {
   if (!settings.fps || fdt <= 0 || fdt > 1 || document.hidden) return;
   FG.t += fdt; FG.n++; FG.worst = Math.max(FG.worst, fdt);
@@ -4103,11 +4106,11 @@ function fpsTick(fdt) {
   g.fillStyle = 'rgba(17,17,17,.07)'; g.fillRect(0, 0, W2, H2);
   FG.bars.forEach(([f, l], i) => {
     const h = Math.max(1, Math.min(1, f / FG.top) * H2);
-    g.fillStyle = fgColor(Math.min(f, l * 1.15) / FG.top);
+    g.fillStyle = fgColor(Math.min(f, l * 1.15) / fgRef());
     g.fillRect(W2 - (FG.bars.length - i) * bw, H2 - h, Math.max(1, bw - dpr * 0.6), h);
   });
   g.fillStyle = 'rgba(17,17,17,.35)'; g.fillRect(0, 0, W2, dpr);                 // ligne du maximum
-  FG.now.textContent = Math.round(fps); FG.now.style.color = fgColor(Math.min(fps, low * 1.15) / FG.top);
+  FG.now.textContent = Math.round(fps); FG.now.style.color = fgColor(Math.min(fps, low * 1.15) / fgRef());
   FG.max.textContent = 'max ' + Math.round(FG.top);
 }
 function showPerfOpts() {
