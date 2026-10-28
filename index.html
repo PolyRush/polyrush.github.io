@@ -3915,8 +3915,8 @@ const SFX = {
     if (v < 64) return;
     const k = Math.min(1, (v - 64) / 50), STEPS = ['step0', 'step1', 'step2', 'step3', 'step4'];
     const a = Math.floor(Math.random() * 5), b = (a + 1 + Math.floor(Math.random() * 4)) % 5;   // deux pas différents
-    sPlay(STEPS[a], 0.3 + 0.2 * k, jit(0.88, 0.03), 0, 2400);
-    sPlay(STEPS[b], 0.24 + 0.16 * k, jit(0.84, 0.03), 0.016 + 0.008 * Math.random(), 2400);
+    sPlay(STEPS[a], 0.2 + 0.13 * k, jit(0.88, 0.03), 0, 2400);
+    sPlay(STEPS[b], 0.16 + 0.1 * k, jit(0.84, 0.03), 0.016 + 0.008 * Math.random(), 2400);
   },
   grab() { sPlay(['grab0', 'grab1'], 0.28, jit(1, 0.06)); },
   start() { sTone(660, 0.07, 'triangle', 0.06); },
