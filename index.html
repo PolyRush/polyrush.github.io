@@ -3909,15 +3909,14 @@ const SFX = {
   // (le même souffle que les changements de page des menus)
   jump() { SFX.page(); },
   walljump() { sNoise(0.18, 700, 2200, 0.042, { q: 0.8 }); },
-  // atterrissage : rien pour un saut normal ; après une vraie chute, les deux semelles qui claquent sur le sol, le
-  // poids du corps et un petit frottement (sans basses) ; plus fort si la chute est haute
+  // atterrissage : rien pour un saut normal ; après une vraie chute, juste les deux pieds qui se posent, l'un tout
+  // contre l'autre, feutrés (ni claquement aigu ni basse) ; un peu plus présents si la chute est haute
   land(v) {
     if (v < 64) return;
     const k = Math.min(1, (v - 64) / 50), STEPS = ['step0', 'step1', 'step2', 'step3', 'step4'];
-    sPlay(STEPS, 0.5 + 0.3 * k, jit(0.95, 0.04), 0, -160);
-    sPlay(STEPS, 0.4 + 0.25 * k, jit(0.9, 0.04), 0.022 + 0.01 * Math.random(), -160);
-    sPlay(['grab0', 'grab1'], 0.2 + 0.25 * k, jit(0.85, 0.05), 0.01, -200);
-    sPlay(STEPS, 0.12 + 0.1 * k, jit(1.25, 0.05), 0.09, -300);
+    const a = Math.floor(Math.random() * 5), b = (a + 1 + Math.floor(Math.random() * 4)) % 5;   // deux pas différents
+    sPlay(STEPS[a], 0.3 + 0.2 * k, jit(0.88, 0.03), 0, 2400);
+    sPlay(STEPS[b], 0.24 + 0.16 * k, jit(0.84, 0.03), 0.016 + 0.008 * Math.random(), 2400);
   },
   grab() { sPlay(['grab0', 'grab1'], 0.28, jit(1, 0.06)); },
   start() { sTone(660, 0.07, 'triangle', 0.06); },
