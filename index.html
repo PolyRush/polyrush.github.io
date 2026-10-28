@@ -4392,7 +4392,7 @@ function focusScreen() {
   else if (document.activeElement && document.activeElement !== document.body && uiEl.contains(document.activeElement)) document.activeElement.blur();
 }
 function showScreen(name, back) {
-  if (UI.screen !== name) sfx('page');
+  if (UI.screen !== name && !UI.busy) sfx('page');   // pendant un rideau de chargement, c'est le rideau qui fait le son
   UI.screen = name;
   uiEl.classList.toggle('pvmode', name === 'level');
   for (const k in scr) {
