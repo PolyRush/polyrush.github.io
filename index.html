@@ -849,7 +849,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
   </div>
   <p class="mn-sec">Affichage</p>
   <div class="opts">
-    <label class="sw"><input type="checkbox" id="optPerf"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Mode performance<small id="perfHint">Moins de détails, bien plus fluide</small></span></label>
+    <label class="sw"><input type="checkbox" id="optPerf"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Mode performance<small id="perfHint" hidden></small></span></label>
     <label class="sw"><input type="checkbox" id="optFps"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Graphe des FPS</span></label>
   </div>
   <button id="menuClose" class="close">Fermer</button>
@@ -4385,7 +4385,8 @@ function fpsTick(fdt) {
 }
 function showPerfOpts() {
   $('optPerf').checked = !!settings.perf; $('optFps').checked = !!settings.fps;
-  $('perfHint').textContent = !!settings.perf !== PERF_AT_LOAD ? 'Effet complet en rechargeant la page' : 'Moins de détails, bien plus fluide';
+  // seule indication gardée : quand il faut recharger la page pour l'effet complet
+  const ph = $('perfHint'), reload = !!settings.perf !== PERF_AT_LOAD; ph.hidden = !reload; ph.textContent = reload ? 'Effet complet en rechargeant la page' : '';
   FG.el.hidden = !settings.fps;
 }
 $('optPerf').addEventListener('change', e => { settings.perf = e.target.checked; saveSettings(); applyPerf(); showPerfOpts(); });
