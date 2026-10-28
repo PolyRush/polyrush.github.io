@@ -116,6 +116,9 @@ input[type=range]{width:100%;accent-color:var(--ink)}
   transition:opacity .32s ease,transform .5s var(--ease-out),visibility 0s .5s;overflow-y:auto}
 .screen.show{opacity:1;visibility:visible;transform:none;transition:opacity .4s ease .08s,transform .6s var(--ease-out) .08s,visibility 0s}
 .screen.show .stag{animation:rise .6s var(--ease-out) backwards;animation-delay:calc(var(--i,0) * 60ms + 140ms)}
+/* Au chargement, les boutons du menu attendent de savoir lesquels s'affichent (compte, niveau de la semaine) puis
+   arrivent tous ensemble, dans l'ordre */
+#scrTitle.navwait .nav .stag,#scrTitle.navwait #bAcct{opacity:0;animation:none}
 @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 
 .col{display:grid;gap:clamp(30px,6vh,56px);max-width:520px;width:100%}
@@ -595,7 +598,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 
 <div id="ui" class="on">
   <div class="veil"></div>
-  <section id="scrTitle" class="screen" aria-label="Menu principal">
+  <section id="scrTitle" class="screen navwait" aria-label="Menu principal">
     <div class="col">
       <h1 class="logo" aria-label="Poly Rush">
         <span class="r r1" aria-hidden="true"><b style="--i:0">P</b><b style="--i:1">O</b><b style="--i:2">L</b><b style="--i:3">Y</b></span>
@@ -6497,6 +6500,7 @@ function weeklyMenu() {
   const b = $('bWeekly');
   b.hidden = !(canRerollWeekly() || (WEEKLY && WEEKLY.pub));
   $('weekTag').textContent = WEEKLY ? 'S' + weekNum(WEEKLY.from || WEEKLY.created) : '';
+  navIdx();
 }
 function weeklyFrom(d) {
   try {
@@ -8073,8 +8077,18 @@ function loadScript(src) { return new Promise((res, rej) => { const s = document
 // Écran de chargement : retiré dès que le compte est connu (ou tout de suite sans comptes ; 10 s au plus)
 const bootEl = $('boot');
 function bootDone() { bootEl.classList.add('done'); }
+// Ordre d'arrivée des boutons du menu : seulement ceux qui s'affichent, sans trou
+function navIdx() {
+  let i = 3;
+  for (const b of [...document.querySelectorAll('#scrTitle .nav .stag'), $('bAcct')]) if (b && !b.hidden) b.style.setProperty('--i', i++);
+}
+function navReveal() {
+  const t = $('scrTitle'); if (!t.classList.contains('navwait')) return;
+  navIdx(); t.classList.remove('navwait');
+}
+setTimeout(navReveal, 5000);   // au pire (réseau lent), on n'attend pas plus
 async function acctInit() {
-  if (!acctAllowed()) { bootDone(); loadWeekly(); return; }
+  if (!acctAllowed()) { bootDone(); loadWeekly().then(navReveal, navReveal); return; }
   setTimeout(bootDone, 10000);
   try {
     for (const f of ['app', 'auth', 'firestore']) await loadScript(`https://cdn.jsdelivr.net/npm/firebase@${FB_VER}/firebase-${f}-compat.js`);
@@ -8082,8 +8096,8 @@ async function acctInit() {
     ACCT.auth = firebase.auth(); ACCT.db = firebase.firestore(); ACCT.on = true;
     $('bAcct').hidden = false; $('bEditor').hidden = true;
     ACCT.auth.getRedirectResult().catch(e => acctMsg(e));
-    ACCT.auth.onAuthStateChanged(u => { acctUser(u); loadWeekly(); });   // le niveau de la semaine est relu à chaque connexion
-  } catch (e) { ACCT.on = false; bootDone(); }
+    ACCT.auth.onAuthStateChanged(u => { Promise.all([acctUser(u), loadWeekly()]).then(navReveal, navReveal); });   // le niveau de la semaine est relu à chaque connexion
+  } catch (e) { ACCT.on = false; bootDone(); loadWeekly().then(navReveal, navReveal); }
 }
 const ERRS = {
   'auth/invalid-email': 'Adresse e-mail invalide.', 'auth/missing-password': 'Entre un mot de passe.',
@@ -8347,7 +8361,7 @@ function acctRender() {
   b.querySelector('.av b').textContent = ACCT.pseudo ? ACCT.pseudo[0].toUpperCase() : '';
   b.querySelector('.nm').textContent = ACCT.user ? (ACCT.pseudo || 'Choisir un pseudo') : 'Se connecter';
   b.classList.toggle('in', !!ACCT.user);
-  if (ACCT.on) $('bEditor').hidden = !isAdmin();
+  if (ACCT.on) { $('bEditor').hidden = !isAdmin(); navIdx(); }
   weeklyMenu();
   if (acctEl.hidden) return;
   const c = acctCard; c.textContent = ''; c.classList.remove('wide');
