@@ -3907,9 +3907,9 @@ const SFX = {
   page() { sNoise(0.18, 700, 2200, 0.035, { q: 0.8 }); },
   wipe() { sNoise(0.5, 260, 1700, 0.09, { q: 0.7, a: 0.22 }); sNoise(0.35, 1700, 300, 0.05, { q: 0.7, t: 0.22 }); },
   // saut : un « woosh » de vent qui monte et retombe, avec un frôlement de tissu par-dessus
-  // (lu 1,5 fois plus vite : un souffle bref d'environ 0,2 s, et bas en volume)
-  jump() { sPlay(['wind0', 'wind1', 'wind2'], 0.17, jit(1.5, 0.06), 0, 2600); sPlay(['air0', 'air1'], 0.07, jit(1.3, 0.06), 0, 3500); },
-  walljump() { sPlay(['wind0', 'wind1', 'wind2'], 0.21, jit(1.55, 0.06), 0, 2800); sPlay(['air0', 'air1'], 0.09, jit(1.35, 0.06), 0, 3500); },
+  // (lu 2 fois plus vite : un souffle très bref d'environ 0,15 s, tout bas, juste perceptible)
+  jump() { sPlay(['wind0', 'wind1', 'wind2'], 0.075, jit(2, 0.05), 0, 2200); },
+  walljump() { sPlay(['wind0', 'wind1', 'wind2'], 0.095, jit(2.05, 0.05), 0, 2400); },
   // atterrissage : rien pour un saut normal ; après une vraie chute, les deux semelles qui claquent sur le sol, le
   // poids du corps et un petit frottement (sans basses) ; plus fort si la chute est haute
   land(v) {
