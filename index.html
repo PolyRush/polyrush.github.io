@@ -519,7 +519,10 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .logo{font-size:clamp(48px,min(12vw,15.5vh),150px)}
 .col{gap:clamp(16px,4.2vh,56px)}
 .nav{gap:clamp(9px,1.7vh,16px)}
-.mbtn{--h:clamp(46px,9.4vh,70px);font-size:clamp(17px,3.3vh,23px)}
+.mbtn{--h:clamp(46px,min(9.4vh,15vw),70px);font-size:clamp(15px,min(3.3vh,5vw),23px)}   /* téléphone debout : la largeur limite aussi */
+.mbtn{grid-template-columns:var(--h) minmax(0,1fr) auto}
+.mbtn .tx{min-width:0;overflow:hidden;text-overflow:ellipsis;line-height:1.25;padding-block:.1em}
+@media (max-width:480px){.mbtn .tx{padding-inline:12px}.mbtn .meta{padding-right:12px;font-size:12.5px}}
 .mbtn .ic svg{width:clamp(19px,3.4vh,24px);height:clamp(19px,3.4vh,24px)}
 .acct-chip{padding-block:clamp(4px,1vh,7px)}
 .acct-chip .av{width:clamp(32px,6vh,40px);height:clamp(32px,6vh,40px)}
