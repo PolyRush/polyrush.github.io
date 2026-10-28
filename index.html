@@ -8758,7 +8758,10 @@ loadMap('level1');
 resetRun();
 showScreen('title');
 requestAnimationFrame(frame);
-acctInit();
+// Génération automatique du niveau de la semaine (tâche planifiée GitHub, voir .github/scripts/weekly.mjs) : ouverte avec
+// ?autogen=1, la page fabrique et fait vérifier un niveau par le robot, sans rien enregistrer ; la tâche l'enregistre.
+if (/[?&]autogen=1/.test(location.search)) window.__polyGen = from => genWeeklyDoc('Génération du niveau…', from);
+else acctInit();
 })();
 </script>
 
