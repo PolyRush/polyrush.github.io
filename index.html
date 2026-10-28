@@ -3915,6 +3915,37 @@ function bell(f, t = 0, v = 1) {
     o.connect(e); e.connect(g); o.start(t0); o.stop(t0 + d + 0.05);
   }
 }
+// petit écho doux partagé
+function roomBus(c, wetV = 0.22, time = 0.17) {
+  const bus = c.createGain(), dl = c.createDelay(1), fb = c.createGain(), wet = c.createGain(), lp = c.createBiquadFilter();
+  dl.delayTime.value = time; fb.gain.value = 0.28; wet.gain.value = wetV; lp.type = 'lowpass'; lp.frequency.value = 2500;
+  bus.connect(SND.out); bus.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(wet); wet.connect(SND.out);
+  return bus;
+}
+// piano électrique (FM) : attaque légèrement « cloche » qui s'arrondit vite, note chaude et ronde
+function epNote(bus, f, t, v = 0.05, d = 1.1) {
+  const c = SND.ctx, t0 = c.currentTime + t, car = c.createOscillator(), mod = c.createOscillator(), mg = c.createGain(), g = c.createGain();
+  car.frequency.value = f; mod.frequency.value = f;
+  mg.gain.setValueAtTime(f * 1.6, t0); mg.gain.exponentialRampToValueAtTime(f * 0.05, t0 + 0.35);
+  mod.connect(mg); mg.connect(car.frequency);
+  g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.008); g.gain.exponentialRampToValueAtTime(v * 0.35, t0 + 0.25); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+  car.connect(g); g.connect(bus); car.start(t0); mod.start(t0); car.stop(t0 + d + 0.05); mod.stop(t0 + d + 0.05);
+}
+// marimba : sinus + partiel à ~4x qui s'éteint très vite (le bois), son court et rond
+function marNote(bus, f, t, v = 0.07) {
+  const c = SND.ctx, t0 = c.currentTime + t;
+  for (const [k, a, d] of [[1, v, 0.55], [3.93, v * 0.25, 0.08], [9.2, v * 0.06, 0.03]]) {
+    const o = c.createOscillator(), g = c.createGain(); o.frequency.value = f * k;
+    g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(a, t0 + 0.004); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+    o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + d + 0.05);
+  }
+}
+// nappe très douce (sinus, attaque lente)
+function padNote(bus, f, t, v = 0.012, d = 1.0) {
+  const c = SND.ctx, t0 = c.currentTime + t, o = c.createOscillator(), g = c.createGain();
+  o.frequency.value = f; g.gain.setValueAtTime(0.0001, t0); g.gain.exponentialRampToValueAtTime(v, t0 + 0.12); g.gain.exponentialRampToValueAtTime(0.0001, t0 + d);
+  o.connect(g); g.connect(bus); o.start(t0); o.stop(t0 + d + 0.05);
+}
 const jit = (v, k = 0.06) => v * (1 + (Math.random() * 2 - 1) * k);   // un peu de variété : jamais deux fois le même son
 const SFX = {
   click() { sPlay('click2', 0.2, jit(0.92, 0.03), 0, 1800); },   // un « tic » feutré, à peine là
@@ -3949,10 +3980,11 @@ const SFX = {
   check() { sPlay('check', 0.5); },
   fall() { sNoise(0.45, 1600, 220, 0.09, { q: 0.8, a: 0.05 }); sTone(320, 0.4, 'sine', 0.06, { f1: 90 }); },
   restart() { sNoise(0.22, 2400, 500, 0.07, { q: 0.9, a: 0.02 }); sTone(700, 0.16, 'triangle', 0.05, { f1: 260 }); },
-  // arrivée : deux notes de clochette, douces et claires (sol puis do : ça « se pose ») ; record : une troisième au-dessus
+  // arrivée : piano électrique doux, deux accords (do-mi puis sol-do : ça « se pose »), un léger écho ; record : une note au-dessus
   finish(rec) {
-    bell(783.99, 0); bell(1046.5, 0.13);
-    if (rec) bell(1318.5, 0.26, 0.85);
+    const b = roomBus(SND.ctx); epNote(b, 523.25, 0); epNote(b, 659.25, 0, 0.035);
+    epNote(b, 783.99, 0.14, 0.05, 1.4); epNote(b, 1046.5, 0.14, 0.035, 1.4);
+    if (rec) epNote(b, 1318.5, 0.3, 0.03, 1.4);
   },
 };
 // Boutons de l'interface : un petit clic
