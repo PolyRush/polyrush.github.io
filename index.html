@@ -366,9 +366,18 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-list .board li.aud{cursor:pointer}
 .pv-list .board li.sus .ps::after{content:" ⚠";color:var(--red-deep)}
 .pv-list .board li.sus{box-shadow:inset 3px 0 0 var(--red-deep)}
+.adm-line{display:flex;gap:8px;align-items:stretch}
+.adm-line.top{align-items:flex-start}
+.adm-line>.acct-toggle,.adm-line>.chips{flex:1;min-width:0}
+.acct-card .adm-line>.ed-btn{width:auto;flex:none;padding:0 16px;min-width:84px}
+.adm-line.top>.ed-btn{height:38px}
+.chips.adm-lv{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+.chips.adm-lv button{height:36px;padding:0 6px;font-size:14px;font-weight:800;border-width:2px;border-radius:9px}
+.chips.adm-lv .wk{grid-column:span 3}
+.chips.adm-lv .all{grid-column:span 2}
+.chips.adm-lv .all:only-child,.chips.adm-lv button:not(.wk)+.all{grid-column:1/-1}
 .acct-sub{margin:8px 0 0;font:italic 900 17px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
 .board li.hid{opacity:.45;filter:grayscale(1)}
-.board li.hid .ps::after{content:" · masqué";font-weight:600;font-size:.85em}
 .pl-tools{display:flex;gap:8px;align-items:center}
 .pl-tools input{flex:1;min-width:0;box-sizing:border-box;font:600 14px/1.2 var(--font-ui);padding:9px 11px;border:2px solid var(--ink);border-radius:8px;background:var(--paper);color:var(--ink);user-select:text;-webkit-user-select:text}
 .pl-tools span{font:700 12px var(--font-num);color:var(--muted);white-space:nowrap}
@@ -6519,7 +6528,7 @@ async function rerollWeekly() {
   if (WEEKLY) openLevelUI(WEEKLY_N); else showScreen('title', true);
 }
 function weeklyAdminUI(wk) {
-  const box = $('pvWeek'); box.hidden = !(wk && canRerollWeekly());
+  const box = $('pvWeek'); box.hidden = !(wk && !ACCT.on);   // avec les comptes, tout se fait dans le panneau admin
   if (box.hidden) return;
   const i = WEEKLY && WEEKLY.info;
   $('pvWeekInfo').textContent = WEEKLY ? `Tiré le ${new Date(WEEKLY.created).toLocaleDateString('fr-FR')} · ${i ? `${i.arch ? ({ sauts: 'Sauts', wraps: 'Wraps', grimpe: 'Grimpe', equilibre: 'Équilibre', mixte: 'Mixte' }[i.arch] || '') + ' · ' : ''}${i.sc} raccourci${i.sc > 1 ? 's' : ''} caché${i.sc > 1 ? 's' : ''} · robot : ${String(i.t).replace('.', ',')} s` : ''}` : '';
@@ -8313,15 +8322,17 @@ function acctRender() {
       return b;
     };
     // Niveau de la semaine : visible ou non, nouveau tirage
-    c.appendChild(toggle('Niveau de la semaine', WEEKLY && WEEKLY.pub, async () => {
+    const wl = mkEl('div', 'adm-line');
+    wl.appendChild(toggle('Niveau de la semaine', WEEKLY && WEEKLY.pub, async () => {
       if (!WEEKLY) { acctMsg('Fais d’abord un tirage.'); return; }
       const v2 = !WEEKLY.pub;
       await ACCT.db.collection('meta').doc('weekly').set({ pub: v2 }, { merge: true });
       WEEKLY.pub = v2; weeklyMenu(); acctRender();
     }));
     const rr = mkEl('button', 'ed-btn', 'Reroll');
+    rr.title = WEEKLY ? 'Tiré le ' + new Date(WEEKLY.created).toLocaleDateString('fr-FR') : 'Aucun niveau tiré';
     rr.addEventListener('click', () => { acctClose(); if (UI.mode === 'menu') rerollWeekly(); });
-    c.appendChild(rr);
+    wl.appendChild(rr); c.appendChild(wl);
     c.appendChild(toggle('Replays', ACCT.replays, async () => {
       const v2 = !ACCT.replays;
       await ACCT.db.collection('meta').doc('board').set({ replays: v2 }, { merge: true });
@@ -8329,21 +8340,21 @@ function acctRender() {
     }));
     // Reset des niveaux choisis : classement, replays et records des joueurs
     const A = ACCT.adm || (ACCT.adm = { sel: new Set() });
-    const lvls = boardLevels().sort((p, q) => p - q), chips = mkEl('div', 'chips acct-lv');
+    const lvls = boardLevels().sort((p, q) => p - q), rl = mkEl('div', 'adm-line top'), chips = mkEl('div', 'chips acct-lv adm-lv');
     for (const n of lvls) {
-      const bt = mkEl('button', A.sel.has(n) ? 'on' : '', n === WEEKLY_N ? 'Semaine' : String(n));
+      const bt = mkEl('button', (A.sel.has(n) ? 'on' : '') + (n === WEEKLY_N ? ' wk' : ''), n === WEEKLY_N ? 'Semaine' : String(n));
       bt.addEventListener('click', () => { A.sel.has(n) ? A.sel.delete(n) : A.sel.add(n); acctRender(); });
       chips.appendChild(bt);
     }
-    const all = mkEl('button', A.sel.size === lvls.length ? 'on' : '', 'Tous');
+    const all = mkEl('button', (A.sel.size === lvls.length ? 'on' : '') + ' all', 'Tous');
     all.addEventListener('click', () => { if (A.sel.size === lvls.length) A.sel.clear(); else for (const n of lvls) A.sel.add(n); acctRender(); });
-    chips.appendChild(all); c.appendChild(chips);
-    const go = confirmBtn('Reset', 'Confirmer le reset ?', 'danger', async () => {
+    chips.appendChild(all); rl.appendChild(chips);
+    const go = confirmBtn('Reset', 'Sûr ?', 'danger', async () => {
       if (!A.sel.size) return;
       const k = await adminResetLevels([...A.sel], true);
       A.sel.clear(); acctRender(); acctMsg(`Reset fait (${k} temps effacés).`, true);
     });
-    go.disabled = !A.sel.size; c.appendChild(go);
+    go.disabled = !A.sel.size; rl.appendChild(go); c.appendChild(rl);
     // Joueurs : la liste s'ouvre à part (elle peut être longue)
     const pl = mkEl('button', 'ed-btn', A.players ? 'Joueurs (' + A.players.length + ')' : 'Joueurs');
     pl.addEventListener('click', () => { ACCT.view = 'players'; acctRender(); });
