@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
-        with: { node-version: 20 }
+        with: { node-version: 22 }
       - run: npm install --no-save playwright@1.47.2 firebase-admin@12.5.0
       - run: npx playwright install --with-deps chromium
       - run: node .github/scripts/weekly.mjs

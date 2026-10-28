@@ -43,7 +43,7 @@ if (!DRY) { const s = await meta('weekly').get(); curDoc = s.exists ? s.data() :
 const curFrom = curDoc ? (+curDoc.from || weekStart(+curDoc.created || 0)) : 0;
 const todo = [];
 for (const t of mondays) {
-  if (t === cur && curFrom >= cur) continue;                       // la semaine en cours a déjà son niveau
+  if (t === cur) continue;                                        // la semaine en cours : on ne change jamais de niveau en cours de semaine
   if (!DRY && (await meta(wkKey(t)).get()).exists) continue;      // déjà préparé
   todo.push(t);
 }
