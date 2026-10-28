@@ -47,21 +47,22 @@ for (const t of mondays) {
   if (!DRY && (await meta(wkKey(t)).get()).exists) continue;      // déjà préparé
   todo.push(t);
 }
-console.log('Lundis :', mondays.map(wkKey).join(', '), '· à fabriquer :', todo.map(wkKey).join(', ') || 'rien');
+console.log(`::notice::Lundis ${mondays.map(wkKey).join(', ')} · à fabriquer : ${todo.map(wkKey).join(', ') || 'rien'}`);
+let failed = false;
 
 // 2) fabriquer avec le jeu
 if (todo.length) {
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
-  page.on('pageerror', e => console.warn('page :', e.message));
+  page.on('pageerror', e => console.log(`::warning::Erreur dans la page : ${e.message}`));
   await page.goto('file://' + path.resolve('index.html') + '?autogen=1');
   await page.waitForFunction(() => typeof window.__polyGen === 'function', null, { timeout: 60000 });
   for (const t of todo) {
     let doc = null;
     for (let tries = 0; tries < 3 && !doc; tries++) doc = await page.evaluate(from => window.__polyGen(from), t);
-    if (!doc) { console.error('Génération ratée pour', wkKey(t)); continue; }
+    if (!doc) { console.log(`::error::Génération ratée pour ${wkKey(t)}`); failed = true; continue; }
     doc.pub = curDoc ? !!curDoc.pub : false;
-    console.log('Fabriqué', wkKey(t), '· robot', doc.info && doc.info.t, 's · raccourcis', doc.info && doc.info.sc);
+    console.log(`::notice::Fabriqué ${wkKey(t)} · robot ${doc.info && doc.info.t} s · ${doc.info && doc.info.sc} raccourci(s)${DRY ? ' (essai, rien enregistré)' : ''}`);
     if (!DRY) await meta(wkKey(t)).set(doc);
   }
   await browser.close();
@@ -73,8 +74,8 @@ if (!DRY && curFrom < cur) {
   if (q.exists) {
     await meta('weekly').set({ ...q.data(), from: cur, pub: curDoc ? !!curDoc.pub : !!q.data().pub });
     await meta(wkKey(cur)).delete();
-    console.log('Niveau de la semaine mis en place :', wkKey(cur));
+    console.log(`::notice::Niveau de la semaine mis en place : ${wkKey(cur)}`);
   }
 }
 console.log('Fini.');
-process.exit(0);
+process.exit(failed ? 1 : 0);
