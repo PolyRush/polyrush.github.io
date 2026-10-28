@@ -823,7 +823,7 @@ if (FX) {
 const DT = 1 / 120;
 const CFG = {
   speed: 16, jumpV: 50, gravity: 196.2,
-  coyote: 0.13, buffer: 0.12,               // coyote : on peut encore sauter un court instant après avoir quitté le bord
+  coyote: 0.115, buffer: 0.12,              // coyote : on peut encore sauter un court instant après avoir quitté le bord
   driveAccel: 960,                         // moteur de marche : vitesse atteinte en 2 pas
   step: 1.1,                               // hauteur que les jambes enjambent (capteur de sol)
   probe: 0.3,                              // le capteur suit une descente de 0,3 sans décoller
@@ -3281,9 +3281,9 @@ function step() {
   // Saut
   if (P.jumpBuf > 0) P.jumpBuf -= DT;
   if ((P.jumpBuf > 0 || input.jumpHeld) && (P.grounded || P.coyote > 0) && P.jumpT <= 0) {
-    // Saut un peu après avoir quitté le bord : on a déjà commencé à tomber. Le saut rattrape ce qu'on a perdu,
-    // pour culminer à la même hauteur que si l'on avait sauté pile au bord (plus on est en retard, plus il pousse).
-    const late = !P.grounded && !P.climb ? clamp((P.ledgeY ?? feetY) - feetY, 0, 1.8) : 0;
+    // Saut un peu après avoir quitté le bord : on a déjà commencé à tomber. Le saut rattrape la moitié de ce qu'on a
+    // perdu (plus on est en retard, plus il pousse), sans culminer aussi haut qu'un saut pile au bord.
+    const late = !P.grounded && !P.climb ? 0.5 * clamp((P.ledgeY ?? feetY) - feetY, 0, 1.8) : 0;
     P.vy = Math.sqrt(CFG.jumpV * CFG.jumpV + 2 * CFG.gravity * late) + Math.max(0, gvy);
     P.grounded = false; P.ground = null; P.coyote = 0; P.jumpBuf = 0; P.jumpT = 0.12;
     // Sauter depuis une prise : on se repousse vers l'arrière du corps (à l'opposé de là où le perso
