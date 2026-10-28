@@ -39,7 +39,59 @@ button:focus-visible,input:focus-visible{outline:3px solid var(--ink);outline-of
 #gear{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));width:42px;height:42px;display:grid;place-items:center;cursor:pointer;padding:0;font:inherit;color:var(--ink)}
 #gear svg{width:22px;height:22px}
 #menu{position:fixed;top:calc(64px + env(safe-area-inset-top,0px));right:calc(12px + env(safe-area-inset-right,0px));width:min(320px,calc(100vw - 24px));padding:16px 18px;display:grid;gap:14px;font-size:13.5px}
-#menu h2{margin:0;font-size:17px;font-weight:800;letter-spacing:-.01em}
+#menu h2{margin:0;font:italic 900 20px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.01em}
+/* Réglages : en-tête avec croix, sections titrées, ouverture qui part de la roue dentée */
+#menu{border-width:2.5px;border-radius:14px;box-shadow:6px 6px 0 var(--line);padding:16px 18px 18px;gap:12px;transform-origin:calc(100% - 20px) -30px}
+#menu.opening{animation:mnIn .32s var(--ease-pop)}
+#menu.closing{animation:mnOut .16s ease-in forwards}
+@keyframes mnIn{from{opacity:0;transform:translateY(-8px) scale(.94)}to{opacity:1;transform:none}}
+@keyframes mnOut{to{opacity:0;transform:translateY(-6px) scale(.96)}}
+.mn-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:-2px}
+.mn-x{width:32px;height:32px;display:grid;place-items:center;padding:0;border:2px solid var(--line);border-radius:9px;background:var(--card);color:var(--ink);cursor:pointer;box-shadow:2px 2px 0 var(--line);transition:transform .15s var(--ease-pop),box-shadow .15s,background .15s,color .15s}
+.mn-x svg{width:16px;height:16px;transition:transform .25s var(--ease-pop)}
+.mn-x:hover,.mn-x:focus-visible{background:var(--ink);color:#fff;transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--line);outline:none}
+.mn-x:hover svg{transform:rotate(90deg)}
+.mn-x:active{transform:translate(1px,1px);box-shadow:0 0 0 var(--line)}
+.mn-sec{display:flex;justify-content:space-between;align-items:baseline;margin:4px 0 -4px;padding-top:10px;border-top:2px solid var(--lock-bg2);font:800 10.5px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.mn-h + .mn-sec{border-top:0;padding-top:0}
+@media (pointer:coarse){#menu .kbd-only{display:none}}   /* sur écran tactile : pas de clavier, pas de touches à régler */
+#menu .close{margin-top:4px;padding:11px 12px;box-shadow:3px 3px 0 var(--red);transition:transform .15s var(--ease-pop),box-shadow .15s}
+#menu .close:hover,#menu .close:focus-visible{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--red)}
+#menu .close:active{transform:translate(2px,2px);box-shadow:0 0 0 var(--red)}
+/* curseurs : piste arrondie remplie d'encre jusqu'au bouton, bouton blanc cerclé avec son ombre dure */
+#menu input[type=range]{-webkit-appearance:none;appearance:none;height:8px;margin:7px 0;border-radius:99px;cursor:pointer;
+  background:linear-gradient(90deg,var(--ink) var(--p,50%),var(--lock-bg2) var(--p,50%));border:1.5px solid var(--ink)}
+#menu input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--card);border:2.5px solid var(--ink);box-shadow:2px 2px 0 var(--ink);transition:transform .15s var(--ease-pop)}
+#menu input[type=range]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--card);border:2.5px solid var(--ink);box-shadow:2px 2px 0 var(--ink)}
+#menu input[type=range]:hover::-webkit-slider-thumb,#menu input[type=range]:active::-webkit-slider-thumb{transform:scale(1.15)}
+#menu input[type=range]:focus-visible{outline:3px solid var(--accent);outline-offset:4px}
+/* roue dentée : elle tourne au survol, et reste tournée tant que les réglages sont ouverts */
+#gear{transition:transform .2s var(--ease-pop),box-shadow .2s,background .2s,color .2s}
+#gear svg{transition:transform .45s var(--ease-pop)}
+#gear:hover,#gear:focus-visible{transform:translate(-2px,-2px);box-shadow:5px 5px 0 var(--line);outline:none}
+#gear:hover svg{transform:rotate(45deg)}
+#gear[aria-expanded="true"]{background:var(--ink);color:#fff}
+#gear[aria-expanded="true"] svg{transform:rotate(90deg)}
+#gear:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--line)}
+/* message : une étiquette qui arrive avec un petit rebond */
+#toast{border-width:2.5px;border-radius:12px;box-shadow:5px 5px 0 var(--line);padding:11px 20px;font:italic 900 19px/1.1 var(--font-display);text-transform:uppercase;letter-spacing:.01em;transition:opacity .22s,transform .22s}
+#toast.pop{animation:toastIn .38s var(--ease-pop)}
+@keyframes toastIn{from{opacity:0;transform:translate(-50%,-30%) scale(.85)}to{opacity:1;transform:translate(-50%,-50%)}}
+/* camera lock : l'étiquette s'allume franchement quand il est actif */
+#sl{transition:background .2s,color .2s,transform .2s var(--ease-pop)}
+#sl.on{background:var(--ink);color:#fff;transform:translateY(-2px)}
+/* chrono : un petit coup de pouce quand il démarre */
+#timer.run{animation:tGo .4s var(--ease-pop)}
+@keyframes tGo{0%{transform:scale(.92)}60%{transform:scale(1.06)}100%{transform:none}}
+/* boutons secondaires : ils se soulèvent au survol, s'enfoncent au clic */
+.ed-btn:hover,.ed-btn:focus-visible{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.kc:hover{background:#f1f3f6}
+.kc.wait:hover{background:var(--accent)}
+.tile:not(.open){cursor:not-allowed}
+.acct-toggle{transition:transform .15s var(--ease-pop),box-shadow .15s}
+.acct-toggle:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.acct-toggle:active{transform:translate(1px,1px);box-shadow:1px 1px 0 var(--ink)}
+@media (prefers-reduced-motion:reduce){#menu.opening,#menu.closing,#toast.pop,#timer.run{animation:none}#gear svg,.mn-x svg{transition:none}}
 .row{display:grid;gap:7px}
 .row label,.row .lab{display:flex;justify-content:space-between;align-items:baseline;font-weight:700}
 .row output,.row .val{font-family:var(--font-num);font-weight:700;font-size:12.5px;color:var(--muted)}
@@ -58,7 +110,7 @@ input[type=range]{width:100%;accent-color:var(--ink)}
 .kc.wait i{color:rgba(255,255,255,.75)}
 .kc.flash{background:#ffe2df}
 @keyframes kcPulse{50%{transform:translateY(-1px);box-shadow:0 0 0 4px rgba(123,92,255,.25)}}
-.kb-reset{float:right;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.kb-reset{letter-spacing:.04em;font:inherit;font-size:11.5px;font-weight:700;color:var(--muted);background:none;border:0;padding:0;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
 .hint{color:var(--muted);font-size:12px;line-height:1.45;margin:0}
 #menu{max-height:calc(100vh - 80px - env(safe-area-inset-top,0px));overflow-y:auto;overscroll-behavior:contain}
 .opts{display:grid;gap:9px;padding-top:2px}
@@ -760,7 +812,8 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 <div id="wipe" aria-hidden="true"><i class="w1"></i><i class="w2"><span class="wlogo">Poly <span>Rush</span></span></i></div>
 <button id="gear" class="card" aria-label="Réglages" aria-expanded="false" aria-controls="menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
 <div id="menu" class="card" hidden role="dialog" aria-label="Réglages">
-  <h2>Réglages</h2>
+  <div class="mn-h"><h2>Réglages</h2><button id="menuX" class="mn-x" aria-label="Fermer les réglages"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+  <p class="mn-sec">Jeu</p>
   <div class="row">
     <label for="sens">Sensibilité de la caméra <output id="sensOut">1,00×</output></label>
     <input id="sens" type="range" min="0.2" max="3" step="0.05" value="1">
@@ -769,8 +822,8 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
     <label for="vol">Volume <output id="volOut">60 %</output></label>
     <input id="vol" type="range" min="0" max="1" step="0.05" value="0.6">
   </div>
-  <div class="row">
-    <span class="lab">Touches <button id="kbReset" class="kb-reset" hidden>Par défaut</button></span>
+  <p class="mn-sec kbd-only">Commandes <button id="kbReset" class="kb-reset" hidden>Par défaut</button></p>
+  <div class="row kbd-only">
     <div class="kb">
       <div class="kb-move">
         <button class="kc" data-act="fwd" style="grid-area:1/2" aria-label="Avancer"><i>↑</i><b></b></button>
@@ -785,12 +838,13 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
     </div>
     <p id="slHint" class="hint" hidden></p>
   </div>
-  <div class="keys">
+  <div class="keys kbd-only">
     <kbd>Clic droit</kbd><span>Tourner la caméra</span>
     <kbd>Molette</kbd><span>Zoom</span>
     <kbd>R</kbd><span>Recommencer</span>
     <kbd>Échap</kbd><span>Réglages</span>
   </div>
+  <p class="mn-sec">Affichage</p>
   <div class="opts">
     <label class="sw"><input type="checkbox" id="optPerf"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Mode performance<small id="perfHint">Moins de détails, bien plus fluide</small></span></label>
     <label class="sw"><input type="checkbox" id="optFps"><span class="sw-ui" aria-hidden="true"></span><span class="sw-t">Graphe des FPS</span></label>
@@ -3523,6 +3577,7 @@ const slEl = $('sl'), crossEl = $('cross'), bJump = $('bJump'), bSL = $('bSL'), 
 let toastTimer = 0;
 function toast(msg, ms) {
   toastEl.textContent = msg; toastEl.style.opacity = 1;
+  toastEl.classList.remove('pop'); void toastEl.offsetWidth; toastEl.classList.add('pop');
   clearTimeout(toastTimer); toastTimer = setTimeout(() => { toastEl.style.opacity = 0; }, ms);
 }
 function flash() {
@@ -4016,8 +4071,10 @@ const menu = $('menu'), gear = $('gear'), sensIn = $('sens'), sensOut = $('sensO
 const menuClose = $('menuClose'), backBtn = $('backBtn');
 const fmt2 = v => v.toFixed(2).replace('.', ',') + '×';
 const kcEls = [...document.querySelectorAll('#menu .kc')], kbReset = $('kbReset');
+// remplissage des curseurs (la partie à gauche du bouton)
+const rangeFill = el => el.style.setProperty('--p', ((el.value - el.min) / (el.max - el.min) * 100) + '%');
 function showSettings() {
-  sensIn.value = settings.sens; sensOut.textContent = fmt2(settings.sens);
+  sensIn.value = settings.sens; sensOut.textContent = fmt2(settings.sens); rangeFill(sensIn);
   const D = KEY_DEFAULT();
   for (const el of kcEls) {
     const a = el.dataset.act, l = settings.keys[a].l, small = !el.classList.contains('wide');
@@ -4031,22 +4088,28 @@ function showSettings() {
 let binding = false;
 showSettings();
 function clearInput() { for (const k in input) input[k] = k === 'jumpHeld' ? false : 0; joy.x = joy.y = 0; P.jumpBuf = 0; }
+let menuAnim = 0;
 function openMenu(open) {
-  menu.hidden = !open; gear.setAttribute('aria-expanded', String(open));
+  // ouverture : petit rebond depuis la roue dentée ; fermeture : un fondu bref, puis caché
+  clearTimeout(menuAnim); menu.classList.remove('opening', 'closing');
+  if (open) { menu.hidden = false; void menu.offsetWidth; menu.classList.add('opening'); }
+  else if (!menu.hidden) { menu.classList.add('closing'); menuAnim = setTimeout(() => { menu.hidden = true; menu.classList.remove('closing'); }, 160); }
+  gear.setAttribute('aria-expanded', String(open));
   endBind();
   const inGame = UI.mode === 'play';
   if (open) { endRmb(); if (shiftlock) setShiftlock(false); unlockPointer(); }
   else if (inGame) canvas.focus();
 }
-gear.addEventListener('click', () => openMenu(menu.hidden));
+gear.addEventListener('click', () => openMenu(menu.hidden || menu.classList.contains('closing')));
 // Un clic de souris dans les réglages ne garde pas le focus : Espace sauterait sur l'interrupteur au lieu de faire sauter
 menu.addEventListener('pointerup', () => { if (UI.mode !== 'play') return; setTimeout(() => { const a = document.activeElement; if (a && menu.contains(a) && a.type !== 'range' && !binding) a.blur(); }, 0); });
 menu.addEventListener('change', e => { if (UI.mode === 'play' && e.target.type === 'range') setTimeout(() => e.target.blur(), 0); });
 menuClose.addEventListener('click', () => openMenu(false));
+$('menuX').addEventListener('click', () => openMenu(false));
 backBtn.addEventListener('click', () => { if (!menu.hidden) openMenu(false); quitToMenu(); });
-sensIn.addEventListener('input', () => { settings.sens = +sensIn.value; sensOut.textContent = fmt2(settings.sens); saveSettings(); });
+sensIn.addEventListener('input', () => { settings.sens = +sensIn.value; sensOut.textContent = fmt2(settings.sens); rangeFill(sensIn); saveSettings(); });
 const volIn = $('vol'), volOut = $('volOut');
-const showVol = () => { volIn.value = settings.vol; volOut.textContent = settings.vol > 0 ? Math.round(settings.vol * 100) + ' %' : 'Coupé'; };
+const showVol = () => { volIn.value = settings.vol; volOut.textContent = settings.vol > 0 ? Math.round(settings.vol * 100) + ' %' : 'Coupé'; rangeFill(volIn); };
 showVol();
 volIn.addEventListener('input', () => { settings.vol = +volIn.value; showVol(); if (SND.out) SND.out.gain.value = settings.vol; saveSettings(); });
 volIn.addEventListener('change', () => sfx('click'));
