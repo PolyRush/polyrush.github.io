@@ -3887,7 +3887,11 @@ function sNoise(d, f0, f1, v = 0.15, o = {}) {
   src.buffer = SND.noise; src.loop = true;
   fl.type = o.type || 'bandpass'; fl.Q.value = o.q ?? 1.1; fl.frequency.setValueAtTime(f0, t); fl.frequency.exponentialRampToValueAtTime(f1, t + d);
   g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(v, t + (o.a || d * 0.3)); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
-  src.connect(fl); fl.connect(g); g.connect(SND.out); src.start(t, Math.random() * 0.5); src.stop(t + d + 0.02);
+  src.connect(fl); fl.connect(g);
+  // pan : [gauche/droite au début, à la fin] (-1 … 1), pour un son qui traverse l'écran
+  if (o.pan && c.createStereoPanner) { const p = c.createStereoPanner(); p.pan.setValueAtTime(o.pan[0], t); p.pan.linearRampToValueAtTime(o.pan[1], t + d); g.connect(p); p.connect(SND.out); }
+  else g.connect(SND.out);
+  src.start(t, Math.random() * 0.5); src.stop(t + d + 0.02);
 }
 // un bruitage enregistré : nom (ou liste, un au hasard), volume, vitesse de lecture (plus vite = plus aigu), départ
 function sPlay(name, v = 0.5, rate = 1, t = 0, lp = 0) {
@@ -3904,7 +3908,18 @@ const jit = (v, k = 0.06) => v * (1 + (Math.random() * 2 - 1) * k);   // un peu 
 const SFX = {
   click() { sPlay('click2', 0.2, jit(0.92, 0.03), 0, 1800); },   // un « tic » feutré, à peine là
   page() { sNoise(0.18, 700, 2200, 0.035, { q: 0.8 }); },
-  wipe() { sNoise(0.5, 260, 1700, 0.09, { q: 0.7, a: 0.22 }); sNoise(0.35, 1700, 300, 0.05, { q: 0.7, t: 0.22 }); },
+  // rideau des chargements : il traverse l'écran de gauche à droite, le son aussi. À l'aller, un souffle qui enfle et
+  // un petit « toc » feutré quand le rideau se pose ; au retour, un souffle qui s'éloigne et une étincelle légère.
+  wipeIn() {
+    sNoise(0.5, 280, 2400, 0.06, { q: 0.75, a: 0.36, pan: [-0.85, 0.25] });
+    sNoise(0.5, 900, 5200, 0.012, { type: 'highpass', a: 0.36, pan: [-0.85, 0.25] });
+    sNoise(0.06, 1100, 500, 0.05, { type: 'lowpass', q: 0.6, a: 0.004, t: 0.5 });
+  },
+  wipeOut() {
+    sNoise(0.5, 2200, 420, 0.05, { q: 0.75, a: 0.05, pan: [-0.1, 0.9] });
+    sNoise(0.42, 5000, 1200, 0.01, { type: 'highpass', a: 0.04, pan: [-0.1, 0.9] });
+    sTone(1568, 0.55, 'sine', 0.016, { t: 0.06, a: 0.01 }); sTone(2349.3, 0.5, 'sine', 0.01, { t: 0.11, a: 0.01 });
+  },
   // saut : un « woosh » de vent qui monte et retombe, avec un frôlement de tissu par-dessus
   // (le même souffle que les changements de page des menus)
   jump() { SFX.page(); },
@@ -4392,13 +4407,13 @@ $('finRetry').addEventListener('click', e => { e.currentTarget.blur(); if (playi
 
 // Volet : rouge puis blanc couvrent l'écran, on change de carte dessous, puis ils repartent.
 function wipe(mid) {
-  sfx('wipe');
+  sfx('wipeIn');
   UI.busy = true; wipeEl.className = 'in'; PERF.cool = 3;   // un chargement n'est pas un ralentissement
   setTimeout(() => {
     try { mid(); renderer.compile(scene, camera); } catch (err) { console.error(err); }
     acc = 0; last = performance.now();
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      wipeEl.className = 'in out';
+      wipeEl.className = 'in out'; sfx('wipeOut');
       setTimeout(() => { wipeEl.className = ''; UI.busy = false; }, reduced ? 60 : 720);
     }));
   }, reduced ? 60 : 640);
