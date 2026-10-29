@@ -2,7 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Parkour 3D dans le navigateur : des parcours chronométrés, un niveau de la semaine et un classement entre potes."><meta name="theme-color" content="#111111"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta property="og:type" content="website"><meta property="og:site_name" content="Poly Rush"><meta property="og:title" content="Poly Rush"><meta property="og:description" content="Parkour 3D dans le navigateur : bats le chrono, grimpe au classement, nouveau niveau chaque semaine."><meta property="og:url" content="https://polyrush.github.io/"><meta property="og:image" content="https://polyrush.github.io/og-v3.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://polyrush.github.io/og-v3.png">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="description" content="Parkour 3D dans le navigateur : des parcours chronométrés, un niveau de la semaine et un classement entre potes."><meta name="theme-color" content="#111111"><link rel="icon" href="icon.svg" type="image/svg+xml"><link rel="icon" href="favicon-32.png" sizes="32x32" type="image/png"><link rel="apple-touch-icon" href="apple-touch-icon.png"><meta property="og:type" content="website"><meta property="og:site_name" content="Poly Rush"><meta property="og:title" content="Poly Rush"><meta property="og:description" content="Parkour 3D dans le navigateur : bats le chrono, grimpe au classement, nouveau niveau chaque semaine."><meta property="og:url" content="https://polyrush.github.io/"><meta property="og:image" content="https://polyrush.github.io/og-v4.png"><meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta name="twitter:card" content="summary_large_image"><meta name="twitter:image" content="https://polyrush.github.io/og-v4.png">
 <style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -19,7 +19,7 @@
   --paper:#f6f7f9; --red:#f0443a; --red-deep:#c4271f; --red-hi:#ff6a5e; --gold:#ffc53d; --go:#1fbf5f; --lock:#b9c0c9; --lock-bg:#eceff2; --lock-bg2:#e2e6ea;
   /* Système : bords d'encre épais, ombres franches décalées (4 tailles), tout ce qui file penche du même angle */
   --sh-1:2px 2px 0 var(--ink); --sh-2:3px 3px 0 var(--ink); --sh-3:5px 5px 0 var(--ink); --sh-4:8px 8px 0 var(--ink);
-  --skew:-12deg;
+  --skew:-8deg;   /* = angle de l'italique de Chivo : dalles, balayages et soulignés restent parallèles aux lettres */
   --font-display:'Chivo','Arial Black','Segoe UI',system-ui,sans-serif;
   --ease-out:cubic-bezier(.2,.85,.25,1); --ease-pop:cubic-bezier(.2,1.5,.4,1); --ease-io:cubic-bezier(.75,0,.25,1);
   --font-ui:'Chivo','Segoe UI',system-ui,sans-serif;
@@ -209,9 +209,9 @@ body.lowfx #ui .veil::before{display:none}
 @keyframes letPop{from{opacity:0;transform:translateY(.28em) scale(.6)}to{opacity:1;transform:none}}
 .speed{position:absolute;right:100%;margin-right:.06em;top:.25em;bottom:.25em;width:.6em;display:grid;align-content:space-between;justify-items:end;pointer-events:none}
 .speed i{display:block;height:.075em;background:var(--ink);border-radius:.04em;transform-origin:right center;animation:spIn .5s var(--ease-out) backwards,spIdle 3.2s ease-in-out infinite}
-.speed i:nth-child(1){width:.36em;margin-right:-.05em;animation-delay:.62s,1.6s}
+.speed i:nth-child(1){width:.36em;margin-right:-.035em;animation-delay:.62s,1.6s}
 .speed i:nth-child(2){width:.56em;animation-delay:.68s,1.75s}
-.speed i:nth-child(3){width:.26em;margin-right:.05em;animation-delay:.74s,1.9s}
+.speed i:nth-child(3){width:.26em;margin-right:.035em;animation-delay:.74s,1.9s}
 @keyframes spIn{from{transform:translateX(.3em) scaleX(0);opacity:0}}
 @keyframes spIdle{0%,70%,100%{transform:none;opacity:1}82%{transform:translateX(-.14em) scaleX(.55);opacity:.35}}
 @keyframes streak{0%{transform:translateX(.25em) scaleX(0);opacity:0}25%{transform:translateX(0) scaleX(1);opacity:1}100%{transform:translateX(-.35em) scaleX(.15);opacity:0}}
@@ -372,22 +372,22 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 /* ---------- Transition ---------- */
 #wipe{position:fixed;inset:0;z-index:60;pointer-events:none;overflow:hidden}
 #wipe.in{pointer-events:auto}
-#wipe i{position:absolute;top:-10%;bottom:-10%;left:-30%;width:160%;transform:translateX(-118%) skewX(-12deg)}
+#wipe i{position:absolute;top:-10%;bottom:-10%;left:-30%;width:160%;transform:translateX(-118%) skewX(-8deg)}
 #wipe .w0{background:var(--ink)}
 #wipe .w1{background:var(--red)}
 #wipe .w2{background:var(--paper) radial-gradient(circle,rgba(17,17,17,.06) 1.1px,transparent 1.6px) 0 0/16px 16px;display:grid;place-items:center;border-left:6px solid var(--ink)}
 #wipe .wlogo{font-size:clamp(34px,4.2vw,56px)}
-#wipe.in i{transform:translateX(0) skewX(-12deg);transition:transform .52s var(--ease-io)}
+#wipe.in i{transform:translateX(0) skewX(-8deg);transition:transform .52s var(--ease-io)}
 #wipe.in .w1{transition-delay:.06s}
 #wipe.in .w2{transition-delay:.12s}
-#wipe.in.out i{transform:translateX(118%) skewX(-12deg)}
+#wipe.in.out i{transform:translateX(118%) skewX(-8deg)}
 #wipe.in.out .w0{transition-delay:.12s}
 #wipe.in.out .w1{transition-delay:.06s}
 #wipe.in.out .w2{transition-delay:0s}
 #wipe.in .wlogo{animation:wlIn .5s var(--ease-pop) .34s backwards}
-@keyframes wlIn{from{opacity:0;transform:skewX(12deg) translateX(-30px) scale(.9)}}
+@keyframes wlIn{from{opacity:0;transform:skewX(8deg) translateX(-30px) scale(.9)}}
 /* petit logo (rideau, chargement) : même dalle rouge que le grand */
-.wlogo{display:inline-flex;align-items:center;gap:.14em;transform:skewX(12deg);font:italic 900 34px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.04em;color:var(--ink);white-space:nowrap}
+.wlogo{display:inline-flex;align-items:center;gap:.14em;transform:skewX(8deg);font:italic 900 34px/1 var(--font-display);text-transform:uppercase;letter-spacing:-.04em;color:var(--ink);white-space:nowrap}
 .wlogo .wr{position:relative;isolation:isolate;color:#fff;padding:.1em .16em .08em .1em}
 .wlogo .wr::before{content:"";position:absolute;inset:0;z-index:-1;background:var(--red);border:.055em solid var(--ink);border-radius:.08em;transform:skewX(var(--skew));box-shadow:.07em .07em 0 var(--ink)}
 
