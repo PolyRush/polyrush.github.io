@@ -7626,7 +7626,7 @@ function levelLimits() {
    16 studs/s en moyenne sur une demi-seconde (mesuré : 16,000 sur des milliers de passages du robot). On mesure la
    distance à vol d'oiseau sur 0,5 s (le replay arrondit les positions au centimètre : ≈ 0,1 studs/s d'incertitude). */
 const SPEED_MAX = CFG.speed + 0.1;
-const SPEED_STRICT = false;   // d'abord mesuré sur tous les vrais replays, puis activé
+const SPEED_STRICT = true;    // mesuré sur les 35 vrais temps du classement : 16,00 à 16,04 (l'arrondi des positions)
 const _dynZ = { key: '', z: [] };
 function dynZones() {
   const key = MAP + '|' + solids.length;
@@ -7646,6 +7646,7 @@ function dynZones() {
 function ghostSpeed(s) {
   const T = r => r[0] / 10 * DT, Z = dynZones(), near = (x, z) => Z.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
   const clean = []; let taint = false, lastClimb = -1e9, lastTp = -1e9;
+  s = s.slice(0, -1);   // la dernière image (l'arrivée) : datée à l'instant exact, sa position peut être celle de la fin du pas
   for (let i = 0; i < s.length; i++) {
     const r = s[i], t = T(r), x = r[1] / 100, z = r[3] / 100, F = r[15];
     if (F & 4) lastClimb = t;
@@ -7871,7 +7872,11 @@ function finishFrac(B) {
   for (let i = 0; i < 14; i++) { const m = (lo + hi) / 2; if (ov(x0 + (x1 - x0) * m, z0 + (z1 - z0) * m) > 0) hi = m; else lo = m; }
   return hi;
 }
-function finishRun(B) { if (run.state !== 'run') return; run.state = 'done'; run.end = worldTicks - 1 + finishFrac(B); pendingFinish = true; }
+function finishRun(B) {
+  if (run.state !== 'run') return;
+  const f = finishFrac(B); run.state = 'done'; run.end = worldTicks - 1 + f; pendingFinish = true;
+  run.endPos = { x: P.px + (P.x - P.px) * f, y: P.py + (P.y - P.py) * f, z: P.pz + (P.z - P.pz) * f };   // la position au moment exact de l'arrivée (dernière image du replay)
+}
 function updateTimer(a) {
   if (run.state !== 'run') return;
   if (!timerEl.classList.contains('run')) timerEl.className = 'card run';
@@ -7880,7 +7885,7 @@ function updateTimer(a) {
 }
 function onFinish() {
   const ms = Math.round((run.end - run.start) * DT * 1000);
-  if (REC) { qa.set(P.q.x, P.q.y, P.q.z, P.q.w); recSample(run.end, P.x, P.y, P.z, qa, true); }
+  if (REC) { const e = run.endPos || P; qa.set(P.q.x, P.q.y, P.q.z, P.q.w); recSample(run.end, e.x, e.y, e.z, qa, true); }
   // Un essai depuis l'éditeur ne compte pas comme record.
   const prev = ED.test ? 0 : records[recKey(LEVEL)], better = !ED.test && (!prev || ms < prev);
   if (better) { records[recKey(LEVEL)] = ms; saveRecords(); recFresh[String(recKey(LEVEL))] = Date.now(); }
