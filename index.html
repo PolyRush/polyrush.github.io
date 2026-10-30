@@ -188,7 +188,7 @@ body.lowfx #ui .veil::before{display:none}
 .screen.show .stag{animation:rise .6s var(--ease-out) backwards;animation-delay:calc(var(--i,0) * 60ms + 140ms)}
 /* Au chargement, les boutons du menu attendent de savoir lesquels s'affichent (compte, niveau de la semaine) puis
    arrivent tous ensemble, dans l'ordre */
-#scrTitle.navwait .nav .stag,#scrTitle.navwait #bAcct{opacity:0;animation:none}
+#scrTitle.navwait .nav .stag,#scrTitle.navwait #bAcct,#scrTitle.navwait #bFriends{opacity:0;animation:none}
 @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
 
 .col{display:grid;gap:clamp(30px,6vh,56px);max-width:520px;width:100%}
@@ -571,9 +571,7 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .pod-who{display:grid;justify-items:center;gap:6px;min-width:0;max-width:100%;cursor:pointer}
 .pod-who .pod-av{transition:scale .25s var(--ease-pop),translate .25s var(--ease-pop),box-shadow .2s}
 .pod-who .pod-ps{padding:3px 0 5px;margin:-3px 0 -5px;background:linear-gradient(currentColor,currentColor) no-repeat 0 calc(100% - 1px)/0% 2px;transition:background-size .22s var(--ease-out)}
-@media (hover:hover){.pod-who:hover .pod-av{translate:0 -3px;scale:1.07;box-shadow:3px 3px 0 var(--ink),inset 0 2px 0 rgba(255,255,255,.7),0 0 24px rgba(var(--g),.85)}
-  .pod-who:hover .pod-ps{background-size:100% 2px}}
-.pod-who:active .pod-av{translate:0 1px;scale:.97}
+@media (hover:hover){.pod-who:hover .pod-ps{background-size:100% 2px}}
 .pod-ps{max-width:100%;font:800 14px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;animation:rowIn .4s var(--ease-out) both;animation-delay:calc(var(--d) + .45s)}
 .pod-s.me .pod-ps{color:var(--red-deep)}
 .pod-tot{font:800 15px/1 var(--font-num);font-variant-numeric:tabular-nums;justify-items:center;animation:rowIn .4s var(--ease-out) both;animation-delay:calc(var(--d) + .5s)}
@@ -639,6 +637,50 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 @media (max-width:440px){.pod{gap:6px}.pod-av{width:42px;height:42px;font-size:19px}.pod-s.m1 .pod-av{width:52px;height:52px}.pod-ps{font-size:12.5px}.pod-tot{font-size:13px}
   .pod-s.m1{--h:100px}.pod-s.m2{--h:72px}.pod-s.m3{--h:56px}}
 @media (prefers-reduced-motion:reduce){.pod-av,.pod-cr,.pod-ps,.pod-tot,.pod-base,.pts-me,.pod-s.m1 .pod-base::after{animation:none}}
+
+/* ---------- Amis ---------- */
+.acct-line{display:flex;align-items:stretch;gap:10px;justify-self:start}
+.acct-line .acct-chip{justify-self:auto}
+.fr-btn{position:relative;flex:none;width:58px;display:grid;place-items:center;padding:0;border:2.5px solid var(--ink);border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;
+  box-shadow:4px 4px 0 var(--ink);transition:transform .18s var(--ease-pop),box-shadow .18s var(--ease-pop),background .2s,color .2s}
+.fr-btn svg{width:26px;height:26px}
+.fr-btn:hover,.fr-btn:focus-visible{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink);background:var(--ink);color:#fff;outline:none}
+.fr-btn:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink)}
+.fr-btn b{position:absolute;top:-8px;right:-8px;min-width:22px;height:22px;padding:0 5px;box-sizing:border-box;border-radius:99px;border:2px solid var(--ink);background:var(--red);color:#fff;
+  display:grid;place-items:center;font:800 11px/1 var(--font-num);animation:pop .4s var(--ease-pop)}
+.fr-tabs button{display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.fr-tabs .fr-n{min-width:18px;height:18px;padding:0 4px;box-sizing:border-box;border-radius:99px;background:var(--red);color:#fff;font:800 10.5px/18px var(--font-num)}
+.fr-body{display:grid;gap:10px;min-height:120px;align-content:start}
+.fr-body.in{animation:swapIn .3s var(--ease-out) both}
+.fr-list{max-height:min(42vh,380px);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 4px 0}
+.fr-nm{display:flex;align-items:center;gap:8px;min-width:0}
+.fr-nm .ps{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr-nm .gr{flex:none;padding:3px 6px;border-radius:6px;background:rgba(17,17,17,.08);font:800 10.5px/1 var(--font-num);color:var(--muted)}
+.board li.r1 .fr-nm .gr,.board li.r2 .fr-nm .gr,.board li.r3 .fr-nm .gr{background:rgba(255,255,255,.5);color:var(--ink)}
+.fr-list .tm .tv{display:inline-flex;align-items:center;gap:6px}
+.fr-list .tm i.cube{width:15px;height:15px}
+.fr-list .tm .pt.sum{gap:7px}
+.fr-list .tm .sm{display:grid;justify-items:center;gap:1px}
+.fr-list .tm .sm b{font:800 13px/1 var(--font-num)}
+.fr-list .tm .sm small{font:700 8.5px/1 var(--font-ui);letter-spacing:.06em;color:var(--muted)}
+.fr-list .tm .op{font:800 13px/1 var(--font-num);color:var(--muted);margin-top:-8px}
+.fr-list .tm.hp{padding:4px 0;margin:-4px 0}
+.fr-note{margin:-4px 0 0;font:700 11px/1.3 var(--font-ui);color:var(--muted)}
+.fr-add{grid-template-columns:1fr auto;align-items:stretch}
+.fr-add .ed-btn{width:auto!important;padding:0 18px!important}
+.fr-row{grid-template-columns:14px 1fr auto!important}
+.fr-wait,.fr-new{width:10px;height:10px;border-radius:50%;border:2px solid var(--ink);box-sizing:border-box}
+.fr-wait{background:var(--lock-bg)}
+.fr-new{background:var(--red);animation:nextBeat 1.6s ease-in-out infinite}
+.fr-bt{display:flex;gap:6px}
+.ed-btn.fr-mini{width:auto!important;padding:7px 10px!important;font-size:12px!important}
+.fr-act{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fr-act .ed-btn{flex:1 1 auto;width:auto!important}
+.fr-act .acct-msg{flex-basis:100%;min-height:0}
+.fr-st{flex:none;display:inline-flex;align-items:center;gap:6px;padding:7px 10px;border-radius:8px;background:var(--lock-bg);font:800 12px/1 var(--font-ui);color:var(--muted)}
+.fr-st.ok{background:rgba(31,191,95,.14);color:#127a3c}
+.fr-st.ok::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--go)}
+@media (prefers-reduced-motion:reduce){.fr-body.in,.fr-btn b,.fr-new{animation:none}}
 /* rang qui défile comme un compteur pendant la montée */
 .fin-board .board li .rk.roll{display:block;overflow:hidden;line-height:22px;text-align:center}
 .fin-board .board li .rk .odo{display:block;transition:transform var(--dur,1s) cubic-bezier(.6,0,.2,1)}
@@ -1188,7 +1230,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
         <button id="bTrain" class="mbtn stag" style="--i:5"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg></span><span class="tx">Entraînement</span></button>
         <button id="bEditor" class="mbtn stag" style="--i:6"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="12.5" width="8" height="8"/><rect x="12.5" y="3.5" width="8" height="8"/><path d="M12.5 16.5h8M16.5 12.5v8"/></svg></span><span class="tx">Éditeur</span></button>
       </nav>
-      <button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5"/></svg><b></b></span><span class="tx"><span class="nm">Se connecter</span></span><svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+      <div class="acct-line"><button id="bFriends" class="fr-btn stag" style="--i:6" hidden aria-label="Amis" title="Amis"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.4"/><path d="M2.8 19.5c.8-3.3 3.2-5 6.2-5s5.4 1.7 6.2 5"/><path d="M15.6 5.3a3.3 3.3 0 0 1 0 6.4M17.7 14.7c1.9.6 3.2 2.2 3.7 4.8"/></svg><b id="frBadge" hidden>0</b></button><button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5"/></svg><b></b></span><span class="tx"><span class="nm">Se connecter</span></span><svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button></div>
     </div>
       <button id="bPts" class="pts-card" hidden aria-label="Classement général"><span class="pc-v"><span id="ptsTot">0</span><i class="cube" aria-hidden="true"></i></span><span class="pc-r"><b id="ptsRank">#–</b></span></button>
   </section>
@@ -5005,7 +5047,7 @@ function showScreen(name, back) {
   if (UI.screen !== name && !UI.busy) sfx('page');   // pendant un rideau de chargement, c'est le rideau qui fait le son
   UI.screen = name;
   uiEl.classList.toggle('pvmode', name === 'level');
-  if (name === 'title' || name === 'levels') ptsRefresh();
+  if (name === 'title' || name === 'levels') { ptsRefresh(); if (name === 'title' && typeof frLoad === 'function') frLoad(); }
   for (const k in scr) {
     const el = scr[k], on = k === name;
     if (on) {
@@ -8878,7 +8920,7 @@ function bootDone() { bootEl.classList.add('done'); }
 // Ordre d'arrivée des boutons du menu : seulement ceux qui s'affichent, sans trou
 function navIdx() {
   let i = 3;
-  for (const b of [...document.querySelectorAll('#scrTitle .nav .stag'), $('bAcct')]) if (b && !b.hidden) b.style.setProperty('--i', i++);
+  for (const b of [...document.querySelectorAll('#scrTitle .nav .stag'), $('bFriends'), $('bAcct')]) if (b && !b.hidden) b.style.setProperty('--i', i++);
 }
 
 /* ---------- Points ----------
@@ -9195,6 +9237,10 @@ function playerView(c) {
   if (p.rank) { const rk = mkEl('span', 'pf-rk' + (p.rank <= 3 ? ' m' + p.rank : ''), '#' + p.rank); h.appendChild(rk); }
   c.appendChild(h);
   pfBody(c, p, D);
+  if (ACCT.user && ACCT.pseudo && pl.uid !== ACCT.user.uid) {
+    if (!FR.me) frLoad().then(() => { if (ACCT.view === 'player' && !acctEl.hidden && FR.me) acctRender(); });
+    else c.appendChild(frButtons(pl.uid, p.pseudo || pl.pseudo || '?'));
+  }
 }
 // Les niveaux d'un joueur, son niveau de la semaine et son total (fiche joueur, et « Mon compte »)
 function pfBody(c, p, D) {
@@ -9302,6 +9348,183 @@ function ptsView(c) {
   c.appendChild(f);
 }
 
+
+/* ---------- Amis ----------
+   friends/{joueur} = { uids: ceux à qui il a dit « ami », ignored: demandes refusées, names, pseudo }. Deux joueurs sont amis
+   quand chacun a l'autre dans sa liste ; une demande reçue, c'est quelqu'un qui m'a dans la sienne sans que je l'aie dans
+   la mienne. Chacun n'écrit que son propre document (règles Firestore). */
+const FR = { t: 0, me: null, inc: [], busy: null, err: null };
+const frRef = uid => ACCT.db.collection('friends').doc(uid);
+async function frLoad(force) {
+  if (!ACCT.on || !ACCT.user || !ACCT.pseudo) return null;
+  if (!force && FR.me && Date.now() - FR.t < 60000) return FR;
+  if (FR.busy) return FR.busy;
+  FR.busy = (async () => {
+    const uid = ACCT.user.uid;
+    try {
+      const [d, q] = await Promise.all([frRef(uid).get(), ACCT.db.collection('friends').where('uids', 'array-contains', uid).get()]);
+      const x = d.exists ? d.data() : {};
+      FR.me = { uids: x.uids || [], ignored: x.ignored || [], names: x.names || {} };
+      FR.inc = q.docs.map(z => ({ uid: z.id, pseudo: z.data().pseudo || '?' }));
+      FR.err = null; FR.t = Date.now();
+    } catch (e) { console.warn(e); FR.err = e; if (!FR.me) FR.me = { uids: [], ignored: [], names: {} }; }
+    frBadge(); return FR;
+  })();
+  try { return await FR.busy; } finally { FR.busy = null; }
+}
+const frTheyHaveMe = uid => FR.inc.some(i => i.uid === uid);
+const frMutual = () => FR.me ? FR.me.uids.filter(frTheyHaveMe) : [];
+const frIncoming = () => FR.me ? FR.inc.filter(i => !FR.me.uids.includes(i.uid) && !FR.me.ignored.includes(i.uid)) : [];
+const frOutgoing = () => FR.me ? FR.me.uids.filter(u => !frTheyHaveMe(u)) : [];
+function frState(uid) {
+  if (!FR.me) return 'none';
+  const mine = FR.me.uids.includes(uid), theirs = frTheyHaveMe(uid);
+  return mine && theirs ? 'friend' : mine ? 'sent' : theirs && !FR.me.ignored.includes(uid) ? 'asked' : 'none';
+}
+async function frSave() {
+  await frRef(ACCT.user.uid).set({ uids: FR.me.uids.slice(0, 200), ignored: FR.me.ignored.slice(-500), names: FR.me.names, pseudo: ACCT.pseudo, at: Date.now() });
+  frBadge();
+}
+async function frAdd(uid, pseudo) {
+  if (!FR.me) await frLoad(true);
+  if (!FR.me.uids.includes(uid)) FR.me.uids.push(uid);
+  FR.me.ignored = FR.me.ignored.filter(x => x !== uid); FR.me.names[uid] = pseudo || FR.me.names[uid] || '?';
+  await frSave();
+}
+async function frRemove(uid) { FR.me.uids = FR.me.uids.filter(x => x !== uid); delete FR.me.names[uid]; await frSave(); }
+async function frRefuse(uid) { if (!FR.me.ignored.includes(uid)) FR.me.ignored.push(uid); await frSave(); }
+function frBadge() { const n = frIncoming().length, b = $('frBadge'); if (!b) return; b.hidden = !n; b.textContent = n > 9 ? '9+' : String(n); }
+function frName(uid) {
+  const p = PTS.data && PTS.data.list.find(x => x.uid === uid);
+  return (p && p.pseudo) || (FR.me && FR.me.names[uid]) || (FR.inc.find(i => i.uid === uid) || {}).pseudo || '?';
+}
+const frErr = e => (e && (e.code === 'permission-denied' || /permission/i.test(String(e.message || e)))) ? 'Les amis ne sont pas encore activés sur le serveur.' : 'Impossible pour le moment, réessaie.';
+// boutons d'amitié (fiche d'un joueur, demandes)
+function frButtons(uid, pseudo) {
+  const box = mkEl('div', 'fr-act'), st = frState(uid);
+  const act = (label, cls, fn) => {
+    const b = mkEl('button', 'ed-btn ' + cls, label);
+    b.addEventListener('click', async () => {
+      b.disabled = true;
+      try { await fn(); acctRender(); } catch (e) { console.warn(e); b.disabled = false; acctMsg(frErr(e)); }
+    });
+    return b;
+  };
+  if (st === 'friend') {
+    const b = mkEl('button', 'ed-btn danger', 'Retirer des amis'); let armed = 0;
+    b.addEventListener('click', async () => {
+      if (!armed) { b.textContent = 'Sûr ?'; b.classList.add('armed'); armed = setTimeout(() => { armed = 0; b.textContent = 'Retirer des amis'; b.classList.remove('armed'); }, 3500); return; }
+      clearTimeout(armed); b.disabled = true;
+      try { await frRemove(uid); toast(pseudo + ' retiré de tes amis', 1300); acctRender(); } catch (e) { b.disabled = false; acctMsg(frErr(e)); }
+    });
+    box.append(mkEl('span', 'fr-st ok', 'Ami'), b);
+  } else if (st === 'sent') {
+    box.append(mkEl('span', 'fr-st', 'Demande envoyée'), act('Annuler', '', () => frRemove(uid)));
+  } else if (st === 'asked') {
+    box.append(act('Accepter sa demande', 'primary', async () => { await frAdd(uid, pseudo); toast(pseudo + ' est ton ami', 1300); }), act('Refuser', '', () => frRefuse(uid)));
+  } else box.append(act('Ajouter en ami', 'primary', async () => { await frAdd(uid, pseudo); toast('Demande envoyée à ' + pseudo, 1300); }));
+  box.appendChild(mkEl('p', 'acct-msg'));
+  return box;
+}
+// Fenêtre « Amis » : trois onglets
+function friendsView(c) {
+  c.classList.add('wide');
+  c.appendChild(mkEl('h2', null, 'Amis'));
+  const inc = frIncoming(), tab = ACCT.frTab || 'list';
+  const tabs = mkEl('div', 'seg fr-tabs');
+  for (const [k, l] of [['list', 'Amis'], ['add', 'Ajouter'], ['req', 'Demandes']]) {
+    const b = mkEl('button', tab === k ? 'on' : '', l);
+    if (k === 'req' && inc.length) b.appendChild(mkEl('b', 'fr-n', String(inc.length)));
+    b.addEventListener('click', () => { if (ACCT.frTab === k) return; ACCT.frTab = k; acctRender(); const bd = acctCard.querySelector('.fr-body'); if (bd) { bd.classList.remove('in'); void bd.offsetWidth; bd.classList.add('in'); } });
+    tabs.appendChild(b);
+  }
+  c.appendChild(tabs);
+  const body = mkEl('div', 'fr-body'); c.appendChild(body);
+  if (!FR.me) { body.appendChild(mkEl('p', 'acct-p', 'Chargement…')); return; }
+  if (FR.err && !FR.t) body.appendChild(mkEl('p', 'acct-msg', frErr(FR.err)));
+  const D = PTS.data, me = ACCT.user.uid;
+  const info = uid => (D && D.list.find(x => x.uid === uid)) || { uid, total: 0, levels: 0, wk: 0, cur: 0, rank: 0 };
+  const totTag = p => {
+    const tm = mkEl('span', 'tm hp'), tv = mkEl('span', 'tv', fmtPts(p.total || 0)), pt = mkEl('span', 'pt sum');
+    tv.appendChild(mkEl('i', 'cube'));
+    const part = (v, l) => { const x = mkEl('span', 'sm'); x.append(mkEl('b', null, fmtPts(v)), mkEl('small', null, l)); return x; };
+    pt.append(part(p.levels || 0, 'niveaux'), mkEl('span', 'op', '+'), part((p.wk || 0) + (p.cur || 0), 'semaines'));
+    tm.append(tv, pt); return tm;
+  };
+  const psEl = (uid, name) => { const ps = mkEl('span', 'ps', name); ps.dataset.uid = uid; return ps; };
+  if (tab === 'list') {
+    const fr = frMutual();
+    if (!fr.length) body.appendChild(mkEl('p', 'acct-empty', 'Pas encore d’amis. Ajoute-les avec leur pseudo dans « Ajouter ».'));
+    else {
+      // toi et tes amis, du meilleur total au moins bon
+      const rows = [...fr, me].map(uid => ({ ...info(uid), uid, pseudo: uid === me ? ACCT.pseudo : frName(uid) })).sort((a, b) => (b.total || 0) - (a.total || 0));
+      const ol = mkEl('ol', 'board fr-list');
+      rows.forEach((p, i) => {
+        const li = mkEl('li', (i < 3 && p.total ? 'r' + (i + 1) : '') + (p.uid === me ? ' me' : '')); li.style.setProperty('--ri', Math.min(i, 12));
+        const nm = mkEl('span', 'fr-nm'); nm.appendChild(psEl(p.uid, p.pseudo || '?'));
+        if (p.rank) nm.appendChild(mkEl('span', 'gr', '#' + p.rank));
+        li.append(mkEl('span', 'rk', String(i + 1)), nm, totTag(p));
+        ol.appendChild(li);
+      });
+      body.appendChild(ol);
+      body.appendChild(mkEl('p', 'fr-note', '# = place au classement général'));
+    }
+  } else if (tab === 'add') {
+    const f = mkEl('form', 'acct-form fr-add'), inp = mkEl('input'), go = mkEl('button', 'ed-btn primary', 'Envoyer'), msg = mkEl('p', 'acct-msg');
+    inp.placeholder = 'Pseudo de ton ami'; inp.maxLength = 16; inp.autocomplete = 'off'; inp.spellcheck = false; go.type = 'submit';
+    f.append(inp, go); body.append(f, msg);
+    f.addEventListener('submit', async e => {
+      e.preventDefault();
+      const p = inp.value.trim(); msg.className = 'acct-msg'; msg.textContent = '';
+      if (!p) return;
+      go.disabled = true;
+      try {
+        const d = await ACCT.db.collection('pseudos').doc(p.toLowerCase()).get();
+        if (!d.exists) throw 'Aucun joueur avec ce pseudo.';
+        const uid = d.data().uid, name = d.data().pseudo || p;
+        if (uid === me) throw 'C’est toi !';
+        const st = frState(uid);
+        if (st === 'friend') throw name + ' est déjà ton ami.';
+        if (st === 'sent') throw 'Demande déjà envoyée à ' + name + '.';
+        await frAdd(uid, name);
+        msg.className = 'acct-msg ok'; msg.textContent = st === 'asked' ? name + ' est maintenant ton ami.' : 'Demande envoyée à ' + name + '.';
+        inp.value = ''; setTimeout(() => { if (ACCT.view === 'friends' && ACCT.frTab === 'add') acctRender(); }, 900);
+      } catch (err) { msg.textContent = typeof err === 'string' ? err : frErr(err); }
+      go.disabled = false;
+    });
+    setTimeout(() => inp.focus(), 40);
+    const out = frOutgoing();
+    if (out.length) {
+      body.appendChild(mkEl('div', 'acct-sec', 'Demandes envoyées'));
+      const ol = mkEl('ol', 'board fr-list');
+      out.forEach((uid, i) => {
+        const li = mkEl('li', 'fr-row'); li.style.setProperty('--ri', i);
+        const cancel = mkEl('button', 'ed-btn fr-mini', 'Annuler');
+        cancel.addEventListener('click', async () => { cancel.disabled = true; try { await frRemove(uid); acctRender(); } catch (e) { cancel.disabled = false; acctMsg(frErr(e)); } });
+        li.append(mkEl('span', 'fr-wait'), psEl(uid, frName(uid)), cancel);
+        ol.appendChild(li);
+      });
+      body.appendChild(ol);
+    }
+  } else {
+    if (!inc.length) body.appendChild(mkEl('p', 'acct-empty', 'Aucune demande pour l’instant.'));
+    else {
+      const ol = mkEl('ol', 'board fr-list');
+      inc.forEach((r, i) => {
+        const li = mkEl('li', 'fr-row'); li.style.setProperty('--ri', i);
+        const ok = mkEl('button', 'ed-btn primary fr-mini', 'Accepter'), no = mkEl('button', 'ed-btn fr-mini', 'Refuser');
+        ok.addEventListener('click', async () => { ok.disabled = no.disabled = true; try { await frAdd(r.uid, r.pseudo); toast(r.pseudo + ' est ton ami', 1300); acctRender(); } catch (e) { ok.disabled = no.disabled = false; acctMsg(frErr(e)); } });
+        no.addEventListener('click', async () => { ok.disabled = no.disabled = true; try { await frRefuse(r.uid); acctRender(); } catch (e) { ok.disabled = no.disabled = false; acctMsg(frErr(e)); } });
+        const bt = mkEl('span', 'fr-bt'); bt.append(ok, no);
+        li.append(mkEl('span', 'fr-new'), psEl(r.uid, r.pseudo), bt);
+        ol.appendChild(li);
+      });
+      body.appendChild(ol);
+    }
+  }
+  c.appendChild(mkEl('p', 'acct-msg'));
+}
+
 function navReveal() {
   const t = $('scrTitle'); if (!t.classList.contains('navwait')) return;
   navIdx(); t.classList.remove('navwait');
@@ -9316,7 +9539,7 @@ async function acctInit() {
     ACCT.auth = firebase.auth(); ACCT.db = firebase.firestore(); ACCT.on = true;
     $('bAcct').hidden = false; $('bEditor').hidden = true;
     ACCT.auth.getRedirectResult().catch(e => acctMsg(e));
-    ACCT.auth.onAuthStateChanged(u => { PTS.data = null; PTS.t = 0; Promise.all([acctUser(u), loadWeekly()]).then(() => { navReveal(); ptsRefresh(true); }, navReveal); });   // le niveau de la semaine est relu à chaque connexion
+    ACCT.auth.onAuthStateChanged(u => { PTS.data = null; PTS.t = 0; Promise.all([acctUser(u), loadWeekly()]).then(() => { navReveal(); ptsRefresh(true); FR.me = null; FR.t = 0; frLoad(true); }, navReveal); });   // le niveau de la semaine est relu à chaque connexion
   } catch (e) { ACCT.on = false; bootDone(); loadWeekly().then(navReveal, navReveal); }
 }
 const ERRS = {
@@ -9733,6 +9956,7 @@ function acctRender() {
   b.querySelector('.av b').textContent = ACCT.pseudo ? ACCT.pseudo[0].toUpperCase() : '';
   b.querySelector('.nm').textContent = ACCT.user ? (ACCT.pseudo || 'Choisir un pseudo') : 'Se connecter';
   b.classList.toggle('in', !!ACCT.user);
+  $('bFriends').hidden = !(ACCT.on && ACCT.user && ACCT.pseudo);
   if (ACCT.on) { $('bEditor').hidden = !isAdmin(); navIdx(); }
   weeklyMenu();
   if (acctEl.hidden) return;
@@ -9741,6 +9965,7 @@ function acctRender() {
   const v = ACCT.view;
   if (v === 'points') { ptsView(c); return; }
   if (v === 'player') { playerView(c); return; }
+  if (v === 'friends') { friendsView(c); return; }
   if (v === 'login') {
     c.appendChild(mkEl('h2', null, 'Compte'));
     if (ACCT.pending) c.appendChild(mkEl('p', 'acct-need', 'Connecte-toi pour jouer : tes records et ta place au classement sont gardés sur ton compte.'));
@@ -9989,6 +10214,7 @@ acctEl.addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Es
 acctEl.addEventListener('keyup', e => e.stopPropagation());
 acctEl.addEventListener('mousedown', e => { if (e.target === acctEl) acctClose(); });
 $('bAcct').addEventListener('click', () => acctOpen());
+$('bFriends').addEventListener('click', () => { if (UI.busy) return; ACCT.frTab = frIncoming().length ? 'req' : (ACCT.frTab || 'list'); acctOpen('friends'); frLoad(true).then(() => { if (ACCT.view === 'friends' && !acctEl.hidden) acctRender(); }); });
 
 slEl.hidden = true;
 buildLevelGrid(); buildEditorGrid();
