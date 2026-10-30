@@ -462,7 +462,7 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
   -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
   animation:goldRing 4s linear infinite}
 .board li.me.r1:nth-child(n),.board li.me.r2:nth-child(n),.board li.me.r3:nth-child(n){border-color:var(--ink);box-shadow:var(--sh-1),inset 0 1.5px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.16),0 0 16px rgba(var(--g),.55)}
-.pv-list .board li.me.r1:nth-child(n),.pv-list .board li.me.r2:nth-child(n),.pv-list .board li.me.r3:nth-child(n){box-shadow:inset 0 0 0 2px var(--ink),inset 4px 0 0 var(--ink),0 0 16px rgba(var(--g),.55)}
+.pv-list .board li.me.r1:nth-child(n),.pv-list .board li.me.r2:nth-child(n),.pv-list .board li.me.r3:nth-child(n){box-shadow:inset 0 0 0 2px var(--ink),inset 0 2.5px 0 rgba(255,255,255,.6),inset 0 -3px 0 rgba(0,0,0,.16),0 0 16px rgba(var(--g),.55)}
 @media (prefers-reduced-motion:reduce){.board li.r1:nth-child(n),.board li.r2:nth-child(n),.board li.r3:nth-child(n),.board li.r1:nth-child(n)::after{animation:none}}
 /* la place de la carte du menu : même métal */
 .pts-card.r1 .pc-r,.pts-card.r2 .pc-r,.pts-card.r3 .pc-r{background:repeating-linear-gradient(118deg,rgba(255,255,255,.14) 0 1.5px,transparent 1.5px 4px),var(--metal);color:var(--ink);
@@ -736,7 +736,7 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-list .board li{border:0;border-radius:10px;padding:9px 10px;background:transparent;grid-template-columns:30px 1fr auto;transition:background .2s}
 .pv-list .board li:nth-child(odd){background:rgba(255,255,255,.42)}
 .pv-list .board li .rk{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:rgba(17,17,17,.07);color:var(--ink);font-size:12px}
-.pv-list .board li.me{background:rgba(240,68,58,.14);box-shadow:inset 3px 0 0 var(--red)}
+.pv-list .board li.me{background:rgba(240,68,58,.14);box-shadow:inset 0 0 0 1.5px rgba(240,68,58,.45)}
 .pv-list .acct-empty{padding:8px 6px;margin:0}
 .pv-week{display:grid;gap:8px;margin-top:6px;padding:12px 12px 4px;border-top:1.5px solid rgba(17,17,17,.1)}
 .pv-week p{margin:0;font:700 12px/1.4 var(--font-ui);color:var(--muted)}
