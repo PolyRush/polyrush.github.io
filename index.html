@@ -351,26 +351,6 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 .pv-pts.max .pp-bar i{background:var(--gold)}
 .pv-pts b{font:800 20px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
 .pv-pts b small{font-size:.55em;color:var(--muted);letter-spacing:0;margin-left:2px}
-/* arrivée : les points gagnés */
-.fin-pts{width:100%;box-sizing:border-box;display:grid;gap:9px;padding:11px 13px 12px;border:2.5px solid var(--ink);border-radius:12px;background:var(--paper)}
-.fp-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
-.fp-gain{display:flex;align-items:baseline;gap:5px;font:italic 900 14px/1 var(--font-display);text-transform:uppercase;color:var(--muted)}
-.fp-gain b{font:800 28px/1 var(--font-num);font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:var(--red)}
-.fp-gain.zero b{color:var(--ink)}
-.fp-gain.pop b{animation:pop .45s var(--ease-pop)}
-.fp-tot{font:800 10.5px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
-.fp-tot b{font:800 16px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--ink);margin-left:6px}
-.fp-bar{position:relative;height:12px;border:2px solid var(--ink);border-radius:99px;background:var(--card);overflow:hidden}
-.fp-bar i{position:absolute;top:0;bottom:0;left:0}
-.fp-bar .o{width:var(--o,0%);background:var(--ink)}
-.fp-bar .n{left:var(--o,0%);width:0;background:var(--red);transition:width 1s var(--ease-out)}
-.fp-bar .n::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(-100%)}
-.fin-pts.go .fp-bar .n{width:var(--d,0%)}
-.fin-pts.go .fp-bar .n::after{animation:fpShine .9s ease-out .6s}
-@keyframes fpShine{to{transform:translateX(100%)}}
-.fin-pts.max .fp-bar .n{background:var(--gold)}
-.fp-note{margin:-2px 0 0;font:700 11.5px/1.3 var(--font-ui);color:var(--muted)}
-#finish.show .fin-pts{animation:rise .45s var(--ease-out) .95s backwards}
 /* classement général */
 .pts-sum{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px}
 .pts-sum div{display:grid;gap:6px;padding:9px 10px;border:2px solid var(--lock-bg2);border-radius:10px}
@@ -379,7 +359,31 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 .pts-sum b{font:800 19px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .pts-sum div:first-child b{font-size:22px;color:var(--red)}
 .pts-list{max-height:min(46vh,420px);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 4px 0}
-@media (prefers-reduced-motion:reduce){.screen.show .pts-card,.pts-card.bump .pc-v,.fp-gain.pop b,.fin-pts.go .fp-bar .n::after{animation:none}.fp-bar .n{transition:none}}
+/* arrivée : les points jaillissent du temps et filent en bas à droite, où le total sort, monte, puis se range */
+#ptsFx{position:fixed;inset:0;width:100%;height:100%;z-index:31;pointer-events:none}
+.pts-hud{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:32;pointer-events:none;
+  display:grid;grid-template-columns:auto auto;align-items:baseline;column-gap:10px;row-gap:5px;padding:11px 16px 12px 16px;
+  background:var(--card);border:2.5px solid var(--ink);border-radius:14px;box-shadow:var(--sh-3);transform:translateY(calc(100% + 48px));transition:transform .55s var(--ease-pop)}
+.pts-hud.in{transform:none}
+.pts-hud.out{transform:translateY(calc(100% + 48px));transition:transform .45s var(--ease-io)}
+.ph-l{grid-column:1 / -1;display:flex;align-items:center;gap:7px;font:800 10.5px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.ph-l::before{content:"";width:9px;height:9px;background:var(--red);transform:skewX(var(--skew));border-radius:1px}
+#ptsHudV{display:inline-block;min-width:3ch;font:800 34px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;transform-origin:50% 75%}
+#ptsHudV.tick{animation:phTick .14s ease-out}
+@keyframes phTick{50%{transform:scale(1.08)}}
+.pts-hud.done #ptsHudV{animation:ptsBump .55s var(--ease-pop)}
+#ptsHudG{font:800 16px/1 var(--font-num);font-style:normal;color:var(--red);opacity:0;transform:translateY(8px) scale(.7);transition:opacity .2s,transform .35s var(--ease-pop)}
+#ptsHudG.on{opacity:1;transform:none}
+@media (max-width:640px){.pts-hud{padding:8px 12px 9px}#ptsHudV{font-size:26px}}
+/* arrivée : on voit sa ligne remonter de son ancienne place à la nouvelle */
+.fin-board .board li{position:relative;transition:transform .8s cubic-bezier(.6,0,.2,1),opacity .4s,background .3s}
+.fin-board .board li.climb{z-index:2;background:#fff0ee;border-color:var(--ink);box-shadow:var(--sh-2)}
+.fin-board .board li.climb.go{animation:climbLift .8s cubic-bezier(.6,0,.2,1)}
+@keyframes climbLift{40%{scale:1.04}}
+.fin-board .board li.out.go{opacity:0}
+.fin-board .board li .rk.flip{animation:pop .35s var(--ease-pop)}
+.fin-board .board li.climb .tm.flip{animation:pop .35s var(--ease-pop)}
+@media (prefers-reduced-motion:reduce){.screen.show .pts-card,.pts-card.bump .pc-v,.pts-hud.done #ptsHudV,#ptsHudV.tick{animation:none}.fin-board .board li{transition:none}}
 
 /* ---------- Chrono ---------- */
 #hud{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:15;pointer-events:none}
@@ -786,7 +790,6 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
   .fin-card .fin-eye{grid-column:1;grid-row:1;justify-self:center;align-self:end;margin:0}
   .fin-card .ftime{grid-column:1;grid-row:2;justify-self:center}
   .fin-card .delta{grid-column:1;grid-row:3;justify-self:center;align-self:start}
-  .fin-card .fin-pts{grid-column:1;grid-row:4}
   .fin-card .fin-board{grid-column:2;grid-row:1 / span 3}
   .fin-card .fin-act{grid-column:2;grid-row:4}
 }
@@ -813,6 +816,8 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
 <button id="backBtn" class="card" hidden aria-label="Retour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>Retour</button>
 <div id="hud" hidden><div id="timer" class="card ready" role="timer" aria-live="off"><b id="tLv">01</b><i></i><span id="tMain">0,000</span></div></div>
 <div id="winflash"></div>
+<canvas id="ptsFx" hidden aria-hidden="true"></canvas>
+<div id="ptsHud" class="pts-hud" hidden aria-hidden="true"><span class="ph-l">Tes points</span><b id="ptsHudV">0</b><i id="ptsHudG"></i></div>
 <div id="repIntro" hidden><span class="lab">Replay</span><b id="repIntroWho"></b><span id="repIntroTime"></span></div>
 <div id="repEnd" hidden>
   <div class="fin-card" role="dialog" aria-label="Fin du replay">
@@ -833,7 +838,6 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
     <div class="fin-eye"><i aria-hidden="true"></i><span id="finEye">Arrivée</span></div>
     <div id="finTime" class="ftime">0,000</div>
     <div id="finDelta" class="delta" hidden></div>
-    <div id="finPts" class="fin-pts" hidden><div class="fp-row"><span id="fpGain" class="fp-gain"><b>+0</b>pts</span><span class="fp-tot">Total<b id="fpTot">0</b></span></div><div class="fp-bar"><i class="o"></i><i class="n"></i></div><p id="fpNote" class="fp-note" hidden></p></div>
     <div id="finBoard" class="fin-board" hidden></div>
     <div class="fin-act">
       <button id="finRetry" class="mbtn small primary"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></span><span class="tx">Rejouer</span></button>
@@ -7304,7 +7308,7 @@ $('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
 $('bPts').addEventListener('click', () => { if (!UI.busy) acctOpen('points'); });
 
 function resetRun() {
-  finToken++; pendingFinish = false; REC = null; $('finPts').hidden = true;
+  finToken++; pendingFinish = false; REC = null; ptsHudHide(true);
   finishEl.hidden = true; finishEl.classList.remove('show');
   run.state = LEVEL && UI.mode === 'play' ? 'ready' : 'off';
   run.shown = ''; timerEl.className = 'card ready'; tMain.textContent = fmtT(0);
@@ -7328,7 +7332,7 @@ function onFinish() {
   tMain.textContent = fmtT(ms); timerEl.className = 'card done';
   winflash.classList.remove('go'); void winflash.offsetWidth; winflash.classList.add('go');
   if (W && W.onFinish) W.onFinish();
-  acctFinish(LEVEL, ms, better);
+  acctFinish(LEVEL, ms, better, prev);
   if (shiftlock) setShiftlock(false);
   endRmb(); unlockPointer();
   const tok = ++finToken;
@@ -8636,7 +8640,6 @@ async function ptsRefresh(force) {
 }
 // Arrivée : combien ce temps rapporte, avec une barre qui se remplit et le total qui monte
 function finPoints(n, ms, prev, better, tok) {
-  const box = $('finPts'); box.hidden = true; box.classList.remove('go', 'max');
   const D = PTS.data;
   if (ED.test || !ACCT.on || !ACCT.user || !ACCT.pseudo || !boardOK(n) || !D || !D.me) return;
   const k = +n === WEEKLY_N ? D.wkKey : String(n); if (!k) return;
@@ -8650,30 +8653,80 @@ function finPoints(n, ms, prev, better, tok) {
     if (+n === WEEKLY_N) D.me.cur = newP; else { if (!D.me.lv[k]) D.me.nLv++; D.me.lv[k] = newP; D.me.levels = (D.me.levels || 0) + gain; }
     D.me.total = newTot; PTS.t = 0;
   }
-  const gEl = $('fpGain'), b = gEl.querySelector('b'), note = $('fpNote');
-  box.style.setProperty('--o', oldP / 10 + '%'); box.style.setProperty('--d', (newP - oldP) / 10 + '%');
-  box.classList.toggle('max', newP >= 1000);
-  gEl.classList.toggle('zero', !gain); gEl.classList.remove('pop');
-  b.textContent = gain ? '+0' : fmtPts(newP);
-  gEl.lastChild.textContent = gain ? 'pts' : 'pts sur ce niveau';
-  $('fpTot').textContent = fmtPts(oldTot);
-  note.hidden = !(gain && newP >= 1000);
-  note.textContent = 'Meilleur temps du niveau : 1000 pts !';
-  box.hidden = false;
-  if (!gain) return;
-  setTimeout(() => {
-    if (tok !== finToken) return;
-    box.classList.add('go');
-    const t0 = performance.now(), dur = reduced ? 1 : 900;
-    const tick = now => {
-      if (tok !== finToken) return;
-      const q = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - q, 3);
-      b.textContent = '+' + fmtPts(gain * e);
-      if (q < 1) requestAnimationFrame(tick); else { gEl.classList.add('pop'); sfx('click'); }
-    };
-    requestAnimationFrame(tick);
-    setTimeout(() => { if (tok === finToken) countTo($('fpTot'), oldTot, newTot, 700); }, reduced ? 0 : 450);
-  }, reduced ? 0 : 1250);
+  if (gain > 0) setTimeout(() => { if (tok === finToken) ptsBurst($('finTime'), gain, oldTot, tok); }, reduced ? 200 : 950);
+}
+/* La gerbe : des points tombent du temps, rebondissent, puis filent vers le compteur qui sort en bas à droite ;
+   chacun ajoute sa part au total en arrivant. */
+const FX_COL = ['#f0443a', '#f0443a', '#ff6a5e', '#ffc53d'];
+function ptsHudHide(now) {
+  const hud = $('ptsHud'); if (hud.hidden) return;
+  if (now) { hud.hidden = true; hud.classList.remove('in', 'out', 'done'); return; }
+  hud.classList.remove('in'); hud.classList.add('out');
+  setTimeout(() => { if (hud.classList.contains('out')) { hud.hidden = true; hud.classList.remove('out', 'done'); } }, 500);
+}
+function ptsBurst(fromEl, gain, oldTot, tok) {
+  const hud = $('ptsHud'), v = $('ptsHudV'), g = $('ptsHudG'), cv = $('ptsFx');
+  hud.classList.remove('out', 'done'); g.classList.remove('on'); g.textContent = '+' + fmtPts(gain);
+  v.textContent = fmtPts(oldTot); hud.hidden = false; void hud.offsetWidth; hud.classList.add('in');
+  const finish = () => {
+    v.textContent = fmtPts(oldTot + gain); g.classList.add('on'); hud.classList.add('done'); sfx('click');
+    setTimeout(() => { if (tok === finToken) ptsHudHide(); }, 1700);
+  };
+  if (reduced) { setTimeout(finish, 400); return; }
+  const dpr = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.hidden = false;
+  const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const R = fromEl.getBoundingClientRect(), N = Math.max(16, Math.min(70, Math.round(gain / 5))), per = gain / N;
+  const parts = [], sparks = [];
+  for (let i = 0; i < N; i++) {
+    const a = -Math.PI / 2 + (Math.random() - .5) * 2.4, sp = 160 + Math.random() * 300;
+    parts.push({ born: (i / N) * 0.55 + Math.random() * 0.05, x: R.left + R.width * (0.1 + Math.random() * 0.8), y: R.top + R.height * (0.25 + Math.random() * 0.55),
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ta: 0.26 + Math.random() * 0.16, tb: 0.42 + Math.random() * 0.26, s: 4.5 + Math.random() * 3.5,
+      r: Math.random() * 6, vr: (Math.random() - .5) * 16, col: FX_COL[i % FX_COL.length], t: 0, px: 0, py: 0, done: false });
+  }
+  let got = 0, left = N, last = performance.now(), tickAt = 0;
+  const t0 = last;
+  const frame = now => {
+    if (tok !== finToken) { c.clearRect(0, 0, W, H); cv.hidden = true; return; }
+    const dt = Math.min(0.034, (now - last) / 1000); last = now;
+    const el = (now - t0) / 1000, tr = v.getBoundingClientRect(), tx = tr.left + tr.width * 0.55, ty = tr.top + tr.height * 0.5;
+    c.clearRect(0, 0, W, H);
+    for (const p of parts) {
+      if (p.done || el < p.born) continue;
+      p.t += dt; p.r += p.vr * dt;
+      let x, y;
+      if (p.t < p.ta) {                                   // ils sautent hors des chiffres…
+        p.vy += 1100 * dt; p.vx *= Math.pow(0.4, dt); p.x += p.vx * dt; p.y += p.vy * dt; x = p.x; y = p.y; p.sx = x; p.sy = y; p.cx = x + p.vx * 0.22; p.cy = y + p.vy * 0.22;
+      } else {                                            // …puis sont aspirés vers le compteur, de plus en plus vite
+        const u = Math.min(1, (p.t - p.ta) / p.tb), e = u * u * (1.6 - 0.6 * u), k = 1 - e;
+        x = k * k * p.sx + 2 * k * e * p.cx + e * e * tx; y = k * k * p.sy + 2 * k * e * p.cy + e * e * ty;
+        if (u >= 1) {
+          p.done = true; left--; got += per;
+          v.textContent = fmtPts(oldTot + Math.min(gain, Math.round(got)));
+          if (now - tickAt > 55) { tickAt = now; v.classList.remove('tick'); void v.offsetWidth; v.classList.add('tick'); }
+          sparks.push({ x: tx, y: ty, t: 0 });
+          if (!left) finish();
+          continue;
+        }
+        if (p.px) {                                      // traînée
+          c.strokeStyle = p.col; c.globalAlpha = .35; c.lineWidth = p.s * 0.9; c.lineCap = 'round';
+          c.beginPath(); c.moveTo(p.px, p.py); c.lineTo(x, y); c.stroke(); c.globalAlpha = 1;
+        }
+      }
+      p.px = x; p.py = y;
+      c.save(); c.translate(x, y); c.rotate(p.r);
+      c.fillStyle = p.col; c.strokeStyle = '#111'; c.lineWidth = 2; c.lineJoin = 'round';
+      c.beginPath(); c.rect(-p.s, -p.s, p.s * 2, p.s * 2); c.fill(); c.stroke(); c.restore();
+    }
+    for (const sp of sparks) {                            // petit anneau à chaque arrivée
+      sp.t += dt; const q = sp.t / 0.28; if (q >= 1) continue;
+      c.strokeStyle = '#f0443a'; c.globalAlpha = 1 - q; c.lineWidth = 2.5 * (1 - q);
+      c.beginPath(); c.arc(sp.x, sp.y, 8 + 22 * q, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 1;
+    }
+    if (left || sparks.some(sp => sp.t < 0.28)) requestAnimationFrame(frame);
+    else { c.clearRect(0, 0, W, H); cv.hidden = true; }
+  };
+  requestAnimationFrame(frame);
 }
 // Fin de semaine (admin) : on range les temps du niveau qui s'achève, ses points resteront acquis
 async function ptsArchive(doc) {
@@ -8922,7 +8975,7 @@ function boardList(rows, el, lv) {
   const ol = document.createElement('ol'); ol.className = 'board';
   let rank = 0;                                              // un temps masqué (vu par l'admin) ne prend pas de place
   rows.forEach(r => {
-    const li = document.createElement('li'); if (ACCT.user && r.uid === ACCT.user.uid) li.className = 'me';
+    const li = document.createElement('li'); li.dataset.uid = r.uid; if (ACCT.user && r.uid === ACCT.user.uid) li.className = 'me';
     if (r.hidden) { li.classList.add('hid'); li.title = 'Masqué : seul toi le vois'; } else { rank++; if (rank <= 3) li.classList.add('r' + rank); }
     const a = document.createElement('span'); a.className = 'rk'; a.textContent = r.hidden ? '–' : rank;
     const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
@@ -8939,8 +8992,9 @@ function boardList(rows, el, lv) {
   el.appendChild(ol);
 }
 // Écran de fin : on enregistre le temps, puis on montre le haut du classement du niveau
-async function acctFinish(n, ms, better) {
-  const fb = $('finBoard');
+async function acctFinish(n, ms, better, prev) {
+  const fb = $('finBoard'), t0 = performance.now(), tok0 = finToken;
+  const me = ACCT.user ? ACCT.user.uid : null, oldMs = (PTS && PTS.data && PTS.data.mine[bkey(n)]) || prev || 0;
   fb.hidden = true;
   if (!ACCT.on || ED.test || !boardOK(n)) return;
   fb.hidden = false; fb.textContent = '';
@@ -8954,9 +9008,67 @@ async function acctFinish(n, ms, better) {
     let gh = false;
     if (better && ACCT.user && REC && REC.rows.length > 1) gh = await uploadGhost(n, ms);   // d'abord le replay, puis le temps (qui le signale)
     if (better) await acctSubmit(n, ms, gh);
-    const top = await shownTop(n, 5); boardList(top, box); boardMine(n, top, box);
+    const rows = await shownTop(n, 6), top = rows.slice(0, 5);
+    if (!(better && me && await boardClimb(n, box, rows, me, oldMs, ms, t0, tok0))) { boardList(top, box); boardMine(n, top, box); }
   }
   catch (e) { box.textContent = 'Classement indisponible.'; }
+}
+// La ligne du joueur part de son ancienne place et remonte jusqu'à la nouvelle ; ceux qu'il double descendent d'un cran
+async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
+  const top = rows.slice(0, 5), ni = top.findIndex(r => r.uid === me);
+  if (ni < 0) return false;
+  const others = rows.filter(r => r.uid !== me);
+  const oi = oldMs ? others.filter(r => r.ms < oldMs).length : Infinity;   // ancienne place (index), Infinity : pas encore classé
+  if (oi <= ni) return false;
+  const out = oi >= 5 && rows[5] && rows[5].uid !== me ? rows[5] : null;       // celui qui sort du top 5
+  boardList(out ? [...top, out] : top, box);
+  const lis = [...box.querySelectorAll('li')]; if (lis.length < 2) return true;
+  const step = lis[1].offsetTop - lis[0].offsetTop;
+  // ancien rang affiché : dans la liste, ou compté au-delà
+  let oldRank = '–';
+  if (oldMs) {
+    if (oi < 5) oldRank = String(oi + 1);
+    else try {
+      const [snap, bm] = await Promise.all([ACCT.db.collection('scores').doc(bkey(n)).collection('runs').where('ms', '<', oldMs).limit(2000).get(), boardMeta()]);
+      oldRank = String(snap.docs.filter(d => d.id !== me && !bm.hidden.has(d.id)).length + 1);
+    } catch (e) {}
+  }
+  const meLi = lis[ni], from = Math.min(oi, 5.4);
+  const moves = [];
+  lis.forEach((li, j) => {
+    if (li === meLi) { moves.push([li, (from - ni) * step]); return; }
+    if (j > ni && j - 1 < oi) {                        // il était devant, il recule d'un cran
+      moves.push([li, -step]);
+      const rk = li.querySelector('.rk'); if (rk && /^\d+$/.test(rk.textContent)) { li.dataset.rk = rk.textContent; rk.textContent = String(+rk.textContent - 1); }
+    }
+  });
+  if (out) lis[lis.length - 1].classList.add('out');
+  const mrk = meLi.querySelector('.rk'), mtm = meLi.querySelector('.tm'), newRank = mrk.textContent;
+  mrk.textContent = oldRank; if (oldMs) mtm.textContent = fmtT(oldMs) + ' s';
+  meLi.classList.add('climb'); if (oi === Infinity) meLi.style.opacity = '0';
+  for (const [li, dy] of moves) { li.style.transition = 'none'; li.style.transform = `translateY(${dy}px)`; }
+  void box.offsetWidth;
+  for (const [li] of moves) li.style.transition = '';
+  const wait = Math.max(0, (reduced ? 500 : 2100) - (performance.now() - t0));   // après la gerbe de points
+  setTimeout(() => {
+    if (finToken !== tok0 + 1 || !box.isConnected) return;
+    mtm.textContent = fmtT(ms) + ' s'; mtm.classList.add('flip');
+    meLi.style.opacity = ''; meLi.classList.add('go'); if (out) lis[lis.length - 1].classList.add('go');
+    for (const [li] of moves) li.style.transform = '';
+    sfx('page');
+    // le rang défile vers le haut pendant la montée
+    const a = parseInt(oldRank, 10), b = parseInt(newRank, 10), dur = reduced ? 1 : 760, s0 = performance.now();
+    const tick = now => {
+      const q = Math.min(1, (now - s0) / dur), e = q < .5 ? 2 * q * q : 1 - Math.pow(-2 * q + 2, 2) / 2;
+      if (Number.isFinite(a)) mrk.textContent = String(Math.round(a + (b - a) * e));
+      if (q < 1) requestAnimationFrame(tick);
+      else { mrk.textContent = newRank; mrk.classList.add('flip'); setTimeout(() => meLi.classList.remove('climb'), 900); }
+    };
+    requestAnimationFrame(tick);
+    setTimeout(() => lis.forEach(li => { if (li.dataset.rk) { const rk = li.querySelector('.rk'); rk.textContent = li.dataset.rk; rk.classList.add('flip'); } }), reduced ? 0 : 380);
+    setTimeout(() => { if (out && lis[lis.length - 1].isConnected) lis[lis.length - 1].remove(); }, reduced ? 0 : 850);
+  }, wait);
+  return true;
 }
 function acctReset() {
   if (!ACCT.user) return;
