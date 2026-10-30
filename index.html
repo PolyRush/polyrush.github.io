@@ -439,15 +439,46 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .fb-l{position:relative}
 .fin-board .board li.p1{--g:var(--g-gold)} .fin-board .board li.p2{--g:var(--g-silver)} .fin-board .board li.p3{--g:var(--g-bronze)}
 .fin-board .board li.pod.go{box-shadow:var(--sh-2),0 0 0 3px rgba(var(--g),.55),0 0 26px rgba(var(--g),.85)}
-.fin-board .board li.podium{z-index:2;border-color:var(--ink);background:linear-gradient(90deg,rgba(var(--g),.42),rgba(var(--g),.12) 70%,#fff);
-  box-shadow:var(--sh-2),0 0 0 3px rgba(var(--g),.6),0 0 30px rgba(var(--g),.75);animation:podPop .7s var(--ease-pop),podGlow 2.4s ease-in-out .8s infinite}
-.fin-board .board li.podium::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
-  background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%) no-repeat;background-size:260% 100%;background-position:160% 0;animation:podSweep .85s ease-out .05s both}
+/* rang qui défile comme un compteur pendant la montée */
+.fin-board .board li .rk.roll{display:block;overflow:hidden;line-height:22px;text-align:center}
+.fin-board .board li .rk .odo{display:block;transition:transform var(--dur,1s) cubic-bezier(.6,0,.2,1)}
+.fin-board .board li .rk .odo i{display:block;height:22px;font-style:normal}
+.fin-board .board li.climb .rk{transform:scale(1.3);box-shadow:0 0 0 2px var(--ink);transition:transform .3s var(--ease-pop)}
+.fin-board .board li.passed .rk{animation:pop .35s var(--ease-pop)}
+.fin-board .board li.passed{animation:passed .35s ease-out}
+@keyframes passed{40%{translate:0 3px}}
+/* arrivée sur le podium : la ligne devient une plaque de métal (or, argent, bronze), reflet, liseré de lumière */
+.fin-board .board li.p1{--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%)}
+.fin-board .board li.p2{--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%)}
+.fin-board .board li.p3{--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%)}
+.fin-board .board li.podium{z-index:2;border-color:var(--ink);color:var(--ink);
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.9) 47%,rgba(255,255,255,.2) 52%,transparent 60%) 160% 0/320% 100% no-repeat,
+    repeating-linear-gradient(118deg,rgba(255,255,255,.12) 0 1.5px,transparent 1.5px 4px),var(--metal);
+  box-shadow:var(--sh-2),inset 0 2px 0 rgba(255,255,255,.75),inset 0 -3px 0 rgba(0,0,0,.18),0 0 20px 2px rgba(var(--g),.6);
+  animation:podPop .7s var(--ease-pop),foilRow 4.2s cubic-bezier(.45,0,.2,1) .35s infinite}
+.fin-board .board li.podium.p3{box-shadow:var(--sh-2),inset 0 2px 0 rgba(255,255,255,.6),inset 0 -3px 0 rgba(0,0,0,.2),0 0 14px rgba(var(--g),.5)}
+.fin-board .board li.podium .tm,.fin-board .board li.podium .ps{color:var(--ink)}
+.fin-board .board li.podium .ps{display:flex;align-items:center;gap:6px;text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.fin-board .board li.podium.p1::after,.fin-board .board li.podium.p2::after{content:"";position:absolute;inset:-2px;z-index:1;pointer-events:none;border-radius:11px;padding:3px;
+  background:conic-gradient(from var(--ga),transparent 0 55%,rgba(255,255,255,0) 58%,#fff 70%,#fffbe6 73%,rgba(255,255,255,0) 86%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  filter:drop-shadow(0 0 3px rgba(255,255,255,.9));animation:goldRing 2.8s linear infinite}
+.fin-board .board li.podium.p2::after{animation-duration:3.6s;opacity:.85}
+@keyframes foilRow{0%{background-position:160% 0,0 0,0 0}45%,100%{background-position:-70% 0,0 0,0 0}}
+@keyframes podPop{0%{scale:1}30%{scale:1.08}100%{scale:1}}
+.fin-board .board li .crown{display:inline-grid;width:16px;height:16px;color:#7a5200;animation:crownIn .6s var(--ease-pop) .15s both}
+.fin-board .board li .crown svg{width:100%;height:100%;filter:drop-shadow(0 1px 0 rgba(255,255,255,.7))}
+@keyframes crownIn{from{opacity:0;transform:translateY(-14px) scale(.2) rotate(-30deg)}}
+/* simple montée (hors podium) : un reflet passe sur la ligne */
+.fin-board .board li.climbed::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%) no-repeat;background-size:260% 100%;background-position:160% 0;animation:podSweep .8s ease-out both}
 @keyframes podSweep{to{background-position:-70% 0}}
-@keyframes podPop{0%{scale:1}30%{scale:1.07}100%{scale:1}}
-@keyframes podGlow{50%{box-shadow:var(--sh-2),0 0 0 4px rgba(var(--g),.75),0 0 42px rgba(var(--g),.95)}}
+.gold-flash{position:fixed;inset:0;z-index:24;pointer-events:none;background:radial-gradient(ellipse at center,rgba(255,200,60,0) 30%,rgba(255,200,60,.5) 100%);animation:goldFlash 1.3s ease-out forwards}
+@keyframes goldFlash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
 .pod-fx{position:absolute;z-index:1;pointer-events:none}
 .pod-fx.p1{--g:var(--g-gold)} .pod-fx.p2{--g:var(--g-silver)} .pod-fx.p3{--g:var(--g-bronze)}
+.pod-fx.p2 .rays{transform-origin:center;scale:.68;opacity:.75}
+.pod-fx.p3 .rays{display:none}
 .pod-fx .rays{position:absolute;left:50%;top:50%;width:560px;height:560px;margin:-280px 0 0 -280px;border-radius:50%;
   background:repeating-conic-gradient(rgba(var(--g),0) 0deg 8deg,rgba(var(--g),.7) 10deg 13deg,rgba(var(--g),0) 15deg 22deg);
   -webkit-mask:radial-gradient(circle,#000 0 12%,rgba(0,0,0,.6) 26%,transparent 60%);mask:radial-gradient(circle,#000 0 12%,rgba(0,0,0,.6) 26%,transparent 60%);
@@ -461,7 +492,7 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
   clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);animation:podStar 1s cubic-bezier(.15,.7,.3,1) var(--d) both}
 .pod-fx b:nth-child(3n){background:#fff}
 @keyframes podStar{0%{opacity:0;transform:translate(0,0) scale(.2) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1) rotate(180deg)}}
-@media (prefers-reduced-motion:reduce){.fin-board .board li.podium,.fin-board .board li.podium::after,.pod-fx *{animation:none}.pod-fx{display:none}}
+@media (prefers-reduced-motion:reduce){.fin-board .board li.podium,.fin-board .board li.podium::after,.fin-board .board li.climbed::after,.pod-fx *,.gold-flash{animation:none}.pod-fx,.gold-flash{display:none}.fin-board .board li .rk .odo{transition:none}}
 .fin-board .board li.climb .tm.flip{animation:pop .35s var(--ease-pop)}
 @media (prefers-reduced-motion:reduce){.screen.show .pts-card,.pts-card.bump .pc-v,.pts-hud.done #ptsHudV,#ptsHudV.tick{animation:none}.fin-board .board li{transition:none}}
 
@@ -9215,63 +9246,82 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
       oldRank = String(snap.docs.filter(d => d.id !== me && !bm.hidden.has(d.id)).length + 1);
     } catch (e) {}
   }
-  const meLi = lis[ni], from = Math.min(oi, 5.4);
-  const moves = [];
+  const meLi = lis[ni], from = Math.min(oi, 5.4), dist = from - ni;
+  const dur = reduced ? 1 : Math.round(Math.min(1800, 700 + dist * 200));      // plus on monte, plus la montée dure
+  const moves = [], passes = [];
   lis.forEach((li, j) => {
-    if (li === meLi) { moves.push([li, (from - ni) * step]); return; }
+    li.style.setProperty('transition-duration', dur + 'ms, .4s, .3s');
+    if (li === meLi) { moves.push([li, dist * step]); return; }
     if (j > ni && j - 1 < oi) {                        // il était devant, il recule d'un cran
       moves.push([li, -step]);
       const rk = li.querySelector('.rk'); if (rk && /^\d+$/.test(rk.textContent)) { li.dataset.rk = rk.textContent; rk.textContent = String(+rk.textContent - 1); }
+      passes.push([li, (from - (j - 0.5)) / dist]);   // à quel moment de la montée on le double
     }
   });
   if (out) lis[lis.length - 1].classList.add('out');
   const mrk = meLi.querySelector('.rk'), mtm = meLi.querySelector('.tm'), newRank = mrk.textContent;
-  mrk.textContent = oldRank; if (oldMs) mtm.textContent = fmtT(oldMs) + ' s';
+  // le rang de sa ligne : une bande de chiffres (ancien → nouveau) qui défile pendant la montée
+  const a = parseInt(oldRank, 10), b2 = parseInt(newRank, 10), seq = [];
+  if (!Number.isFinite(a)) seq.push('–');
+  for (let r = Number.isFinite(a) ? a : b2 + Math.max(1, Math.round(dist)); r >= b2; r--) seq.push(String(r));
+  if (seq.length > 40) seq.splice(1, seq.length - 40);
+  mrk.classList.add('roll'); mrk.style.setProperty('--dur', dur + 'ms');
+  const odo = mkEl('span', 'odo'); seq.forEach(x => odo.appendChild(mkEl('i', null, x))); mrk.textContent = ''; mrk.appendChild(odo);
+  if (oldMs) mtm.textContent = fmtT(oldMs) + ' s';
   meLi.classList.add('climb'); if (oi === Infinity) meLi.style.opacity = '0';
-  const podium = +newRank >= 1 && +newRank <= 3;
-  if (podium) meLi.classList.add('pod', 'p' + newRank);
+  const podium = b2 >= 1 && b2 <= 3;
+  if (podium) meLi.classList.add('pod', 'p' + b2);
   for (const [li, dy] of moves) { li.style.transition = 'none'; li.style.transform = `translateY(${dy}px)`; }
   void box.offsetWidth;
-  for (const [li] of moves) li.style.transition = '';
+  for (const [li] of moves) { li.style.transition = ''; li.style.setProperty('transition-duration', dur + 'ms, .4s, .3s'); }
   const wait = Math.max(0, (reduced ? 500 : 2100) - (performance.now() - t0));   // après la gerbe de points
   setTimeout(() => {
     if (finToken !== tok0 + 1 || !box.isConnected) return;
     mtm.textContent = fmtT(ms) + ' s'; mtm.classList.add('flip');
     meLi.style.opacity = ''; meLi.classList.add('go'); if (out) lis[lis.length - 1].classList.add('go');
     for (const [li] of moves) li.style.transform = '';
+    odo.style.transform = `translateY(${-(seq.length - 1) * 22}px)`;
     sfx('page');
-    // le rang défile vers le haut pendant la montée
-    const a = parseInt(oldRank, 10), b = parseInt(newRank, 10), dur = reduced ? 1 : 760, s0 = performance.now();
-    const tick = now => {
-      const q = Math.min(1, (now - s0) / dur), e = q < .5 ? 2 * q * q : 1 - Math.pow(-2 * q + 2, 2) / 2;
-      if (Number.isFinite(a)) mrk.textContent = String(Math.round(a + (b - a) * e));
-      if (q < 1) requestAnimationFrame(tick);
-      else {
-        mrk.textContent = newRank; mrk.classList.add('flip');
-        if (podium) podiumFx(box, meLi, +newRank);
-        else setTimeout(() => meLi.classList.remove('climb'), 900);
-      }
-    };
-    requestAnimationFrame(tick);
-    setTimeout(() => lis.forEach(li => { if (li.dataset.rk) { const rk = li.querySelector('.rk'); rk.textContent = li.dataset.rk; rk.classList.add('flip'); } }), reduced ? 0 : 380);
-    setTimeout(() => { if (out && lis[lis.length - 1].isConnected) lis[lis.length - 1].remove(); }, reduced ? 0 : 850);
+    // chacun de ceux qu'on double change de rang au moment où on passe devant lui
+    for (const [li, f] of passes) setTimeout(() => {
+      const rk = li.querySelector('.rk'); if (li.dataset.rk && rk) rk.textContent = li.dataset.rk;
+      li.classList.remove('passed'); void li.offsetWidth; li.classList.add('passed');
+    }, reduced ? 0 : easeTime(f) * dur);
+    setTimeout(() => {
+      if (!box.isConnected) return;
+      mrk.classList.remove('roll'); mrk.textContent = newRank; mrk.classList.add('flip');
+      lis.forEach(li => li.style.removeProperty('transition-duration'));
+      if (out && lis[lis.length - 1].isConnected) lis[lis.length - 1].remove();
+      if (podium) podiumFx(box, meLi, b2);
+      else { meLi.classList.remove('climb', 'go'); meLi.classList.add('climbed'); }
+    }, dur + 30);
   }, wait);
   return true;
+}
+// Temps (0-1) où la courbe de la montée (cubic-bezier .6,0,.2,1) atteint la distance f (0-1)
+function easeTime(f) {
+  const bz = (t, p1, p2) => 3 * (1 - t) * (1 - t) * t * p1 + 3 * (1 - t) * t * t * p2 + t * t * t;
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 24; i++) { const m = (lo + hi) / 2; if (bz(m, 0, 1) < f) lo = m; else hi = m; }
+  return bz((lo + hi) / 2, .6, .2);
 }
 // Arrivée sur le podium : la ligne s'illumine, des rayons et des éclats de sa couleur (or, argent, bronze)
 function podiumFx(box, li, rank) {
   li.classList.remove('climb', 'go', 'pod'); li.classList.add('podium', 'p' + rank);
+  if (rank === 1) { const ps = li.querySelector('.ps'); if (ps && !ps.querySelector('.crown')) { const c = mkEl('span', 'crown'); c.innerHTML = ICON_CROWN; ps.prepend(c); } }
   if (reduced) return;
   const fx = mkEl('div', 'pod-fx p' + rank);
   fx.style.cssText = `left:${li.offsetLeft}px;top:${li.offsetTop}px;width:${li.offsetWidth}px;height:${li.offsetHeight}px`;
   fx.append(mkEl('i', 'glow'), mkEl('i', 'rays'), mkEl('i', 'ring'));
-  const n = rank === 1 ? 18 : 12;
+  const n = [0, 20, 11, 6][rank], reach = [0, 120, 80, 55][rank];
   for (let i = 0; i < n; i++) {
-    const st = mkEl('b'), a = (i / n) * Math.PI * 2 + Math.random() * .4, d = 50 + Math.random() * (rank === 1 ? 110 : 70);
-    st.style.cssText = `--x:${10 + Math.random() * 80}%;--s:${8 + Math.random() * 10}px;--dx:${Math.cos(a) * d * 1.6}px;--dy:${Math.sin(a) * d}px;--d:${Math.random() * .18}s`;
+    const st = mkEl('b'), ang = (i / n) * Math.PI * 2 + Math.random() * .4, d = 40 + Math.random() * reach;
+    st.style.cssText = `--x:${10 + Math.random() * 80}%;--s:${7 + Math.random() * (rank === 1 ? 12 : 8)}px;--dx:${Math.cos(ang) * d * 1.6}px;--dy:${Math.sin(ang) * d}px;--d:${Math.random() * .18}s`;
     fx.appendChild(st);
   }
   box.appendChild(fx);
+  if (rank <= 2) { const card = li.closest('.fin-card'); if (card) { card.classList.remove('thump'); void card.offsetWidth; card.classList.add('thump'); } }
+  if (rank === 1) { const fl = mkEl('div', 'gold-flash'); document.body.appendChild(fl); setTimeout(() => fl.remove(), 1400); }
   sfx('check');
   setTimeout(() => fx.remove(), 2200);
 }
