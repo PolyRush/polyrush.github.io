@@ -870,6 +870,18 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .seg button{font:800 12px/1 var(--font-ui);padding:9px 4px;border:0;border-left:2px solid var(--ink);background:var(--card);color:var(--ink);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px}
 .seg button:first-child{border-left:0}
 /* Replay d'un fantôme (admin) */
+#repSpd{position:fixed;left:50%;bottom:calc(5vh + 54px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:24;display:grid;gap:6px;padding:9px 14px;font:700 12px/1 var(--font-ui);white-space:nowrap;min-width:min(420px,calc(100vw - 32px));box-sizing:border-box}
+#repSpd .rs-row{display:flex;align-items:baseline;gap:7px}
+#repSpd .rs-k{color:var(--muted);font-size:10.5px;letter-spacing:.06em;text-transform:uppercase}
+#repSpd b{font:800 17px/1 var(--font-num);font-variant-numeric:tabular-nums;min-width:3.4ch;text-align:right}
+#repSpd .rs-u{color:var(--muted);font-size:10.5px;margin-right:6px}
+#repSpd b.hot{color:var(--red-deep)}
+#repSpd .rs-tag{margin-left:auto;padding:3px 7px;border-radius:6px;background:rgba(17,17,17,.07);font:800 10.5px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.05em}
+#repSpd .rs-tag.free{background:#fff1d6;color:#8a5a00}
+#repSpd .rs-max{font-size:11.5px;color:var(--muted)}
+#repSpd .rs-max.ok b{color:#14864a}
+#repSpd .rs-max.bad b{color:var(--red-deep)}
+#repSpd .rs-max b{font-size:12px;min-width:0}
 #repBar{position:fixed;left:50%;bottom:calc(5vh + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:24;display:flex;align-items:center;gap:12px;padding:10px 16px;font:800 13px/1 var(--font-ui);white-space:nowrap}
 #repBar i{width:10px;height:10px;border-radius:50%;background:var(--red);animation:repBlink 1s steps(2) infinite}
 #repBar b{font:italic 900 16px/1 var(--font-display);text-transform:uppercase}
@@ -1224,7 +1236,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
     </div>
   </div>
 </div>
-<div id="repBar" class="card" hidden><i></i><b>Replay</b><span id="repWho"></span></div>
+<div id="repSpd" class="card" hidden aria-live="off"><div class="rs-row"><span class="rs-k">Vitesse</span><b id="rsV">0,0</b><span class="rs-u">studs/s</span><span class="rs-k">moy. 0,5 s</span><b id="rsA">–</b><span class="rs-k">↕</span><b id="rsY">0</b><span id="rsS" class="rs-tag">Sol</span></div><div id="rsM" class="rs-max"></div></div><div id="repBar" class="card" hidden><i></i><b>Replay</b><span id="repWho"></span></div>
 <div id="finish" hidden>
   <div class="fin-card" role="dialog" aria-label="Arrivée">
     <div id="finRec" class="rec" hidden>Nouveau record</div>
@@ -5280,6 +5292,7 @@ async function watchGhost(n, uid, pseudo) {
     replayFrame(0);
     hudEl.hidden = false; backBtn.hidden = false;
     $('repWho').textContent = RP.who + ' · ' + fmtT(RP.ms) + ' s'; $('repBar').classList.remove('end'); $('repBar').hidden = false;
+    spdInit();
   });
 }
 // Le perso du replay est un fantôme : rouge, translucide, contour léger, qui respire doucement
@@ -5302,6 +5315,7 @@ function replayFrame(fdt) {
   const s = RP.s;
   while (RP.i < s.length - 2 && s[RP.i + 1][0] / 10 <= RP.t) RP.i++;
   if (RP.hold <= 0 && !RP.done) replaySfx();
+  if (RP.sp) spdFrame();
   const A = s[RP.i], B = s[Math.min(RP.i + 1, s.length - 1)], ta = A[0] / 10, tb = B[0] / 10;
   const k = tb > ta ? clamp((RP.t - ta) / (tb - ta), 0, 1) : 0, L = (j, d) => (A[j] + (B[j] - A[j]) * k) / d;
   P.x = P.px = L(1, 100); P.y = P.py = L(2, 100); P.z = P.pz = L(3, 100);
@@ -5339,6 +5353,31 @@ function replayIntro() {
   setTimeout(() => { if (RP.on && RP.introOut) el.hidden = true; }, (RP.hold + 0.2) * 1000);
 }
 // Arrivée : la même célébration qu'en jeu, puis l'écran de fin du replay
+/* Admin : la vitesse du joueur en direct pendant un replay (instantanée, moyenne sur 0,5 s comme le contrôle anti-triche,
+   vitesse verticale, appui), et le maximum du replay mesuré par l'anti-triche (16 studs/s pour une course normale). */
+function spdInit() {
+  const el = $('repSpd'); RP.sp = null; el.hidden = true;
+  if (!isAdmin()) return;
+  try { RP.sp = ghostSpeed(RP.s); } catch (e) { return; }
+  const m = $('rsM'), bad = RP.sp.max > SPEED_MAX;
+  m.className = 'rs-max ' + (bad ? 'bad' : 'ok'); m.textContent = '';
+  m.append(document.createTextNode('Max du replay (0,5 s, hors élan) : '), mkEl('b', null, RP.sp.max.toFixed(2).replace('.', ',')),
+    document.createTextNode(' studs/s' + (RP.sp.max ? ' à ' + RP.sp.at.toFixed(1).replace('.', ',') + ' s' : '') + (bad ? ' · vitesse modifiée' : ' · normal')));
+  RP.spN = 0; el.hidden = false;
+}
+function spdFrame() {
+  if (++RP.spN % 3) return;
+  const s = RP.s, i = RP.i, A = s[i], B = s[Math.min(i + 1, s.length - 1)], dt = (B[0] - A[0]) / 10 * DT;
+  const v = dt > 0 ? Math.hypot(B[1] - A[1], B[3] - A[3]) / 100 / dt : 0;
+  let m = i; while (m > 0 && (RP.t - s[m][0] / 10) * DT < 0.5) m--;
+  const da = (RP.t - s[m][0] / 10) * DT, avg = da > 0.2 ? Math.hypot(P.x - s[m][1] / 100, P.z - s[m][3] / 100) / da : null;
+  const clean = RP.sp.clean[Math.min(i, RP.sp.clean.length - 1)], F = A[15];
+  const fmt1 = x => x.toFixed(1).replace('.', ',');
+  $('rsV').textContent = fmt1(RP.hold > 0 || RP.done ? 0 : v); $('rsV').classList.toggle('hot', clean && v > SPEED_MAX + 0.6);
+  $('rsA').textContent = avg === null ? '–' : avg.toFixed(2).replace('.', ','); $('rsA').classList.toggle('hot', !!(clean && avg > SPEED_MAX));
+  $('rsY').textContent = Math.round(RP.vy);
+  const st = $('rsS'); st.textContent = F & 4 ? 'Échelle' : clean ? (F & 1 ? 'Sol' : 'Air') : 'Élan · non mesuré'; st.classList.toggle('free', !clean);
+}
 /* Les bruitages du replay, retrouvés dans l'enregistrement : saut, atterrissage, point de reprise, chute (comme en partie) */
 function replaySfx() {
   const s = RP.s;
@@ -5357,7 +5396,7 @@ function replaySfx() {
   RP.ei = Math.max(RP.ei, RP.i);
 }
 function replayEnd() {
-  RP.done = true; $('repBar').hidden = true; sfx('finish', false);
+  RP.done = true; $('repBar').hidden = true; $('repSpd').hidden = true; sfx('finish', false);
   winflash.classList.remove('go'); void winflash.offsetWidth; winflash.classList.add('go');
   if (W && W.onFinish) W.onFinish();
   const tok = RP.tok = (RP.tok || 0) + 1;
@@ -5372,7 +5411,7 @@ function replayHud() { const ms = RP.t * DT * 1000; tMain.textContent = fmtT(RP.
 function replayRestart() {
   if (!RP.on) return;
   RP.tok = (RP.tok || 0) + 1;
-  $('repEnd').hidden = true; $('repEnd').classList.remove('show'); $('repBar').hidden = false;
+  $('repEnd').hidden = true; $('repEnd').classList.remove('show'); $('repBar').hidden = false; $('repSpd').hidden = !RP.sp;
   resetRun();                                              // range la célébration de l'arrivée
   RP.t = 0; RP.i = 0; RP.done = false; RP.touch = true; RP.ei = 0; RP.lj = -1e9; RP.chk = null; RP.dead = false;
   replayIntro();
@@ -5383,7 +5422,7 @@ function stopReplay() {
   if (UI.busy) return;
   const n = RP.n;
   wipe(() => {
-    RP = { on: false }; setGhostLook(false); slEl.classList.toggle('on', shiftlock); $('repBar').hidden = true; $('repIntro').hidden = true; $('repEnd').hidden = true; $('repEnd').classList.remove('show');
+    RP = { on: false }; $('repSpd').hidden = true; setGhostLook(false); slEl.classList.toggle('on', shiftlock); $('repBar').hidden = true; $('repIntro').hidden = true; $('repEnd').hidden = true; $('repEnd').classList.remove('show');
     hideGameHud(); UI.mode = 'menu'; ch.root.visible = true;
     restart(); clearInput();
     uiEl.classList.add('on');
@@ -7668,7 +7707,7 @@ function ghostSpeed(s) {
     const v = Math.hypot(s[j][1] - s[i][1], s[j][3] - s[i][3]) / 100 / dt;
     if (v > max) { max = v; at = T(s[i]); wi = i; wj = j; }
   }
-  return { max, at, wi, wj };
+  return { max, at, wi, wj, clean };
 }
 function validateGhost(g, n) {
   const bad = [];
