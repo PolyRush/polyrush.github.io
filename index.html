@@ -8952,7 +8952,7 @@ function ptsScore(rows, ok) {                 // rows : [{uid, ms}] → { best, 
 }
 async function ptsLoad(force) {
   if (!ACCT.on || !ACCT.db) return null;
-  if (!force && PTS.data && Date.now() - PTS.t < 180000) return PTS.data;
+  if (!force && PTS.data && Date.now() - PTS.t < 90000) return PTS.data;
   if (PTS.busy) return PTS.busy;
   PTS.busy = (async () => {
     const db = ACCT.db, me = ACCT.user ? ACCT.user.uid : null;
@@ -10141,6 +10141,9 @@ function acctRender() {
           off ? h.delete(pl.uid) : h.add(pl.uid);
           await ACCT.db.collection('meta').doc('board').set({ hidden: [...h] }, { merge: true });
           ACCT.bm.hidden = h; draw();
+          // il disparaît (ou revient) partout tout de suite : points de chacun et classements recalculés
+          await ptsRefresh(true);
+          if (PV) { pvBoard(PV.n); ptsPreview(PV.n); }
         }));
         const rs = mkEl('button', 'rs', 'Reset'); let armed = 0;
         rs.title = 'Effacer ses temps et ses replays de tous les niveaux';
