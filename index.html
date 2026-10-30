@@ -4615,7 +4615,7 @@ const SFX = {
   podium(o) {
     const b = SND.buf['pod' + o.rank]; if (!b) return;
     const c = SND.ctx, src = c.createBufferSource(), g = c.createGain(), lead = POD_IMPACT[o.rank] * 1000, d = (o.at || 0) - lead;
-    src.buffer = b; g.gain.value = 0.2; src.connect(g); g.connect(SND.out);
+    src.buffer = b; g.gain.value = 0.1; src.connect(g); g.connect(SND.out);
     if (d >= 0) src.start(c.currentTime + d / 1000); else src.start(c.currentTime, Math.min(-d, lead) / 1000);
   },
   fall() { sNoise(0.45, 1600, 220, 0.09, { q: 0.8, a: 0.05 }); sTone(320, 0.4, 'sine', 0.06, { f1: 90 }); },
