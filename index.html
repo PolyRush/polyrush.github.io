@@ -477,21 +477,26 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 @keyframes goldFlash{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
 .pod-fx{position:absolute;z-index:1;pointer-events:none}
 .pod-fx.p1{--g:var(--g-gold)} .pod-fx.p2{--g:var(--g-silver)} .pod-fx.p3{--g:var(--g-bronze)}
-.pod-fx.p2 .rays{transform-origin:center;scale:.68;opacity:.75}
-.pod-fx.p3 .rays{display:none}
-.pod-fx .rays{position:absolute;left:50%;top:50%;width:560px;height:560px;margin:-280px 0 0 -280px;border-radius:50%;
-  background:repeating-conic-gradient(rgba(var(--g),0) 0deg 8deg,rgba(var(--g),.7) 10deg 13deg,rgba(var(--g),0) 15deg 22deg);
-  -webkit-mask:radial-gradient(circle,#000 0 12%,rgba(0,0,0,.6) 26%,transparent 60%);mask:radial-gradient(circle,#000 0 12%,rgba(0,0,0,.6) 26%,transparent 60%);
-  animation:podRays 1.9s ease-out forwards}
-@keyframes podRays{0%{opacity:0;transform:scale(.25) rotate(0)}22%{opacity:1}100%{opacity:0;transform:scale(1.15) rotate(35deg)}}
-.pod-fx .glow{position:absolute;inset:-30px -40px;border-radius:50%;background:radial-gradient(closest-side,rgba(var(--g),.85),rgba(var(--g),0));animation:podFlash 1.1s ease-out forwards}
-@keyframes podFlash{0%{opacity:0;transform:scale(.6)}20%{opacity:1}100%{opacity:0;transform:scale(1.3)}}
-.pod-fx .ring{position:absolute;inset:-4px;border-radius:12px;border:3px solid rgb(var(--g));animation:podRing .85s ease-out forwards}
-@keyframes podRing{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.18,2.2)}}
-.pod-fx b{position:absolute;left:var(--x);top:50%;width:var(--s);height:var(--s);margin:calc(var(--s) / -2);background:rgb(var(--g));
-  clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);animation:podStar 1s cubic-bezier(.15,.7,.3,1) var(--d) both}
-.pod-fx b:nth-child(3n){background:#fff}
-@keyframes podStar{0%{opacity:0;transform:translate(0,0) scale(.2) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1) rotate(180deg)}}
+.pod-fx{overflow:visible}
+/* halo étiré comme la plaque, qui s'allume puis se pose (pas de rayons au centre) */
+.pod-fx .bloom{position:absolute;inset:-6px -10px;border-radius:16px;box-shadow:0 0 30px 8px rgba(var(--g),.85),0 0 70px 18px rgba(var(--g),.35);animation:podBloom 1.6s ease-out forwards}
+@keyframes podBloom{0%{opacity:0;transform:scaleX(.96)}18%{opacity:1}100%{opacity:0;transform:scaleX(1.03)}}
+.pod-fx.p3 .bloom{box-shadow:0 0 22px 5px rgba(var(--g),.7),0 0 48px 10px rgba(var(--g),.25)}
+/* un éclat de lumière qui traverse la plaque en biais, comme un reflet de projecteur sur le métal */
+.pod-fx .beamc{position:absolute;inset:0;border-radius:9px;overflow:hidden;z-index:3}
+.pod-fx .beam{position:absolute;top:-60%;bottom:-60%;left:0;width:34%;border-radius:50%;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.85) 45%,rgba(255,250,225,.95) 50%,rgba(255,255,255,.85) 55%,rgba(255,255,255,0));
+  filter:blur(6px);mix-blend-mode:screen;transform:translateX(-120%) skewX(-20deg);animation:podBeam .95s cubic-bezier(.3,.6,.3,1) .05s forwards}
+@keyframes podBeam{0%{opacity:0;transform:translateX(-120%) skewX(-20deg)}15%{opacity:1}85%{opacity:1}100%{opacity:0;transform:translateX(330%) skewX(-20deg)}}
+.pod-fx .ring{position:absolute;inset:-4px;border-radius:12px;border:2.5px solid rgb(var(--g));animation:podRing .9s ease-out forwards}
+@keyframes podRing{from{opacity:.9;transform:scale(1)}to{opacity:0;transform:scale(1.06,1.7)}}
+/* étincelles : elles naissent le long de la plaque et montent doucement en scintillant */
+.pod-fx b{position:absolute;left:var(--x);top:var(--y);width:var(--s);height:var(--s);margin:calc(var(--s) / -2);background:#fff;
+  clip-path:polygon(50% 0,57% 43%,100% 50%,57% 57%,50% 100%,43% 57%,0 50%,43% 43%);filter:drop-shadow(0 0 3px rgba(var(--g),1));
+  animation:podStar var(--t) ease-out var(--d) both}
+.pod-fx b:nth-child(2n){background:rgb(var(--g))}
+@keyframes podStar{0%{opacity:0;transform:translate(0,0) scale(0) rotate(0)}25%{opacity:1;transform:translate(calc(var(--dx) * .3),calc(var(--dy) * .3)) scale(1) rotate(60deg)}
+  100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3) rotate(160deg)}}
 @media (prefers-reduced-motion:reduce){.fin-board .board li.podium,.fin-board .board li.podium::after,.fin-board .board li.climbed::after,.pod-fx *,.gold-flash{animation:none}.pod-fx,.gold-flash{display:none}.fin-board .board li .rk .odo{transition:none}}
 .fin-board .board li.climb .tm.flip{animation:pop .35s var(--ease-pop)}
 @media (prefers-reduced-motion:reduce){.screen.show .pts-card,.pts-card.bump .pc-v,.pts-hud.done #ptsHudV,#ptsHudV.tick{animation:none}.fin-board .board li{transition:none}}
@@ -9312,11 +9317,13 @@ function podiumFx(box, li, rank) {
   if (reduced) return;
   const fx = mkEl('div', 'pod-fx p' + rank);
   fx.style.cssText = `left:${li.offsetLeft}px;top:${li.offsetTop}px;width:${li.offsetWidth}px;height:${li.offsetHeight}px`;
-  fx.append(mkEl('i', 'glow'), mkEl('i', 'rays'), mkEl('i', 'ring'));
-  const n = [0, 20, 11, 6][rank], reach = [0, 120, 80, 55][rank];
+  fx.append(mkEl('i', 'bloom'), mkEl('i', 'ring'));
+  if (rank <= 2) { const bc = mkEl('i', 'beamc'); bc.appendChild(mkEl('i', 'beam')); fx.appendChild(bc); }
+  const n = [0, 16, 10, 6][rank];
   for (let i = 0; i < n; i++) {
-    const st = mkEl('b'), ang = (i / n) * Math.PI * 2 + Math.random() * .4, d = 40 + Math.random() * reach;
-    st.style.cssText = `--x:${10 + Math.random() * 80}%;--s:${7 + Math.random() * (rank === 1 ? 12 : 8)}px;--dx:${Math.cos(ang) * d * 1.6}px;--dy:${Math.sin(ang) * d}px;--d:${Math.random() * .18}s`;
+    const st = mkEl('b'), top = Math.random() < .5;   // sur le bord haut ou bas de la plaque, réparties sur toute la longueur
+    st.style.cssText = `--x:${(i + Math.random()) / n * 100}%;--y:${top ? -8 + Math.random() * 20 : 88 + Math.random() * 20}%;--s:${6 + Math.random() * (rank === 1 ? 9 : 6)}px;`
+      + `--dx:${(Math.random() - .5) * 30}px;--dy:${(top ? -1 : .4) * (18 + Math.random() * (rank === 1 ? 40 : 24))}px;--d:${.05 + Math.random() * .5}s;--t:${.9 + Math.random() * .7}s`;
     fx.appendChild(st);
   }
   box.appendChild(fx);
