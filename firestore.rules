@@ -50,9 +50,16 @@ service cloud.firestore {
         && (!('pseudo' in request.resource.data) || ownsPseudo(request.resource.data.pseudo));
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
-    // temps refusés par la vérification (copie avant suppression) : l'admin seul les voit, les restaure ou les efface
+    // temps refusés (copie avant suppression par la vérification, ou temps bloqué à l'arrivée) : l'admin seul les voit, les restaure ou les efface
     match /rejected/{id} {
       allow read, delete: if isAdmin();
+      // le jeu d'un joueur y dépose son propre temps bloqué à l'arrivée (un par niveau), pour que l'admin puisse le restaurer
+      allow create, update: if request.auth != null && !banned()
+        && request.resource.data.k is string && id == request.resource.data.k + '_' + request.auth.uid + '_jeu'
+        && request.resource.data.uid == request.auth.uid && request.resource.data.src == 'jeu'
+        && request.resource.data.keys().hasOnly(['k', 'uid', 'pseudo', 'ms', 'at', 'why', 'when', 'src', 'g'])
+        && request.resource.data.ms is int && request.resource.data.why is list && request.resource.data.why.size() <= 10
+        && request.resource.data.g is map;
     }
     match /meta/{doc} {
       allow read: if true;

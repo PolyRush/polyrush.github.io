@@ -5280,6 +5280,14 @@ function recSample(tk, x, y, z, q, force) {
     R100(c.x), R100(c.y), R100(c.z), R1e4(cq.w), R1e4(cq.x), R1e4(cq.y), R1e4(cq.z), fl, Math.round(P.moveSpeed * 10), Math.round(P.vy * 10)].join(','));
   if (REC.rows.length > 30000) REC.rows.length = 30000;     // plafond : ~16 min de course
 }
+function reportRejected(n, ms, why) {
+  if (!ACCT.on || !ACCT.user || !ACCT.pseudo || !REC) return;
+  try {
+    const d = REC.rows.join(';'); if (d.length > 900000) return;
+    const k = String(bkey(n)), uid = ACCT.user.uid, now = Date.now();
+    ACCT.db.collection('rejected').doc(k + '_' + uid + '_jeu').set({ k, uid, pseudo: ACCT.pseudo, ms, at: now, why: why.slice(0, 10), when: now, src: 'jeu', g: { d, t0: REC.t0, v: 1, ms, pseudo: ACCT.pseudo } }).catch(() => {});
+  } catch (e) {}
+}
 async function uploadGhost(n, ms) {
   const d = REC.rows.join(';');
   if (d.length > 900000) return false;                     // trop long pour un document
@@ -7958,7 +7966,12 @@ function onFinish() {
   // Un temps non valide (vitesse modifiée, téléportation…) n'est ni enregistré, ni envoyé, ni compté.
   let invalid = null;
   if (!ED.test && REC && boardOK(LEVEL)) { try { const b = validateGhost({ d: REC.rows.join(';'), ms }, LEVEL); if (b.length) invalid = b; } catch (e) {} }
-  if (invalid) REC = null;
+  if (invalid) {
+    // un temps qui aurait battu son record : copie pour l'admin (liste « Temps refusés »), au cas où le contrôle se tromperait
+    const pv = ED.test ? 0 : records[recKey(LEVEL)];
+    if (!pv || ms < pv) reportRejected(LEVEL, ms, invalid);
+    REC = null;
+  }
   // Un essai depuis l'éditeur ne compte pas comme record.
   const prev = ED.test ? 0 : records[recKey(LEVEL)], better = !ED.test && !invalid && (!prev || ms < prev);
   if (better) { records[recKey(LEVEL)] = ms; saveRecords(); recFresh[String(recKey(LEVEL))] = Date.now(); }
@@ -10444,7 +10457,7 @@ function acctRender() {
         const row = mkEl('div', 'rj-row'), info = mkEl('div', 'rj-i');
         const top = mkEl('div', 'rj-t'), ps = mkEl('span', 'ps', r.pseudo || '?'); ps.dataset.uid = r.uid;
         top.append(mkEl('b', null, lvName(r.k)), ps, mkEl('span', 'rj-ms', fmtT(r.ms) + ' s'));
-        info.append(top, mkEl('div', 'rj-why', (r.why || []).join(' · ')), mkEl('div', 'rj-d', new Date(r.when || 0).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })));
+        info.append(top, mkEl('div', 'rj-why', (r.src === 'jeu' ? 'Bloqué à l’arrivée · ' : '') + (r.why || []).join(' · ')), mkEl('div', 'rj-d', new Date(r.when || 0).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })));
         const bts = mkEl('div', 'rj-b');
         const n = r.k[0] === 'w' ? (WEEKLY && 'w' + WEEKLY.id === r.k ? WEEKLY_N : 0) : +r.k;
         const rp = mkEl('button', 'rp', 'Replay'); rp.disabled = !r.g || !n || !getBuilder(n);
