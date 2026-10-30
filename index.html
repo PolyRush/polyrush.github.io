@@ -9077,7 +9077,7 @@ function playerView(c) {
       t.title = `Niveau ${n} : ${fmtT(ms)} s`;
     } else {
       // pas fini : ouvert pour lui (niveau 1, précédent fini, ou il a un temps plus loin) = tuile vide ; sinon verrouillé
-      const pms = p.ms || {}, open = n === 1 || pms[String(n - 1)] || Object.keys(pms).some(x => +x > n);
+      const pms = p.ms || {}, open = !!getBuilder(n) && (n === 1 || pms[String(n - 1)] || Object.keys(pms).some(x => +x > n));   // pas encore construit : verrouillé
       if (!open) { t.classList.add('lock'); const lk = mkEl('span', 'lk'); lk.innerHTML = ICON_LOCK; t.appendChild(lk); }
     }
     g.appendChild(t);
