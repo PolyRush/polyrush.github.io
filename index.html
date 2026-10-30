@@ -330,6 +330,8 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .pts-card.bump .pc-v{animation:ptsBump .5s var(--ease-pop)}
 @keyframes ptsBump{40%{transform:scale(1.08)}}
 #scrTitle.navwait .pts-card{opacity:0;animation:none}
+body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bottom,0px));transition:bottom .3s var(--ease-out),transform .18s var(--ease-pop),box-shadow .18s var(--ease-pop)}
+@media (pointer:coarse){body.fps-on .pts-card{bottom:calc(max(20px,6vh) + env(safe-area-inset-bottom,0px))}}   /* sur téléphone le graphe est en haut */
 .screen.show .pts-card{animation:ptsIn .6s var(--ease-pop) backwards;animation-delay:.55s}
 @keyframes ptsIn{from{opacity:0;transform:translateY(22px) scale(.94)}}
 @media (max-width:640px){.pts-card{column-gap:12px;padding:9px 9px 9px 14px}.pc-v{font-size:28px}.pc-r{min-width:48px}.pc-r b{font-size:21px}}
@@ -382,8 +384,15 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .pts-sum{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 12px;border:2.5px solid var(--ink);border-radius:12px;box-shadow:var(--sh-1);
   font:800 34px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em}
 .pts-sum i.cube{width:28px;height:28px}
-.pts-list .board li .tm{display:inline-flex;align-items:center;gap:6px}
+.pts-list .board li .tm .tv{display:inline-flex;align-items:center;gap:6px}
 .pts-list .board li .tm i.cube{width:15px;height:15px}
+.pts-list .board li .tm .pt.sum{gap:7px}
+.pts-list .board li .tm .sm{display:grid;justify-items:center;gap:1px}
+.pts-list .board li .tm .sm b{font:800 13px/1 var(--font-num)}
+.pts-list .board li .tm .sm small{font:700 8.5px/1 var(--font-ui);letter-spacing:.06em;color:var(--muted)}
+.pts-list .board li.r1 .tm .sm small,.pts-list .board li.r2 .tm .sm small,.pts-list .board li.r3 .tm .sm small{color:rgba(17,17,17,.65)}
+.pts-list .board li .tm .op{font:800 13px/1 var(--font-num);color:var(--muted);margin-top:-8px}
+.pts-list .board li .tm.hp{padding:4px 0;margin:-4px 0}
 .pts-formula{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin:2px 0 0;padding:10px 12px;border-radius:10px;background:var(--paper);
   font:800 13.5px/1.2 var(--font-ui);color:var(--ink)}
 .pts-formula i.cube{width:20px;height:20px}
@@ -4811,7 +4820,7 @@ function showPerfOpts() {
   $('optPerf').checked = !!settings.perf; $('optFps').checked = !!settings.fps;
   // seule indication gardée : quand il faut recharger la page pour l'effet complet
   const ph = $('perfHint'), reload = !!settings.perf !== PERF_AT_LOAD; ph.hidden = !reload; ph.textContent = reload ? 'Effet complet en rechargeant la page' : '';
-  FG.el.hidden = !settings.fps;
+  FG.el.hidden = !settings.fps; document.body.classList.toggle('fps-on', !!settings.fps);   // la carte des points du menu se pousse au-dessus du graphe
 }
 $('optPerf').addEventListener('change', e => { settings.perf = e.target.checked; saveSettings(); applyPerf(); showPerfOpts(); });
 $('optFps').addEventListener('change', e => { settings.fps = e.target.checked; FG.bars = []; FG.t = FG.n = FG.worst = 0; saveSettings(); showPerfOpts(); });
@@ -9157,7 +9166,11 @@ function ptsView(c) {
     const row = p => {
       const li = mkEl('li', (p.rank <= 3 ? 'r' + p.rank : '') + (p.uid === me ? ' me' : ''));
       li.style.setProperty('--ri', Math.min(ol.children.length, 12));
-      const tm = mkEl('span', 'tm', fmtPts(p.total)); tm.appendChild(mkEl('i', 'cube'));
+      const tm = mkEl('span', 'tm hp'), tv = mkEl('span', 'tv', fmtPts(p.total)), pt = mkEl('span', 'pt sum');
+      tv.appendChild(mkEl('i', 'cube'));
+      const part = (v, l) => { const x = mkEl('span', 'sm'); x.append(mkEl('b', null, fmtPts(v)), mkEl('small', null, l)); return x; };
+      pt.append(part(p.levels || 0, 'niveaux'), mkEl('span', 'op', '+'), part((p.wk || 0) + (p.cur || 0), 'semaines'));
+      tm.append(tv, pt);
       const ps = mkEl('span', 'ps', p.pseudo || '?'); ps.dataset.uid = p.uid;
       li.append(mkEl('span', 'rk', String(p.rank)), ps, tm);
       return li;
