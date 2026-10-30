@@ -1013,6 +1013,13 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-mine span{font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
 .pv-mine b{font:800 22px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .pv-mine b.s::after{content:' s';font-size:.55em;opacity:.55}
+.pv-mine b{margin-left:auto}
+.pv-mine .pv-reset{height:26px;margin-left:10px;border:2px solid var(--ink);border-radius:7px;background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:0 8px 0 6px;font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.04em;transition:background .18s,color .18s,border-color .18s}
+.pv-mine .pv-reset svg{width:11px;height:11px}
+.pv-mine .pv-reset .t{font:inherit;color:inherit;letter-spacing:inherit}
+.pv-mine .pv-reset:hover,.pv-mine .pv-reset:focus-visible{background:var(--ink);color:#fff;outline:none}
+.pv-mine .pv-reset.ask{background:var(--red);border-color:var(--ink);color:#fff;animation:rowIn .25s var(--ease-out)}
+.pv-mine .pv-reset:disabled{opacity:.5;cursor:default}
 #pvBoard + .pv-mine{margin-top:8px}
 #pvBoard[hidden] + .pv-mine{margin-top:0;border-top:0}
 .pv-play{position:absolute;right:max(16px,env(safe-area-inset-right,0px),6vw);bottom:calc(8vh + env(safe-area-inset-bottom,0px));
@@ -1268,7 +1275,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
           <div id="pvList" class="pv-list"></div>
           <div id="pvAdmin" class="pv-admin" hidden></div>
         </div>
-        <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b></div>
+        <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b><button id="pvReset" class="pv-reset" hidden title="Effacer ton temps sur ce niveau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg><span class="t">Reset</span></button></div>
         <div id="pvPts" class="pv-pts" hidden><i class="cube" aria-label="Points"></i><div class="pp-bar"><i></i></div><b><span id="pvPtsV">0</span><small>/1000</small></b></div>
         <div id="pvWeek" class="pv-week" hidden>
           <p id="pvWeekInfo"></p>
@@ -7504,7 +7511,34 @@ function previewCamera(fdt) {
   camera.position.lerp(_pc, k); camera.quaternion.slerp(_pq, k);
 }
 // « Ton record » sur la fiche du niveau
-function pvRecShow(n) { const rk = recKey(n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]); }
+function pvRecShow(n) {
+  const rk = recKey(n), rv = $('pvRec'), b = $('pvReset'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]);
+  b.hidden = !records[rk] || ED.test;
+  if (b._k === rk && b._rec === records[rk] && !b.disabled) return;   // même record : on ne coupe pas un « Sûr ? » en cours
+  b._k = rk; b._rec = records[rk]; b.classList.remove('ask'); b.disabled = false; b.querySelector('.t').textContent = 'Reset'; clearTimeout(b._t);
+}
+// Effacer son propre temps sur ce niveau (deux clics : « Reset » puis « Sûr ? ») : record, temps au classement et points
+$('pvReset').addEventListener('click', async () => {
+  const b = $('pvReset'), t = b.querySelector('.t'); if (!PV || b.disabled) return;
+  if (!b.classList.contains('ask')) {
+    b.classList.add('ask'); t.textContent = 'Sûr ?'; clearTimeout(b._t);
+    b._t = setTimeout(() => { b.classList.remove('ask'); t.textContent = 'Reset'; }, 3000); return;
+  }
+  clearTimeout(b._t); b.disabled = true; t.textContent = '…';
+  const n = PV.n, rk = recKey(n);
+  if (ACCT.on && ACCT.user && boardOK(n)) {
+    if (isAdmin()) await adminDelete(n, ACCT.user.uid);
+    else {
+      await dropMyRecord([rk]);
+      for (const col of ['scores', 'ghosts']) { try { await ACCT.db.collection(col).doc(bkey(n)).collection('runs').doc(ACCT.user.uid).delete(); } catch (e) {} }
+    }
+  } else if (ACCT.on && ACCT.user) await dropMyRecord([rk]);
+  else { delete records[rk]; saveRecords(); buildLevelGrid(); }
+  if (PTS && PTS.data) delete PTS.data.mine[bkey(n)];
+  if (!PV || PV.n !== n) return;
+  pvRecShow(n); pvBoard(n);
+  await ptsRefresh(true); if (PV && PV.n === n) ptsPreview(n);
+});
 function openLevelUI(n, back) {
   const wk = n === WEEKLY_N;
   $('pvTitle').textContent = wk ? 'Niveau de la semaine' : 'Niveau ' + String(n).padStart(2, '0');
@@ -8993,6 +9027,7 @@ async function ptsLoad(force) {
     list.forEach((p, i) => { if (p.total !== prev) rank = i + 1; p.rank = rank; prev = p.total; });
     if (me && ACCT.pseudo && P[me]) P[me].pseudo = ACCT.pseudo;
     for (const uid in H) { const h = H[uid]; h.levels = 0; h.total = 0; h.hidden = true; }   // masqué : ses temps (fiche), mais aucun point ; tout revient s'il est démasqué
+    if (me && bm.hidden.has(me) && !H[me]) H[me] = { uid: me, pseudo: '', ms: {}, lv: {}, nLv: 0, wk: 0, cur: 0, levels: 0, total: 0, hidden: true };   // masqué même sans aucun temps
     if (me && H[me] && ACCT.pseudo) H[me].pseudo = ACCT.pseudo;
     syncRecords(keys, cols, mine);
     PTS.data = { list, best, mine, hidden: H, me: me ? (H[me] || P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
@@ -9087,7 +9122,7 @@ function finPoints(n, ms, prev, better, tok) {
   if (ED.test || !ACCT.on || !ACCT.user || !ACCT.pseudo || !boardOK(n) || !D || !D.me) return;
   const k = +n === WEEKLY_N ? D.wkKey : String(n); if (!k) return;
   const oldMs = D.mine[k] || 0, newMs = better ? ms : (oldMs || ms);
-  if (D.me.hidden) { D.mine[k] = newMs; return; }   // compte masqué : aucun point gagné
+  if (D.me.hidden || (ACCT.bm && ACCT.bm.hidden.has(ACCT.user.uid))) { D.mine[k] = newMs; return; }   // compte masqué : ni tampon ni points
   const oldBest = D.best[k] || 0, newBest = Math.min(oldBest || Infinity, newMs);
   const oldP = ptsOf(oldBest, oldMs), newP = ptsOf(newBest, newMs), gain = Math.max(0, newP - oldP);
   const oldTot = Math.round(D.me.total || 0), newTot = oldTot + gain;
