@@ -50,6 +50,10 @@ service cloud.firestore {
         && (!('pseudo' in request.resource.data) || ownsPseudo(request.resource.data.pseudo));
       allow delete: if request.auth != null && request.auth.uid == uid;
     }
+    // temps refusés par la vérification (copie avant suppression) : l'admin seul les voit, les restaure ou les efface
+    match /rejected/{id} {
+      allow read, delete: if isAdmin();
+    }
     match /meta/{doc} {
       allow read: if true;
       allow write: if isAdmin();
@@ -59,22 +63,22 @@ service cloud.firestore {
       allow read: if isAdmin() || (request.auth != null
         && get(/databases/$(database)/documents/meta/board).data.get('replays', false) == true);
       allow delete: if isAdmin();
-      allow create, update: if request.auth != null && request.auth.uid == uid && !banned()
+      allow create, update: if isAdmin() || (request.auth != null && request.auth.uid == uid && !banned()
         && request.resource.data.keys().hasOnly(['pseudo', 'ms', 't0', 'd', 'v', 'at'])
         && request.resource.data.ms is int && request.resource.data.ms >= 1000 && request.resource.data.ms < 3600000
         && request.resource.data.d is string && request.resource.data.d.size() < 900000
         && request.resource.data.d.size() >= request.resource.data.ms
-        && ownsPseudo(request.resource.data.pseudo);
+        && ownsPseudo(request.resource.data.pseudo));   // l'admin : pour restaurer un temps refusé à tort
     }
     // un temps n'entre au classement qu'avec son replay (même temps), sous son vrai pseudo, si on n'est pas banni
     match /scores/{level}/runs/{uid} {
       allow read: if true;
-      allow create, update: if request.auth != null && request.auth.uid == uid && !banned()
+      allow create, update: if isAdmin() || (request.auth != null && request.auth.uid == uid && !banned()
         && request.resource.data.keys().hasOnly(['pseudo', 'ms', 'at', 'ghost'])
         && request.resource.data.ms is int && request.resource.data.ms >= 1000 && request.resource.data.ms < 3600000
         && request.resource.data.ghost == true
         && ownsPseudo(request.resource.data.pseudo)
-        && get(/databases/$(database)/documents/ghosts/$(level)/runs/$(uid)).data.ms == request.resource.data.ms;
+        && get(/databases/$(database)/documents/ghosts/$(level)/runs/$(uid)).data.ms == request.resource.data.ms);
       allow delete: if isAdmin();   // un joueur ne peut pas effacer son propre temps
     }
   }

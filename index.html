@@ -1004,7 +1004,20 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .acct-card.wide{width:min(505px,100%)}
 .pl-row{display:grid;grid-template-columns:1fr auto auto auto;gap:8px;align-items:center;padding:6px 6px 6px 10px;border:2px solid var(--ink);border-radius:8px;background:var(--card)}
 .pl-row.off{background:var(--lock-bg)}
-.pl-row.off .pl-n{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
+.pl-row.off .rj-list{display:grid;gap:8px;max-height:min(56vh,520px);overflow:auto;padding:2px}
+.rj-row{display:grid;grid-template-columns:1fr;gap:9px;align-items:center;padding:10px 12px;border:2px solid var(--ink);border-radius:10px;background:var(--card)}
+.rj-i{display:grid;gap:4px;min-width:0}
+.rj-t{display:flex;gap:8px;align-items:baseline;min-width:0}
+.rj-t b{font:italic 900 13px/1 var(--font-display);text-transform:uppercase;white-space:nowrap}
+.rj-t .ps{font:800 14px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rj-ms{margin-left:auto;font:800 14px/1 var(--font-num);white-space:nowrap}
+.rj-why{font:700 11.5px/1.3 var(--font-ui);color:var(--red-deep)}
+.rj-d{font:600 11px/1 var(--font-ui);color:var(--muted)}
+.rj-b{display:flex;gap:6px;flex-wrap:wrap}
+.rj-b button{flex:1 1 0;width:auto!important;min-width:0;height:32px!important;padding:0 10px!important;font-size:12px!important;margin:0!important}
+.rj-b .rp{border:2px solid var(--ink);border-radius:7px;background:var(--card);font:800 11px/1 var(--font-ui);text-transform:uppercase;cursor:pointer}
+.rj-b .rp:disabled{opacity:.4;cursor:default}
+.pl-n{color:var(--muted);text-decoration:line-through;text-decoration-thickness:2px}
 .pl-n{font:800 14px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pl-row button{height:30px;border:2px solid var(--ink);border-radius:7px;background:var(--card);color:var(--ink);font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.04em;padding:0 9px;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
 .pl-row button svg{width:14px;height:14px}
@@ -5282,6 +5295,11 @@ async function watchGhost(n, uid, pseudo) {
     toast(code === 'permission-denied' ? 'Replay bloqué par le serveur (règles Firestore)' : 'Replay indisponible' + (code ? ' (' + code + ')' : ''), 3000);
     return;
   }
+  playGhost(n, g, pseudo);
+}
+// Lancer un replay déjà en main (classement, ou temps refusé gardé pour l'admin)
+function playGhost(n, g, pseudo) {
+  if (UI.busy) return;
   if (!g || !g.d) { toast('Pas de replay pour ce temps', 1800); return; }
   const s = g.d.split(';').map(r => r.split(',').map(Number));
   if (s.length < 2) { toast('Replay trop court', 1400); return; }
@@ -10368,7 +10386,7 @@ function acctRender() {
       const ok = q.filter(w => w.ok).length; let until = null;
       for (const w of q) { if (!w.ok) break; until = w.t; }
       qt.textContent = '';
-      qt.append(mkEl('b', null, ok + '/4'), document.createTextNode(' lundis prêts' + (until ? ' · jusqu’au ' + fmtMonday(until) : '') + ' · automatique'));
+      qt.append(mkEl('b', null, ok + '/4'), document.createTextNode(' lundis prêts' + (until ? ' · jusqu’au ' + fmtMonday(until) : '')));
       if (!q[0].ok) { qt.classList.add('warn'); qt.append(mkEl('br'), document.createTextNode('Rien de prêt pour le ' + fmtMonday(q[0].t) + ' : le niveau ne changera pas')); }
       qb.disabled = ok === 4;
     });
@@ -10398,6 +10416,70 @@ function acctRender() {
     const pl = mkEl('button', 'ed-btn', A.players ? 'Joueurs (' + A.players.length + ')' : 'Joueurs');
     pl.addEventListener('click', () => { ACCT.view = 'players'; acctRender(); });
     c.appendChild(pl);
+    // Temps refusés par la vérification : gardés pour l'admin seul (revoir, restaurer, effacer)
+    const rj = mkEl('button', 'ed-btn', A.rej ? 'Temps refusés (' + A.rej.length + ')' : 'Temps refusés');
+    rj.addEventListener('click', () => { ACCT.view = 'rejected'; acctRender(); });
+    c.appendChild(rj);
+  } else if (v === 'rejected' && isAdmin()) {
+    const A = ACCT.adm || (ACCT.adm = { sel: new Set() });
+    c.classList.add('wide');
+    c.appendChild(mkEl('h2', null, 'Temps refusés'));
+    const back = mkEl('button', 'acct-link', '← Admin');
+    back.addEventListener('click', () => { ACCT.view = 'admin'; acctRender(); }); c.appendChild(back);
+    c.appendChild(mkEl('p', 'acct-p', 'Supprimés du classement par la vérification. Toi seul les vois : revois le replay, et restaure le temps si c’était une erreur.'));
+    const list = mkEl('div', 'rj-list'); list.appendChild(mkEl('p', 'pl-empty', 'Chargement…')); c.appendChild(list);
+    const confirmBtn = (txt, ask, cls, fn) => {      // un premier clic arme le bouton, un second confirme
+      const b = mkEl('button', 'ed-btn ' + cls, txt); let armed = 0;
+      b.addEventListener('click', () => {
+        if (!armed) { b.textContent = ask; b.classList.add('armed'); armed = setTimeout(() => { armed = 0; b.textContent = txt; b.classList.remove('armed'); }, 4000); return; }
+        clearTimeout(armed); armed = 0; acctDo(fn);
+      });
+      return b;
+    };
+    const lvName = k => k[0] === 'w' ? 'Semaine' : 'Niveau ' + k;
+    const draw = () => {
+      list.textContent = '';
+      if (!A.rej.length) { list.appendChild(mkEl('p', 'pl-empty', 'Aucun temps refusé.')); return; }
+      for (const r of A.rej) {
+        const row = mkEl('div', 'rj-row'), info = mkEl('div', 'rj-i');
+        const top = mkEl('div', 'rj-t'), ps = mkEl('span', 'ps', r.pseudo || '?'); ps.dataset.uid = r.uid;
+        top.append(mkEl('b', null, lvName(r.k)), ps, mkEl('span', 'rj-ms', fmtT(r.ms) + ' s'));
+        info.append(top, mkEl('div', 'rj-why', (r.why || []).join(' · ')), mkEl('div', 'rj-d', new Date(r.when || 0).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' })));
+        const bts = mkEl('div', 'rj-b');
+        const n = r.k[0] === 'w' ? (WEEKLY && 'w' + WEEKLY.id === r.k ? WEEKLY_N : 0) : +r.k;
+        const rp = mkEl('button', 'rp', 'Replay'); rp.disabled = !r.g || !n || !getBuilder(n);
+        if (!n) rp.title = 'Niveau de la semaine terminé : plus de replay possible';
+        rp.addEventListener('click', () => { acctClose(); playGhost(n, { ...r.g, ms: r.ms }, r.pseudo); });
+        const rs = confirmBtn('Restaurer', 'Sûr ?', '', async () => {
+          const db = ACCT.db, sc = db.collection('scores').doc(r.k).collection('runs').doc(r.uid), gh = db.collection('ghosts').doc(r.k).collection('runs').doc(r.uid);
+          try {
+            const cur = await sc.get();
+            if (cur.exists && cur.data().ms <= r.ms) { acctMsg(`${r.pseudo} a déjà un meilleur temps (${fmtT(cur.data().ms)} s) sur ce niveau.`, false); return; }
+            if (r.g) await gh.set({ pseudo: r.g.pseudo || r.pseudo, ms: r.ms, t0: r.g.t0 || 0, d: r.g.d, v: r.g.v || 0, at: r.at || Date.now() });
+            await sc.set({ pseudo: r.pseudo, ms: r.ms, at: r.at || Date.now(), ghost: true });
+            // validé d'office : la vérification ne le refusera plus (verdict lié à cet envoi précis)
+            await db.collection('meta').doc('verified').update(new firebase.firestore.FieldPath('v', r.k + '|' + r.uid + '|' + r.ms + '|' + (r.at || 0)), 1);
+            await db.collection('rejected').doc(r.id).delete();
+            A.rej = A.rej.filter(x => x.id !== r.id); draw(); acctMsg(`Temps de ${r.pseudo} restauré.`, true); ptsRefresh(true);
+          } catch (e) { console.warn(e); acctMsg('Impossible de restaurer (règles Firestore à jour ?).', false); }
+        });
+        const del = confirmBtn('Effacer', 'Sûr ?', 'danger', async () => {
+          try { await ACCT.db.collection('rejected').doc(r.id).delete(); A.rej = A.rej.filter(x => x.id !== r.id); draw(); }
+          catch (e) { acctMsg('Impossible d’effacer.', false); }
+        });
+        bts.append(rp, rs, del); row.append(info, bts); list.appendChild(row);
+      }
+    };
+    if (A.rej) draw();
+    (async () => {
+      try {
+        const snap = await ACCT.db.collection('rejected').get();
+        A.rej = snap.docs.map(d => ({ id: d.id, ...d.data() })).sort((a, b) => (b.when || 0) - (a.when || 0));
+      } catch (e) {
+        list.textContent = ''; list.appendChild(mkEl('p', 'pl-empty', e && e.code === 'permission-denied' ? 'Publie les nouvelles règles Firestore pour voir cette liste.' : 'Liste indisponible.')); return;
+      }
+      if (ACCT.view === 'rejected' && list.isConnected) draw();
+    })();
   } else if (v === 'players' && isAdmin()) {
     const A = ACCT.adm || (ACCT.adm = { sel: new Set() });
     c.classList.add('wide');

@@ -62,16 +62,22 @@ async function check(t) {
   if (res.ok) ok++;
   else {
     bad++; console.log(`::notice::Temps refusé et supprimé — niveau ${t.k}, ${t.pseudo}, ${t.ms} ms : ${res.bad.join(' · ')}`);
-    await purge(t).catch(e => console.log(`::warning::suppression ${t.k} · ${t.pseudo} : ${e.message}`));
+    await purge(t, res.bad).catch(e => console.log(`::warning::suppression ${t.k} · ${t.pseudo} : ${e.message}`));
   }
   return 'done';
 }
 // Un temps refusé est supprimé pour de bon : son temps et son replay, et son record sur ce niveau (le jeu du joueur
 // l'efface à sa prochaine connexion, comme quand l'admin efface un temps)
-async function purge(t) {
+async function purge(t, why) {
   const runs = c => db.collection(c).doc(t.k).collection('runs').doc(t.uid);
-  const cur = await runs('scores').get();
+  const [cur, gh] = await Promise.all([runs('scores').get(), runs('ghosts').get()]);
   if (cur.exists && (cur.data().ms !== t.ms || (cur.data().at || 0) !== t.at)) return;                // il a refait un temps entre-temps : ce nouveau temps sera vérifié à son tour
+  // une copie pour l'admin (liste « Temps refusés », lisible par lui seul) : il peut revoir le replay et restaurer le temps
+  const g = gh.exists ? gh.data() : {};
+  await db.collection('rejected').doc(`${t.k}_${t.uid}_${t.at || 0}`).set({
+    k: t.k, uid: t.uid, pseudo: t.pseudo, ms: t.ms, at: t.at || 0, why: why || ['Refusé par la vérification'], when: Date.now(),
+    g: g.d ? { d: g.d, t0: g.t0 || 0, v: g.v || 0, ms: g.ms || t.ms, pseudo: g.pseudo || t.pseudo } : null
+  });
   await Promise.all([runs('scores').delete(), runs('ghosts').delete()]);
   await meta('board').set({ cuts: { [t.uid]: { [t.k]: Date.now() } } }, { merge: true });
 }
