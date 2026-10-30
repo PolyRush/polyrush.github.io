@@ -7767,6 +7767,7 @@ function ghostSpeed(s) {
   }
   return { max, at, wi, wj, clean };
 }
+let NG_DBG = null;   // rapport : où le replay « marche dans le vide »
 function validateGhost(g, n) {
   const bad = [];
   if (!g || typeof g.d !== 'string') return ['Pas de replay : temps invérifiable'];
@@ -7842,7 +7843,7 @@ function validateGhost(g, n) {
   let noGround = 0, gro = 0, noBar = 0, air0 = -1, airMax = -1e9, floaty = 0;
   for (let i = 0; i < s.length; i++) {
     const r = s[i], x = r[1] / 100, y = r[2] / 100, z = r[3] / 100, F = r[15], tk = r[0] / 10;
-    if (F & 1) { gro++; if (!support(x, y - COM_H, z, tk)) noGround++; }
+    if (F & 1) { gro++; if (!support(x, y - COM_H, z, tk)) { noGround++; if (NG_DBG && NG_DBG.length < 12) NG_DBG.push([+T(r).toFixed(2), +x.toFixed(2), +(y - COM_H).toFixed(2), +z.toFixed(2), F]); } }
     if (F & 4 && !bar(x, y, z)) noBar++;
     // En l'air = aucun appui à cette image, ni entre les deux (bit 128), ni de rebond visible : une vitesse qui
     // repart d'un coup vers le haut veut dire qu'on a pris appui (wall hop, petit saut sur un rebord)
@@ -10658,14 +10659,16 @@ if (/[?&]autogen=1/.test(location.search)) {
       } else n = +key;
       if (!getBuilder(n)) return { err: 'niveau inconnu' };
       if (MAP !== 'level' + n || n === WEEKLY_N) loadMap('level' + n);
-      const bad = validateGhost(g, n);
+      NG_DBG = []; const bad = validateGhost(g, n); const ng = NG_DBG; NG_DBG = null;
+      // le bloc le plus proche sous chaque point « dans le vide » (pour comprendre une erreur)
+      const ngi = ng.map(([t, x, fy, z, F]) => { let best = null, bd = 1e9; for (const B of solids) { const top = B.c.y + (B.ey ?? B.h.y), d = Math.hypot(Math.max(0, Math.abs(x - B.c.x) - B.rad), Math.max(0, Math.abs(z - B.c.z) - B.rad)) + Math.abs(top - fy) * 0.5; if (d < bd) { bd = d; best = { c: [+B.c.x.toFixed(1), +B.c.y.toFixed(2), +B.c.z.toFixed(1)], h: [+B.h.x.toFixed(2), +B.h.y.toFixed(2), +B.h.z.toFixed(2)], yaw: +(B.yaw || 0).toFixed(2), tilt: !!B.tilt, kin: !!B.kin, top: +top.toFixed(2) }; } } return { t, x, fy, z, F, best }; });
       let spd = null; try {
         const s = g.d.split(';').map(r => r.split(',').map(Number)); spd = ghostSpeed(s);
         // détail de la fenêtre la plus rapide (pour le rapport) : temps, vitesse du segment, hauteur, appuis
         spd.win = s.slice(Math.max(0, spd.wi - 2), spd.wj + 3).map((r, k, A) => { const p = A[k - 1]; const dt = p ? (r[0] - p[0]) / 10 * DT : 0;
           return (r[0] / 10 * DT).toFixed(3) + ':' + (p && dt ? (Math.hypot(r[1] - p[1], r[3] - p[3]) / 100 / dt).toFixed(1) : '-') + ':y' + (r[2] / 100).toFixed(1) + ':F' + r[15] + ':vy' + (r[17] / 10).toFixed(0); }).join(' ');
       } catch (e) {}
-      return { ok: !bad.length, bad, spd };
+      return { ok: !bad.length, bad, spd, ng: ngi };
     } catch (e) { return { err: String(e && e.message || e) }; }
   };
 }
