@@ -8963,14 +8963,14 @@ async function ptsLoad(force) {
       db.collection('meta').doc('points').get().catch(() => null), ...keys.map(k => db.collection('scores').doc(k).collection('runs').get().catch(() => null)), srvVerdicts(true)]);
     const banned = new Set(bans && bans.exists && Array.isArray(bans.data().uids) ? bans.data().uids : []);
     const bd = bm.d || {}, resets = bd.userResets || {}, gReset = +bd.reset || 0;
-    const ok = x => x.uid === me || (!bm.hidden.has(x.uid) && !banned.has(x.uid));
+    const ok = x => !bm.hidden.has(x.uid) && (x.uid === me || !banned.has(x.uid));   // masqué : ne compte pour personne, lui compris
     const P = {}, who = uid => P[uid] || (P[uid] = { uid, pseudo: '', lv: {}, ms: {}, nLv: 0, wk: 0, cur: 0, total: 0 });
     const best = {}, mine = {}, H = {};   // H : joueurs masqués (pour leur fiche, rien d'autre)
     keys.forEach((k, i) => {
       const snap = cols[i]; if (!snap) return;
       const n = k[0] === 'w' ? WEEKLY_N : +k;
       const all = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-      all.forEach(r => { if (r.uid === me) mine[k] = r.ms; if (r.uid !== me && bm.hidden.has(r.uid)) { const h = H[r.uid] || (H[r.uid] = { uid: r.uid, pseudo: r.pseudo || '', ms: {}, lv: {}, wk: 0, cur: 0 }); h.ms[k] = r.ms; } });
+      all.forEach(r => { if (r.uid === me) mine[k] = r.ms; if (bm.hidden.has(r.uid)) { const h = H[r.uid] || (H[r.uid] = { uid: r.uid, pseudo: r.pseudo || '', ms: {}, lv: {}, wk: 0, cur: 0 }); h.ms[k] = r.ms; } });
       const rows = all.filter(r => r.uid === me || (VERD[verdKey(n, r)] !== 'bad' && srvOk(k, r)));
       rows.forEach(r => { const p = who(r.uid); if (r.pseudo) p.pseudo = r.pseudo; p.ms[k] = r.ms; });
       const S = ptsScore(rows, ok); best[k] = S.best;
@@ -8986,7 +8986,7 @@ async function ptsLoad(force) {
       for (const uid in S.pts) { const p = who(uid); p.wk += S.pts[uid]; if (!p.pseudo) p.pseudo = names[uid] || ''; }
     }
     const list = Object.values(P).map(p => { p.levels = Object.values(p.lv).reduce((a, b) => a + b, 0); p.total = p.levels + p.wk + p.cur; return p; })
-      .filter(p => p.total > 0 && (p.uid === me || !bm.hidden.has(p.uid))).sort((a, b) => b.total - a.total);
+      .filter(p => p.total > 0 && !bm.hidden.has(p.uid)).sort((a, b) => b.total - a.total);
     let rank = 0, prev = -1;
     list.forEach((p, i) => { if (p.total !== prev) rank = i + 1; p.rank = rank; prev = p.total; });
     if (me && ACCT.pseudo && P[me]) P[me].pseudo = ACCT.pseudo;
@@ -8995,8 +8995,9 @@ async function ptsLoad(force) {
       for (const k in h.ms) { const p = ptsOf(best[k] && best[k] < h.ms[k] ? best[k] : h.ms[k], h.ms[k]); if (k[0] === 'w') h.cur = p; else { h.lv[k] = p; lv += p; } }
       h.levels = lv; h.total = lv + h.cur; h.hidden = true;
     }
+    if (me && H[me] && ACCT.pseudo) H[me].pseudo = ACCT.pseudo;
     syncRecords(keys, cols, mine);
-    PTS.data = { list, best, mine, hidden: H, me: me ? (P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
+    PTS.data = { list, best, mine, hidden: H, me: me ? (H[me] || P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
     PTS.t = Date.now();
     return PTS.data;
   })();
@@ -9343,7 +9344,8 @@ function ptsView(c) {
   }
   // en bas : ma place et mon total
   const mine = mkEl('div', 'pts-me');
-  if (D.me && D.me.total) {
+  if (D.me && D.me.hidden) mine.appendChild(mkEl('span', 'lab', 'Tu n’apparais pas au classement'));
+  else if (D.me && D.me.total) {
     const r = D.me.rank, rk = mkEl('span', 'rk' + (r && r <= 3 ? ' m' + r : ''), r ? '#' + r : '–');
     const ps = mkEl('span', 'ps', ACCT.pseudo || D.me.pseudo || 'Toi'); if (me) ps.dataset.uid = me;
     const lab = mkEl('span', 'lab', 'Ta place');
@@ -9731,7 +9733,7 @@ async function shownTop(n, k = 10) {
   if (isAdmin()) return rows.filter(r => !bm.hidden.has(r.uid)).slice(0, k);
   const me = ACCT.user ? ACCT.user.uid : null;
   await srvVerdicts();
-  const vis = rows.filter(r => r.uid === me || (!bm.hidden.has(r.uid) && srvVerdict(bkey(n), r) !== 0));   // un joueur masqué voit quand même ses temps (lui seul)
+  const vis = rows.filter(r => !bm.hidden.has(r.uid) && (r.uid === me || srvVerdict(bkey(n), r) !== 0));   // masqué : invisible, même pour lui
   const v = await Promise.all(vis.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
   return vis.filter((r, i) => v[i] !== 'bad').slice(0, k);
 }
@@ -9745,6 +9747,7 @@ async function boardMine(n, rows, el) {
     const mine = await col.doc(uid).get();
     if (!mine.exists) return;
     const ms = mine.data().ms, [snap, bm] = await Promise.all([col.where('ms', '<', ms).limit(2000).get(), boardMeta()]);
+    if (bm.hidden.has(uid)) return;   // masqué : pas de « ta place »
     const ahead = snap.docs.filter(d => d.id !== uid && !bm.hidden.has(d.id)).length;
     const ol = el.querySelector('ol.board'); if (!ol || !el.isConnected) return;
     const gap = mkEl('li', 'gap', '⋯'), li = mkEl('li', 'me mine');
