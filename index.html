@@ -3857,7 +3857,7 @@ function step() {
   if (gB) { followVel(gB, P.x, P.z, _v); gvx = _v.x; gvy = _v.y; gvz = _v.z; gw = gB.w; }
   if (P.grounded) { P.coyote = CFG.coyote; P.inhX = gvx; P.inhZ = gvz; P.ledgeY = g; }
   if (gB && gB.check && CHECK !== gB.check) { CHECK = gB.check; toast('Point de reprise', 900); sfx('check', 0, true); }
-  if (gB && gB.finish && run.state === 'run') finishRun();
+  if (gB && gB.finish && run.state === 'run') finishRun(gB);
   else if (P.coyote > 0) P.coyote -= DT;
 
   // Escalade (comme le ClimbController de Roblox) : on grimpe un élément fin (moins de 1,2
@@ -4089,7 +4089,7 @@ function step() {
   P.touch = P.grounded;
   for (let i = 0; i < nc; i++) {
     if (contacts[i].ny > 0.5) P.touch = true;
-    if (contacts[i].B.finish && run.state === 'run') finishRun();   // un pied qui frôle l'arrivée compte aussi
+    if (contacts[i].B.finish && run.state === 'run') finishRun(contacts[i].B);   // un pied qui frôle l'arrivée compte aussi
   }
   if (P.touch && !wasTouch) { P.landed = true; P.landVy = P.lastVy; }   // même un seul pas au sol doit se voir
   if (REC && (P.grounded || P.touch || P.climb)) REC.acc = 1;   // un appui, même très bref, entre deux images du replay
@@ -7811,7 +7811,20 @@ function resetRun() {
   if (hudEl.classList.contains('leave')) { hudEl.classList.remove('leave'); void hudEl.offsetWidth; hudEl.classList.add('enter'); }
   if (W && W.onReset) W.onReset();
 }
-function finishRun() { if (run.state !== 'run') return; run.state = 'done'; run.end = worldTicks; pendingFinish = true; }
+/* Chrono précis : la physique avance par pas de 1/120 s, mais on retrouve à quel moment du pas l'empreinte des pieds est
+   entrée sur l'arrivée (entre la position d'avant et celle d'après). Sans ça, tous les temps tombent sur les mêmes
+   valeurs (des multiples de 8,3 ms) et deux bonnes courses finissent souvent au même millième. */
+function finishFrac(B) {
+  if (!B || P.px === undefined) return 1;
+  const yaw = heading(P.q), cs = Math.cos(yaw), sn = Math.sin(yaw), o = qrot(P.q, 0, -COM_H, 0, { x: 0, y: 0, z: 0 });
+  const x1 = P.x + o.x, z1 = P.z + o.z, x0 = P.px + o.x, z0 = P.pz + o.z;
+  const hx = 0.82, hz = 0.42, ov = (x, z) => footOverlap(B, x, z, cs, sn, hx, hz);   // l'enveloppe des pieds (sphères de 0,42)
+  if (ov(x0, z0) > 0 || !(ov(x1, z1) > 0)) return 1;   // arrivé par le dessus (atterrissage) : la fin du pas
+  let lo = 0, hi = 1;
+  for (let i = 0; i < 14; i++) { const m = (lo + hi) / 2; if (ov(x0 + (x1 - x0) * m, z0 + (z1 - z0) * m) > 0) hi = m; else lo = m; }
+  return hi;
+}
+function finishRun(B) { if (run.state !== 'run') return; run.state = 'done'; run.end = worldTicks - 1 + finishFrac(B); pendingFinish = true; }
 function updateTimer(a) {
   if (run.state !== 'run') return;
   if (!timerEl.classList.contains('run')) timerEl.className = 'card run';
