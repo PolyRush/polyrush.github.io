@@ -7625,7 +7625,8 @@ function levelLimits() {
    (saut depuis une prise, tapis, plateforme mobile ou obstacle qui bouge), le centre du perso ne fait jamais plus de
    16 studs/s en moyenne sur une demi-seconde (mesuré : 16,000 sur des milliers de passages du robot). On mesure la
    distance à vol d'oiseau sur 0,5 s (le replay arrondit les positions au centimètre : ≈ 0,1 studs/s d'incertitude). */
-const SPEED_MAX = CFG.speed + 0.1;
+const RUN_SPEED = 16;                     // la vraie vitesse de course, écrite en dur : changer CFG.speed chez soi ne change pas la référence
+const SPEED_MAX = RUN_SPEED + 0.1;
 const SPEED_STRICT = true;    // mesuré sur les 35 vrais temps du classement : 16,00 à 16,04 (l'arrondi des positions)
 const _dynZ = { key: '', z: [] };
 function dynZones() {
@@ -7705,7 +7706,7 @@ function validateGhost(g, n) {
   }
   if (sus > 3) bad.push(`Vitesse impossible (${best.toFixed(1)} studs/s en moyenne, max ${L.vs.toFixed(0)})`);
   const SP = ghostSpeed(s);
-  if (SPEED_STRICT && SP.max > SPEED_MAX) bad.push(`Vitesse de course modifiée (${SP.max.toFixed(2)} studs/s, la course normale est à ${CFG.speed})`);
+  if (SPEED_STRICT && SP.max > SPEED_MAX) bad.push(`Vitesse de course modifiée (${SP.max.toFixed(2)} studs/s, la course normale est à ${RUN_SPEED})`);
   // Traverser un bloc : le centre du perso (et le milieu entre deux images) ne doit jamais être dans un bloc fixe
   const inside = (x, y, z) => {
     for (const B of solids) {
