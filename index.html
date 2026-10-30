@@ -471,6 +471,13 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .pts-card.r2{--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%);--g:var(--g-silver)}
 .pts-card.r3{--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%);--g:var(--g-bronze)}
 .pts-card.r1 .pc-r b,.pts-card.r2 .pc-r b,.pts-card.r3 .pc-r b{text-shadow:0 1px 0 rgba(255,255,255,.6)}
+/* survol d'un temps : ses points à la place */
+.board li .tm{position:relative;transition:color .15s}
+.board li .tm .pt{position:absolute;right:0;top:50%;display:inline-flex;align-items:center;gap:5px;color:var(--ink);opacity:0;transform:translateY(-50%) scale(.85);transform-origin:right center;
+  transition:opacity .15s,transform .2s var(--ease-pop);pointer-events:none;white-space:nowrap}
+.board li .tm .pt i.cube{width:14px;height:14px}
+.board li.hp:hover .tm{color:transparent}
+.board li.hp:hover .tm .pt{opacity:1;transform:translateY(-50%)}
 /* rang qui défile comme un compteur pendant la montée */
 .fin-board .board li .rk.roll{display:block;overflow:hidden;line-height:22px;text-align:center}
 .fin-board .board li .rk .odo{display:block;transition:transform var(--dur,1s) cubic-bezier(.6,0,.2,1)}
@@ -7442,7 +7449,9 @@ async function adminAudit(n, rows, list) {
   });
 }
 function adminPanel(n, r, bad) {
-  const box = $('pvAdmin'); box.hidden = false; box.textContent = '';
+  const box = $('pvAdmin');
+  if (!box.hidden && box.dataset.uid === r.uid) { box.hidden = true; box.dataset.uid = ''; return; }   // recliquer range le panneau
+  box.hidden = false; box.textContent = ''; box.dataset.uid = r.uid;
   const h = mkEl('div', 'pa-h'); h.append(mkEl('b', null, r.pseudo || '?'), mkEl('span', null, fmtT(r.ms) + ' s')); box.appendChild(h);
   if (bad.length) { const ul = mkEl('ul', 'pa-bad'); for (const t of bad) ul.appendChild(mkEl('li', null, t)); box.appendChild(ul); }
   else box.appendChild(mkEl('p', 'pa-ok', 'Replay vérifié : rien de suspect.'));
@@ -9231,15 +9240,20 @@ async function boardMine(n, rows, el) {
     const ahead = snap.docs.filter(d => d.id !== uid && !bm.hidden.has(d.id)).length;
     const ol = el.querySelector('ol.board'); if (!ol || !el.isConnected) return;
     const gap = mkEl('li', 'gap', '⋯'), li = mkEl('li', 'me mine');
-    li.append(mkEl('span', 'rk', String(ahead + 1 + (snap.size >= 2000 ? '+' : ''))), mkEl('span', 'ps', mine.data().pseudo || ACCT.pseudo || '?'), mkEl('span', 'tm', fmtT(ms) + ' s'));
+    const tm = mkEl('span', 'tm', fmtT(ms) + ' s'); if (+ol.dataset.best) { tm.appendChild(ptsTag(+ol.dataset.best, ms)); li.classList.add('hp'); }
+    li.append(mkEl('span', 'rk', String(ahead + 1 + (snap.size >= 2000 ? '+' : ''))), mkEl('span', 'ps', mine.data().pseudo || ACCT.pseudo || '?'), tm);
     li.title = 'Ta place au classement';
     ol.append(gap, li);
   } catch (e) { console.warn(e); }
 }
+// Au survol d'un temps : les points qu'il rapporte prennent sa place
+function ptsTag(best, ms) { const p = mkEl('span', 'pt', fmtPts(ptsOf(best, ms))); p.appendChild(mkEl('i', 'cube')); return p; }
 function boardList(rows, el, lv) {
   el.textContent = '';
   if (!rows.length) { const p = document.createElement('p'); p.className = 'acct-empty'; p.textContent = 'Personne n’a encore de temps ici.'; el.appendChild(p); return; }
   const ol = document.createElement('ol'); ol.className = 'board';
+  const best = (rows.find(x => !x.hidden) || {}).ms;           // meilleur temps affiché : la base des points
+  ol.dataset.best = best || '';
   let rank = 0;                                              // un temps masqué (vu par l'admin) ne prend pas de place
   rows.forEach(r => {
     const li = document.createElement('li'); li.dataset.uid = r.uid; if (ACCT.user && r.uid === ACCT.user.uid) li.className = 'me';
@@ -9247,6 +9261,7 @@ function boardList(rows, el, lv) {
     const a = document.createElement('span'); a.className = 'rk'; a.textContent = r.hidden ? '–' : rank;
     const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
     const c = document.createElement('span'); c.className = 'tm'; c.textContent = fmtT(r.ms) + ' s';
+    if (!r.hidden && best) { c.appendChild(ptsTag(best, r.ms)); li.classList.add('hp'); }
     li.append(a, b, c);
     if (lv && canWatch() && r.ghost) {                      // replay de la course (admin, ou tout le monde si l'admin l'a ouvert)
       const p = document.createElement('button'); p.className = 'rp'; p.title = 'Voir le replay de ' + (r.pseudo || '?'); p.setAttribute('aria-label', p.title);
@@ -9325,7 +9340,7 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
   if (seq.length > 40) seq.splice(1, seq.length - 40);
   mrk.classList.add('roll'); mrk.style.setProperty('--dur', dur + 'ms');
   const odo = mkEl('span', 'odo'); seq.forEach(x => odo.appendChild(mkEl('i', null, x))); mrk.textContent = ''; mrk.appendChild(odo);
-  if (oldMs) mtm.textContent = fmtT(oldMs) + ' s';
+  if (oldMs) mtm.firstChild.nodeValue = fmtT(oldMs) + ' s';
   meLi.classList.add('climb'); if (oi === Infinity) meLi.style.opacity = '0';
   const podium = b2 >= 1 && b2 <= 3;
   // chacun garde la couleur de son ancienne place (or, argent, bronze) jusqu'à ce que ça change
@@ -9339,7 +9354,7 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
   const wait = Math.max(0, (reduced ? 500 : 2100) - (performance.now() - t0));   // après la gerbe de points
   setTimeout(() => {
     if (finToken !== tok0 + 1 || !box.isConnected) return;
-    mtm.textContent = fmtT(ms) + ' s'; mtm.classList.add('flip');
+    mtm.firstChild.nodeValue = fmtT(ms) + ' s'; mtm.classList.add('flip');
     meLi.style.opacity = ''; meLi.classList.add('go'); if (out) lis[lis.length - 1].classList.add('go');
     for (const [li] of moves) li.style.transform = '';
     odo.style.transform = `translateY(${-(seq.length - 1) * 22}px)`;
