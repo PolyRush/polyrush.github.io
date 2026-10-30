@@ -9,6 +9,7 @@ import { chromium } from 'playwright';
 import admin from 'firebase-admin';
 import path from 'node:path';
 
+for (const ev of ['uncaughtException', 'unhandledRejection']) process.on(ev, e => { console.log(`::error::${String(e && e.stack || e).replace(/\n/g, ' | ').slice(0, 1500)}`); process.exit(1); });
 const REPORT = process.env.REPORT === '1';   // rapport : rejoue tous les temps, affiche leur vitesse, n'enregistre rien
 const LOOP_MIN = REPORT ? 0 : +(process.env.LOOP_MIN || 0);
 const sa = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT || 'null');
