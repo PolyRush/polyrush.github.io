@@ -32,7 +32,7 @@ for (const k of keys) {
 }
 console.log(`::notice::${live.size} temps au classement · ${todo.length} à vérifier`);
 
-let ok = 0, bad = 0, skip = 0; const REP = [];   // rapport : une seule ligne (GitHub n'affiche que 10 notes par étape)
+let ok = 0, bad = 0, skip = 0; const REP = [], DET = [];   // rapport : une seule ligne (GitHub n'affiche que 10 notes par étape)
 if (todo.length) {
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 800, height: 600 } });
@@ -46,7 +46,7 @@ if (todo.length) {
     const res = gd ? await page.evaluate(([k, w, gg]) => window.__polyCheck(k, w, gg), [t.k, t.k[0] === 'w' ? wdoc : null, { d: gd.d, ms: gd.ms }])
       : { ok: false, bad: ['Pas de replay'] };
     if (res.err) { console.log(`::warning::${t.k} · ${t.pseudo} : ${res.err}`); skip++; continue; }
-    if (REPORT) { REP.push(`${t.k}/${t.pseudo}/${t.ms}=${res.spd ? res.spd.max.toFixed(3) : '?'}${res.ok ? '' : '(refusé : ' + res.bad.join(' · ') + ')'}`); continue; }
+    if (REPORT) { REP.push(`${t.k}/${t.pseudo}/${t.ms}=${res.spd ? res.spd.max.toFixed(3) : '?'}${res.ok ? '' : '(refusé : ' + res.bad.join(' · ') + ')'}`); if (res.spd && res.spd.max > 16.1) DET.push(`${t.k}/${t.pseudo} → ${res.spd.win}`); continue; }
     V[t.id] = res.ok ? 1 : 0;
     if (res.ok) ok++;
     else { bad++; console.log(`::notice::Temps refusé — niveau ${t.k}, ${t.pseudo}, ${t.ms} ms : ${res.bad.join(' · ')}`); }
@@ -54,7 +54,7 @@ if (todo.length) {
   await browser.close();
 }
 // on oublie les verdicts des temps qui ne sont plus au classement (sauf ceux des niveaux de la semaine : leurs points restent)
-if (REPORT) { console.log(`::notice::Rapport vitesse (${REP.length}) : ${REP.join(' ; ')}`); process.exit(0); }
+if (REPORT) { console.log(`::notice::Rapport vitesse (${REP.length}) : ${REP.join(' ; ')}`); if (DET.length) console.log(`::notice::Détail : ${DET.join(' ### ')}`); process.exit(0); }
 for (const id of Object.keys(V)) if (!live.has(id) && id[0] !== 'w') delete V[id];
 await meta('verified').set({ v: V, upd: Date.now() });
 console.log(`::notice::Vérifiés : ${ok} bons, ${bad} refusés, ${skip} remis à plus tard`);

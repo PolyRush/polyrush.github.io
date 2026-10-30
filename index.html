@@ -7653,8 +7653,8 @@ function ghostSpeed(s) {
     if (near(x, z)) taint = true; else if (F & 1) taint = false;   // élan d'un tapis / d'une plateforme : jusqu'au prochain appui ailleurs
     clean[i] = !taint && !(F & 4) && t - lastClimb > 0.6 && t - lastTp > 0.5;
   }
-  let max = 0, at = 0;
-  for (let i = 0, j = 0, run = 0; i < s.length; i++) {
+  let max = 0, at = 0, wi = 0, wj = 0;
+  for (let i = 0, j = 0; i < s.length; i++) {
     if (!clean[i]) continue;
     if (j < i) j = i;
     while (j < s.length - 1 && clean[j + 1] && T(s[j]) - T(s[i]) < 0.5) j++;
@@ -7662,9 +7662,9 @@ function ghostSpeed(s) {
     let ok = true; for (let k = i; k <= j; k++) if (!clean[k]) { ok = false; break; }
     if (!ok) continue;
     const v = Math.hypot(s[j][1] - s[i][1], s[j][3] - s[i][3]) / 100 / dt;
-    if (v > max) { max = v; at = T(s[i]); }
+    if (v > max) { max = v; at = T(s[i]); wi = i; wj = j; }
   }
-  return { max, at };
+  return { max, at, wi, wj };
 }
 function validateGhost(g, n) {
   const bad = [];
@@ -10471,7 +10471,12 @@ if (/[?&]autogen=1/.test(location.search)) {
       if (!getBuilder(n)) return { err: 'niveau inconnu' };
       if (MAP !== 'level' + n || n === WEEKLY_N) loadMap('level' + n);
       const bad = validateGhost(g, n);
-      let spd = null; try { spd = ghostSpeed(g.d.split(';').map(r => r.split(',').map(Number))); } catch (e) {}
+      let spd = null; try {
+        const s = g.d.split(';').map(r => r.split(',').map(Number)); spd = ghostSpeed(s);
+        // détail de la fenêtre la plus rapide (pour le rapport) : temps, vitesse du segment, hauteur, appuis
+        spd.win = s.slice(Math.max(0, spd.wi - 2), spd.wj + 3).map((r, k, A) => { const p = A[k - 1]; const dt = p ? (r[0] - p[0]) / 10 * DT : 0;
+          return (r[0] / 10 * DT).toFixed(3) + ':' + (p && dt ? (Math.hypot(r[1] - p[1], r[3] - p[3]) / 100 / dt).toFixed(1) : '-') + ':y' + (r[2] / 100).toFixed(1) + ':F' + r[15] + ':vy' + (r[17] / 10).toFixed(0); }).join(' ');
+      } catch (e) {}
       return { ok: !bad.length, bad, spd };
     } catch (e) { return { err: String(e && e.message || e) }; }
   };
