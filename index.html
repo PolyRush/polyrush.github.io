@@ -4621,7 +4621,21 @@ const run = { state: 'off', start: 0, end: 0, shown: '' };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
 let records = {};
 try { records = JSON.parse(localStorage.getItem('polyrush.records') || '{}') || {}; } catch (e) { records = {}; }
-const saveRecords = () => { try { localStorage.setItem('polyrush.records', JSON.stringify(records)); } catch (e) {} };
+const saveRecords = () => { try { localStorage.setItem('polyrush.records', JSON.stringify(records)); } catch (e) {} bumpUnlock(); };
+/* Niveaux débloqués : un niveau terminé ouvre le suivant pour de bon, même si son record est effacé ensuite
+   (gardé ici et sur le compte). Un record sur un niveau prouve aussi qu'il était ouvert. */
+let unlockMax = 1;
+try { unlockMax = Math.max(1, +localStorage.getItem('polyrush.unlock') || 1); } catch (e) {}
+function bumpUnlock(fromCloud) {
+  let m = Math.max(unlockMax, +fromCloud || 0);
+  for (const k in records) { const n = +k; if (n >= 1 && n <= 10 && records[k]) m = Math.max(m, n + 1); }
+  m = Math.min(m, 11);
+  const up = m > unlockMax; unlockMax = m;
+  try { localStorage.setItem('polyrush.unlock', String(m)); } catch (e) {}
+  try { if (ACCT.user && (up || (fromCloud !== undefined && m > (+fromCloud || 0)))) ACCT.db.collection('users').doc(ACCT.user.uid).set({ unlock: m }, { merge: true }).catch(() => {}); } catch (e) {}
+  return up;
+}
+bumpUnlock();
 const uiEl = $('ui'), scr = { title: $('scrTitle'), levels: $('scrLevels'), editor: $('scrEditor'), level: $('scrLevel') }, wipeEl = $('wipe');
 const hudEl = $('hud'), timerEl = $('timer'), tMain = $('tMain');
 const finishEl = $('finish'), finTime = $('finTime'), finDelta = $('finDelta'), finRec = $('finRec'), winflash = $('winflash');
@@ -4643,7 +4657,7 @@ function buildLevelGrid() {
     const b = document.createElement('button'), num = String(i).padStart(2, '0');
     b.style.setProperty('--i', i - 1);
     // Un niveau s'ouvre quand le précédent est terminé.
-    if (getBuilder(i) && (i === 1 || records[i - 1])) {
+    if (getBuilder(i) && (i === 1 || records[i - 1] || unlockMax >= i)) {
       const done = !!records[i];
       b.className = 'tile open' + (i >= 8 ? ' hard' : '') + (done ? ' done' : ' next'); b.setAttribute('aria-label', 'Niveau ' + i + (i >= 8 ? ', difficile' : '') + (done ? ', terminé' : ''));
       b.innerHTML = `<span class="num">${num}</span><span class="corner">${done ? ICON_CHECK : i >= 8 ? ICON_FLAME : ICON_PLAY}</span><span class="best"><span class="t">${done ? fmtT(records[i]) + ' s' : ''}</span><span class="p"></span></span><span class="pbar" aria-hidden="true"><b></b></span>`;
@@ -8911,6 +8925,7 @@ async function acctUser(u) {
       if (lc) { saveRecords(); localSeen(loc); }
       if (cc) await ref.update({ records: { ...cloud }, seenK: cs, maj: Date.now() }).catch(() => ref.set({ records: { ...cloud }, seenK: cs, maj: Date.now() }, { merge: true }));
     } catch (e) { console.warn(e); }
+    bumpUnlock(+d.unlock || 0);
     // Records : le meilleur temps de chaque côté (ce navigateur et le compte)
     let push = !snap.exists;
     for (const k in cloud) { const v = Math.round(+cloud[k]); if (v > 0 && (!records[k] || v < records[k])) records[k] = v; }
