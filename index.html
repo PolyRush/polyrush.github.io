@@ -9012,7 +9012,8 @@ async function srvVerdicts(force) {
   return SRV;
 }
 const srvVerdict = (k, r) => SRV.v[k + '|' + r.uid + '|' + r.ms];
-const srvOk = (k, r) => { const v = srvVerdict(k, r); return v === 1 || (v === undefined && !SRV.fresh); };
+// un temps compte tout de suite ; il ne disparaît que si la vérification du serveur (toutes les heures) le rejette
+const srvOk = (k, r) => srvVerdict(k, r) !== 0;
 const ptsOf = (best, ms) => ms > 0 && best > 0 ? Math.min(1000, Math.round(1000 * best / ms)) : 0;
 const fmtPts = n => Math.round(n).toLocaleString('fr-FR');
 function ptsScore(rows, ok) {                 // rows : [{uid, ms}] → { best, pts: {uid: points} }
