@@ -9241,7 +9241,11 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
   const out = oi >= 5 && rows[5] && rows[5].uid !== me ? rows[5] : null;       // celui qui sort du top 5
   boardList(out ? [...top, out] : top, box);
   const lis = [...box.querySelectorAll('li')]; if (lis.length < 2) return true;
+  // la carte d'arrivée peut ne pas être encore affichée (classement plus rapide qu'elle) : on attend de pouvoir mesurer,
+  // sinon l'écart entre deux lignes vaut 0 et la ligne partirait directement de sa nouvelle place
+  for (let i = 0; i < 120 && !(lis[1].offsetTop - lis[0].offsetTop > 0); i++) await new Promise(r => requestAnimationFrame(r));
   const step = lis[1].offsetTop - lis[0].offsetTop;
+  if (!(step > 0) || finToken !== tok0 + 1) { boardList(rows.slice(0, 5), box); return true; }
   // ancien rang affiché : dans la liste, ou compté au-delà
   let oldRank = '–';
   if (oldMs) {
