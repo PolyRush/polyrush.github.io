@@ -477,9 +477,8 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .board li .tm.hp:hover .pt{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.board li .tm.hp > *{transition:opacity .15s}.board li .tm .pt,.board li .tm.hp:hover .tv{transform:none}}
 /* pseudos cliquables : ouvrent la fiche du joueur */
-.board .ps[data-uid]{justify-self:start;max-width:100%;cursor:pointer;border-radius:3px;padding:1px 3px;margin:-1px -3px;
-  background:linear-gradient(rgba(240,68,58,.28),rgba(240,68,58,.28)) no-repeat 0 100%/0% 100%;transition:background-size .25s var(--ease-out)}
-.board .ps[data-uid]:hover{background-size:100% 100%}
+.board .ps[data-uid]{justify-self:start;max-width:100%;cursor:pointer;text-decoration:underline 2px transparent;text-underline-offset:3px;transition:text-decoration-color .15s}
+.board .ps[data-uid]:hover{text-decoration-color:currentColor}
 /* fiche d'un joueur */
 .pf-back{justify-self:start;margin:-6px 0 -2px;padding:0;border:0;background:none;font:800 12px/1 var(--font-ui);color:var(--muted);cursor:pointer}
 .pf-back:hover{color:var(--ink)}
