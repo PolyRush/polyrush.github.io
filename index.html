@@ -313,53 +313,60 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
    1000 pts par niveau pour le meilleur temps, moins si on est plus lent (1000 × meilleur ÷ le sien) ; chaque niveau de
    la semaine en rapporte aussi, et ses points restent acquis une fois la semaine finie. */
 .pts-card{position:absolute;right:max(16px,env(safe-area-inset-right,0px),4vw);bottom:calc(max(20px,6vh) + env(safe-area-inset-bottom,0px));
-  display:grid;grid-template-columns:auto auto;align-items:center;column-gap:18px;row-gap:5px;padding:13px 13px 13px 18px;
+  display:grid;grid-template-columns:auto auto;align-items:center;column-gap:16px;padding:11px 11px 11px 18px;
   border:2.5px solid var(--ink);border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;text-align:left;font:inherit;
   box-shadow:var(--sh-3);transition:transform .18s var(--ease-pop),box-shadow .18s var(--ease-pop)}
 .pts-card:hover,.pts-card:focus-visible{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink);outline:none}
 .pts-card:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);transition-duration:.06s}
-.pc-l{grid-column:1;display:flex;align-items:center;gap:7px;font:800 10.5px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.pc-l::before,.ph-l::before{content:"";width:14px;height:14px;background:var(--cube) center/contain no-repeat}
+.pc-l::before{content:none}
 i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cube) center/contain no-repeat;vertical-align:-.08em}
-.pc-v{grid-column:1;font:800 36px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;white-space:nowrap}
-.pc-v small{font:italic 900 .4em/1 var(--font-display);letter-spacing:.02em;text-transform:uppercase;color:var(--muted);margin-left:5px}
-.pc-r{grid-column:2;grid-row:1 / span 2;align-self:stretch;display:grid;place-content:center;justify-items:center;gap:5px;min-width:58px;padding:0 10px;border-radius:9px;background:var(--ink);color:#fff;transition:background .2s}
-.pc-r b{font:italic 900 26px/1 var(--font-display);letter-spacing:-.02em}
-.pc-r span{font:800 9.5px/1 var(--font-ui);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
-.pts-card.first .pc-r{background:var(--red)}
+.pc-v{display:flex;align-items:center;gap:8px;font:800 36px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;white-space:nowrap}
+.pc-v i.cube{width:.72em;height:.72em}
+.pc-r{position:relative;overflow:hidden;align-self:stretch;display:grid;place-items:center;min-width:56px;padding:0 10px;border-radius:9px;background:var(--ink);color:#fff}
+.pc-r b{position:relative;font:italic 900 26px/1 var(--font-display);letter-spacing:-.02em}
+.pts-card.r1 .pc-r{background:var(--m-gold);color:var(--ink);box-shadow:0 0 18px rgba(var(--g-gold),.75),inset 0 0 0 2px rgba(17,17,17,.6)}
+.pts-card.r2 .pc-r{background:var(--m-silver);color:var(--ink);box-shadow:0 0 14px rgba(var(--g-silver),.8),inset 0 0 0 2px rgba(17,17,17,.6)}
+.pts-card.r3 .pc-r{background:var(--m-bronze);color:var(--ink);box-shadow:0 0 14px rgba(var(--g-bronze),.6),inset 0 0 0 2px rgba(17,17,17,.6)}
+.pts-card.r1 .pc-r::after,.pts-card.r2 .pc-r::after,.pts-card.r3 .pc-r::after{content:"";position:absolute;top:-20%;bottom:-20%;width:45%;left:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.85),transparent);transform:translateX(-140%) skewX(var(--skew));animation:medShine 3.2s ease-in-out 1s infinite}
+@keyframes medShine{0%{transform:translateX(-140%) skewX(var(--skew))}35%,100%{transform:translateX(300%) skewX(var(--skew))}}
 .pts-card.bump .pc-v{animation:ptsBump .5s var(--ease-pop)}
 @keyframes ptsBump{40%{transform:scale(1.08)}}
 #scrTitle.navwait .pts-card{opacity:0;animation:none}
 .screen.show .pts-card{animation:ptsIn .6s var(--ease-pop) backwards;animation-delay:.55s}
 @keyframes ptsIn{from{opacity:0;transform:translateY(22px) scale(.94)}}
-@media (max-width:640px){.pts-card{column-gap:12px;padding:10px 10px 10px 14px}.pc-v{font-size:28px}.pc-r{min-width:50px}.pc-r b{font-size:22px}}
-@media (max-height:520px){.pts-card{top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;right:calc(64px + env(safe-area-inset-right,0px));padding:5px 5px 5px 12px;row-gap:0;column-gap:10px;box-shadow:var(--sh-2)}
-  .pc-l{display:none}.pc-v{grid-row:1;font-size:20px}.pc-r{grid-row:1;min-width:0;padding:5px 9px;gap:0}.pc-r b{font-size:15px}.pc-r span{display:none}}
+@media (max-width:640px){.pts-card{column-gap:12px;padding:9px 9px 9px 14px}.pc-v{font-size:28px}.pc-r{min-width:48px}.pc-r b{font-size:21px}}
+@media (max-height:520px){.pts-card{top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;right:calc(64px + env(safe-area-inset-right,0px));padding:5px 5px 5px 12px;column-gap:10px;box-shadow:var(--sh-2)}
+  .pc-v{font-size:20px}.pc-r{min-width:0;padding:5px 9px}.pc-r b{font-size:15px}}
 /* sur chaque tuile : une barre en bas, remplie selon les points gagnés ; au survol, les points prennent la place du temps */
-.tile .pbar{left:0;right:0;bottom:0;height:5px;background:var(--lock-bg2);overflow:hidden}
-.tile .pbar b{display:block;height:100%;width:var(--w,0%);background:var(--red);transition:width .7s var(--ease-out),background .2s}
-.tile .pbar.max b{background:var(--gold)}
-.tile.hard .pbar{background:rgba(255,255,255,.18)}
-.tile.open:hover .pbar,.tile.open:focus-visible .pbar{background:rgba(255,255,255,.3)}
-.tile.open:hover .pbar b,.tile.open:focus-visible .pbar b{background:#fff}
-.tile .best .p{display:none}
-.tile.open:hover .best.has .t,.tile.open:focus-visible .best.has .t{display:none}
-.tile.open:hover .best.has .p,.tile.open:focus-visible .best.has .p{display:inline}
+.tile.first{border-color:#c98a00;box-shadow:4px 4px 0 var(--ink),0 0 0 3px rgba(var(--g-gold),.45),0 0 26px rgba(var(--g-gold),.55);animation:firstGlow 2.6s ease-in-out infinite}
+.screen.show .tile.first{animation:tileIn .55s var(--ease-pop) backwards,firstGlow 2.6s ease-in-out .8s infinite;animation-delay:calc(var(--i) * 38ms + 180ms),.8s}
+@keyframes firstGlow{50%{box-shadow:4px 4px 0 var(--ink),0 0 0 4px rgba(var(--g-gold),.6),0 0 38px rgba(var(--g-gold),.8)}}
+.tile.first .corner{background:var(--m-gold);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(17,17,17,.6)}
+.tile.first::after{content:"";position:absolute;top:-30%;bottom:-30%;left:0;width:40%;z-index:1;pointer-events:none;
+  background:linear-gradient(90deg,transparent,rgba(255,226,120,.75),transparent);transform:translateX(-160%) skewX(var(--skew));animation:medShine 3.6s ease-in-out 1.2s infinite}
+.tile.first.open:hover{animation:none}
+@media (prefers-reduced-motion:reduce){.tile.first,.tile.first::after,.pts-card .pc-r::after{animation:none}}
 /* fiche du niveau */
 .pv-pts{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 12px 10px;border-top:1.5px solid rgba(17,17,17,.1)}
-.pv-pts > span{font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.pv-pts > i.cube{width:20px;height:20px}
 .pv-pts .pp-bar{height:8px;border-radius:99px;background:rgba(17,17,17,.1);overflow:hidden}
 .pv-pts .pp-bar i{display:block;height:100%;width:var(--w,0%);border-radius:99px;background:var(--red);transition:width .8s var(--ease-out)}
 .pv-pts.max .pp-bar i{background:var(--gold)}
 .pv-pts b{font:800 20px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
 .pv-pts b small{font-size:.55em;color:var(--muted);letter-spacing:0;margin-left:2px}
 /* classement général */
-.pts-sum{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px}
-.pts-sum div{display:grid;gap:6px;padding:9px 10px;border:2px solid var(--lock-bg2);border-radius:10px}
-.pts-sum div:first-child{border-color:var(--ink);box-shadow:var(--sh-1)}
-.pts-sum span{font:800 10px/1 var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
-.pts-sum b{font:800 19px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
-.pts-sum div:first-child b{font-size:22px;color:var(--red)}
+.pts-sum{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 12px;border:2.5px solid var(--ink);border-radius:12px;box-shadow:var(--sh-1);
+  font:800 34px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.pts-sum i.cube{width:28px;height:28px}
+.pts-list .board li .tm{display:inline-flex;align-items:center;gap:6px}
+.pts-list .board li .tm i.cube{width:15px;height:15px}
+.pts-formula{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:8px;margin:2px 0 0;padding:10px 12px;border-radius:10px;background:var(--paper);
+  font:800 13.5px/1.2 var(--font-ui);color:var(--ink)}
+.pts-formula i.cube{width:20px;height:20px}
+.pts-formula .fr{display:inline-grid;text-align:center;font:700 12px/1.25 var(--font-ui)}
+.pts-formula .fr span:first-child{border-bottom:2px solid var(--ink);padding:0 4px 2px}
+.pts-formula .fr span:last-child{padding:2px 4px 0}
 .pts-list{max-height:min(46vh,420px);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 4px 0}
 /* à côté du temps : ce qu'il rapporte */
 .fin-card{grid-template-columns:minmax(0,1fr)}
@@ -367,12 +374,12 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .fin-trow .ftime{font-size:calc(var(--k) * clamp(46px,11vw,70px));white-space:nowrap;flex:none}
 .fin-trow .fin-gain{flex:none}   /* avec le tampon, les deux rétrécissent ensemble pour tenir sur une ligne */
 /* le gain, tamponné de travers à droite du temps */
-.fin-gain{position:relative;display:grid;justify-items:center;padding:6px 10px 5px;border:3px solid var(--red);border-radius:8px;color:var(--red);
+.fin-gain{position:relative;display:flex;align-items:center;gap:calc(var(--k) * 7px);padding:8px 11px 7px 10px;border:3px solid var(--red);border-radius:8px;color:var(--red);
   transform:rotate(-10deg);white-space:nowrap;pointer-events:none}
 .fin-gain::before{content:"";position:absolute;inset:3px;border:1.5px solid var(--red);border-radius:5px;opacity:.55}
 .fin-gain b{font:italic 900 calc(var(--k) * clamp(34px,8vw,48px))/.9 var(--font-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
 .fin-gain span{display:flex;align-items:center;gap:5px;margin-top:2px;font:italic 900 calc(var(--k) * 13px)/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase}
-.fin-gain i.cube{width:15px;height:15px}
+.fin-gain i.cube{width:calc(var(--k) * 30px);height:calc(var(--k) * 30px)}
 .fin-gain.wait{visibility:hidden}
 .fin-gain.in{animation:stamp2 .42s cubic-bezier(.5,0,.75,0) both}
 @keyframes stamp2{0%{opacity:0;transform:rotate(-3deg) scale(2.6)}70%{opacity:1;transform:rotate(-11deg) scale(.94)}85%{transform:rotate(-9.5deg) scale(1.03)}100%{transform:rotate(-10deg) scale(1)}}
@@ -382,11 +389,12 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 /* arrivée : les points jaillissent du temps et filent en bas à droite, où le total sort, monte, puis se range */
 #ptsFx{position:fixed;inset:0;width:100%;height:100%;z-index:31;pointer-events:none}
 .pts-hud{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:32;pointer-events:none;
-  display:grid;grid-template-columns:auto auto;align-items:baseline;column-gap:10px;row-gap:5px;padding:11px 16px 12px 16px;
+  display:flex;align-items:center;gap:9px;padding:11px 16px;
   background:var(--card);border:2.5px solid var(--ink);border-radius:14px;box-shadow:var(--sh-3);transform:translateY(calc(100% + 48px));transition:transform .55s var(--ease-pop)}
 .pts-hud.in{transform:none}
 .pts-hud.out{transform:translateY(calc(100% + 48px));transition:transform .45s var(--ease-io)}
-.ph-l{grid-column:1 / -1;display:flex;align-items:center;gap:7px;font:800 10.5px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.ph-l{display:none;display:flex;align-items:center;gap:7px;font:800 10.5px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+#ptsHud i.cube{width:26px;height:26px}
 #ptsHudV{display:inline-block;min-width:3ch;font:800 34px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;transform-origin:50% 75%}
 #ptsHudV.tick{animation:phTick .14s ease-out}
 @keyframes phTick{50%{transform:scale(1.08)}}
@@ -401,6 +409,33 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 @keyframes climbLift{40%{scale:1.04}}
 .fin-board .board li.out.go{opacity:0}
 .fin-board .board li .rk.flip{animation:pop .35s var(--ease-pop)}
+/* podium : la montée s'illumine, l'arrivée éclate en lumière (or, argent, bronze) */
+.fb-l{position:relative}
+.fin-board .board li.p1{--g:var(--g-gold)} .fin-board .board li.p2{--g:var(--g-silver)} .fin-board .board li.p3{--g:var(--g-bronze)}
+.fin-board .board li.pod.go{box-shadow:var(--sh-2),0 0 0 3px rgba(var(--g),.55),0 0 26px rgba(var(--g),.85)}
+.fin-board .board li.podium{z-index:2;border-color:var(--ink);background:linear-gradient(90deg,rgba(var(--g),.42),rgba(var(--g),.12) 70%,#fff);
+  box-shadow:var(--sh-2),0 0 0 3px rgba(var(--g),.6),0 0 30px rgba(var(--g),.75);animation:podPop .7s var(--ease-pop),podGlow 2.4s ease-in-out .8s infinite}
+.fin-board .board li.podium::after{content:"";position:absolute;inset:0;border-radius:inherit;pointer-events:none;
+  background:linear-gradient(100deg,transparent 35%,rgba(255,255,255,.95) 50%,transparent 65%) no-repeat;background-size:260% 100%;background-position:160% 0;animation:podSweep .85s ease-out .05s both}
+@keyframes podSweep{to{background-position:-70% 0}}
+@keyframes podPop{0%{scale:1}30%{scale:1.07}100%{scale:1}}
+@keyframes podGlow{50%{box-shadow:var(--sh-2),0 0 0 4px rgba(var(--g),.75),0 0 42px rgba(var(--g),.95)}}
+.pod-fx{position:absolute;z-index:1;pointer-events:none}
+.pod-fx.p1{--g:var(--g-gold)} .pod-fx.p2{--g:var(--g-silver)} .pod-fx.p3{--g:var(--g-bronze)}
+.pod-fx .rays{position:absolute;left:50%;top:50%;width:560px;height:560px;margin:-280px 0 0 -280px;border-radius:50%;
+  background:repeating-conic-gradient(rgba(var(--g),0) 0deg 8deg,rgba(var(--g),.7) 10deg 13deg,rgba(var(--g),0) 15deg 22deg);
+  -webkit-mask:radial-gradient(circle,#000 0 12%,rgba(0,0,0,.6) 26%,transparent 60%);mask:radial-gradient(circle,#000 0 12%,rgba(0,0,0,.6) 26%,transparent 60%);
+  animation:podRays 1.9s ease-out forwards}
+@keyframes podRays{0%{opacity:0;transform:scale(.25) rotate(0)}22%{opacity:1}100%{opacity:0;transform:scale(1.15) rotate(35deg)}}
+.pod-fx .glow{position:absolute;inset:-30px -40px;border-radius:50%;background:radial-gradient(closest-side,rgba(var(--g),.85),rgba(var(--g),0));animation:podFlash 1.1s ease-out forwards}
+@keyframes podFlash{0%{opacity:0;transform:scale(.6)}20%{opacity:1}100%{opacity:0;transform:scale(1.3)}}
+.pod-fx .ring{position:absolute;inset:-4px;border-radius:12px;border:3px solid rgb(var(--g));animation:podRing .85s ease-out forwards}
+@keyframes podRing{from{opacity:1;transform:scale(1)}to{opacity:0;transform:scale(1.18,2.2)}}
+.pod-fx b{position:absolute;left:var(--x);top:50%;width:var(--s);height:var(--s);margin:calc(var(--s) / -2);background:rgb(var(--g));
+  clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%);animation:podStar 1s cubic-bezier(.15,.7,.3,1) var(--d) both}
+.pod-fx b:nth-child(3n){background:#fff}
+@keyframes podStar{0%{opacity:0;transform:translate(0,0) scale(.2) rotate(0)}15%{opacity:1}100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(1) rotate(180deg)}}
+@media (prefers-reduced-motion:reduce){.fin-board .board li.podium,.fin-board .board li.podium::after,.pod-fx *{animation:none}.pod-fx{display:none}}
 .fin-board .board li.climb .tm.flip{animation:pop .35s var(--ease-pop)}
 @media (prefers-reduced-motion:reduce){.screen.show .pts-card,.pts-card.bump .pc-v,.pts-hud.done #ptsHudV,#ptsHudV.tick{animation:none}.fin-board .board li{transition:none}}
 
@@ -607,8 +642,6 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-list .board li{border:0;border-radius:10px;padding:9px 10px;background:transparent;grid-template-columns:30px 1fr auto;transition:background .2s}
 .pv-list .board li:nth-child(odd){background:rgba(255,255,255,.42)}
 .pv-list .board li .rk{width:24px;height:24px;border-radius:7px;display:grid;place-items:center;background:rgba(17,17,17,.07);color:var(--ink);font-size:12px}
-.pv-list .board li.r1 .rk{background:var(--red);color:#fff}
-.pv-list .board li.r2 .rk,.pv-list .board li.r3 .rk{background:var(--ink);color:#fff}
 .pv-list .board li.me{background:rgba(240,68,58,.14);box-shadow:inset 3px 0 0 var(--red)}
 .pv-list .acct-empty{padding:8px 6px;margin:0}
 .pv-week{display:grid;gap:8px;margin-top:6px;padding:12px 12px 4px;border-top:1.5px solid rgba(17,17,17,.1)}
@@ -717,7 +750,12 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
 .board{list-style:none;margin:0;padding:0;display:grid;gap:4px}
 .board li{display:grid;grid-template-columns:26px 1fr auto;align-items:center;gap:8px;padding:7px 10px;border:2px solid var(--lock-bg2);border-radius:9px;font:700 14px/1 var(--font-ui)}
 .board li .rk{width:22px;height:22px;border-radius:6px;display:grid;place-items:center;background:var(--lock-bg);font:800 12px/1 var(--font-num);color:var(--ink)} .board li .tm{font:800 13.5px/1 var(--font-num);font-variant-numeric:tabular-nums}
-.board li.r1 .rk{background:var(--red);color:#fff} .board li.r2 .rk,.board li.r3 .rk{background:var(--ink);color:#fff}
+/* podium : or, argent, bronze (pastilles de rang partout) */
+:root{--m-gold:linear-gradient(135deg,#fff1b8 0%,#ffd34d 38%,#f2a900 70%,#ffe07a 100%);--m-silver:linear-gradient(135deg,#ffffff 0%,#dfe4ea 40%,#a9b2bd 72%,#eef1f4 100%);
+  --m-bronze:linear-gradient(135deg,#ffd9b8 0%,#e3955a 42%,#b0632e 74%,#f0b585 100%);--g-gold:255,196,40;--g-silver:190,200,212;--g-bronze:222,140,80}
+.board li.r1 .rk,.pv-list .board li.r1 .rk{background:var(--m-gold);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(17,17,17,.55)}
+.board li.r2 .rk,.pv-list .board li.r2 .rk{background:var(--m-silver);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(17,17,17,.55)}
+.board li.r3 .rk,.pv-list .board li.r3 .rk{background:var(--m-bronze);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(17,17,17,.55)}
 .board li .ps{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .board li.me{border-color:var(--ink);background:#fff0ee;box-shadow:var(--sh-1)}
 .board li.gap{display:block;border:0;padding:0 0 0 12px;height:12px;line-height:6px;font:800 14px/6px var(--font-num);color:var(--muted);background:none!important;box-shadow:none!important}
@@ -836,7 +874,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
 <div id="hud" hidden><div id="timer" class="card ready" role="timer" aria-live="off"><b id="tLv">01</b><i></i><span id="tMain">0,000</span></div></div>
 <div id="winflash"></div>
 <canvas id="ptsFx" hidden aria-hidden="true"></canvas>
-<div id="ptsHud" class="pts-hud" hidden aria-hidden="true"><span class="ph-l">Tes points</span><b id="ptsHudV">0</b><i id="ptsHudG"></i></div>
+<div id="ptsHud" class="pts-hud" hidden aria-hidden="true"><b id="ptsHudV">0</b><i class="cube"></i><i id="ptsHudG"></i></div>
 <div id="repIntro" hidden><span class="lab">Replay</span><b id="repIntroWho"></b><span id="repIntroTime"></span></div>
 <div id="repEnd" hidden>
   <div class="fin-card" role="dialog" aria-label="Fin du replay">
@@ -855,7 +893,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
     <div id="finRec" class="rec" hidden>Nouveau record</div>
     <div class="burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="fin-eye"><i aria-hidden="true"></i><span id="finEye">Arrivée</span></div>
-    <div class="fin-trow"><div id="finTime" class="ftime">0,000</div><div id="finGain" class="fin-gain" hidden><b>+0</b><span>pts<i class="cube" aria-hidden="true"></i></span></div></div>
+    <div class="fin-trow"><div id="finTime" class="ftime">0,000</div><div id="finGain" class="fin-gain" hidden><b>+0</b><i class="cube" aria-hidden="true"></i></div></div>
     <div id="finDelta" class="delta" hidden></div>
     <div id="finBoard" class="fin-board" hidden></div>
     <div class="fin-act">
@@ -881,7 +919,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
       </nav>
       <button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5"/></svg><b></b></span><span class="tx"><span class="nm">Se connecter</span></span><svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
-      <button id="bPts" class="pts-card" hidden aria-label="Classement général"><span class="pc-l">Tes points</span><span class="pc-v"><span id="ptsTot">0</span><small>pts</small></span><span class="pc-r"><b id="ptsRank">#–</b><span id="ptsOf"></span></span></button>
+      <button id="bPts" class="pts-card" hidden aria-label="Classement général"><span class="pc-v"><span id="ptsTot">0</span><i class="cube" aria-hidden="true"></i></span><span class="pc-r"><b id="ptsRank">#–</b></span></button>
   </section>
   <section id="scrEditor" class="screen" aria-label="Éditeur">
     <div class="lv-col">
@@ -915,7 +953,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
           <div id="pvAdmin" class="pv-admin" hidden></div>
         </div>
         <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b></div>
-        <div id="pvPts" class="pv-pts" hidden><span>Points</span><div class="pp-bar"><i></i></div><b><span id="pvPtsV">0</span><small>/1000</small></b></div>
+        <div id="pvPts" class="pv-pts" hidden><i class="cube" aria-label="Points"></i><div class="pp-bar"><i></i></div><b><span id="pvPtsV">0</span><small>/1000</small></b></div>
         <div id="pvWeek" class="pv-week" hidden>
           <p id="pvWeekInfo"></p>
           <button id="bReroll" class="ed-btn">Reroll</button>
@@ -4663,7 +4701,7 @@ function buildLevelGrid() {
     if (getBuilder(i) && (i === 1 || records[i - 1] || unlockMax >= i)) {
       const done = !!records[i];
       b.className = 'tile open' + (i >= 8 ? ' hard' : '') + (done ? ' done' : ' next'); b.setAttribute('aria-label', 'Niveau ' + i + (i >= 8 ? ', difficile' : '') + (done ? ', terminé' : ''));
-      b.innerHTML = `<span class="num">${num}</span><span class="corner">${done ? ICON_CHECK : i >= 8 ? ICON_FLAME : ICON_PLAY}</span><span class="best"><span class="t">${done ? fmtT(records[i]) + ' s' : ''}</span><span class="p"></span></span><span class="pbar" aria-hidden="true"><b></b></span>`;
+      b.innerHTML = `<span class="num">${num}</span><span class="corner">${done ? ICON_CHECK : i >= 8 ? ICON_FLAME : ICON_PLAY}</span><span class="best">${done ? fmtT(records[i]) + ' s' : ''}</span>`;
       b.dataset.n = i;
       b.addEventListener('click', () => openLevel(i));
     } else {
@@ -7313,7 +7351,7 @@ function adminPanel(n, r, bad) {
   if (bad.length) { const ul = mkEl('ul', 'pa-bad'); for (const t of bad) ul.appendChild(mkEl('li', null, t)); box.appendChild(ul); }
   else box.appendChild(mkEl('p', 'pa-ok', 'Replay vérifié : rien de suspect.'));
   const row = mkEl('div', 'acct-row'), del = mkEl('button', 'ed-btn', 'Effacer ce temps'), ban = mkEl('button', 'ed-btn danger', 'Bannir le joueur');
-  del.addEventListener('click', async () => { await adminDelete(n, r.uid); toast('Temps effacé', 1200); pvBoard(n); });
+  del.addEventListener('click', async () => { await adminDelete(n, r.uid); toast('Temps effacé', 1200); pvBoard(n); await ptsRefresh(true); if (PV && PV.n === n) ptsPreview(n); });
   let armed = 0;
   ban.addEventListener('click', async () => {
     if (!armed) { ban.textContent = 'Confirmer le bannissement ?'; armed = setTimeout(() => { armed = 0; ban.textContent = 'Bannir le joueur'; }, 3500); return; }
@@ -8666,20 +8704,16 @@ function ptsCard() {
   else el.textContent = fmtPts(tot);
   PTS.shown = tot;
   $('ptsRank').textContent = D.me.rank ? '#' + D.me.rank : '#–';
-  $('ptsOf').textContent = D.list.length ? 'sur ' + D.list.length : '';
-  b.classList.toggle('first', D.me.rank === 1);
+  for (const r of [1, 2, 3]) b.classList.toggle('r' + r, D.me.rank === r);
   b.setAttribute('aria-label', `Tes points : ${fmtPts(tot)}${D.me.rank ? ', ' + D.me.rank + 'e sur ' + D.list.length : ''}. Ouvrir le classement général`);
 }
 function ptsTiles() {
   if (!PTS) return;
+  const D = PTS.data;
   document.querySelectorAll('#lvGrid .tile.open').forEach(t => {
-    const p = ptsLevel(t.dataset.n), bar = t.querySelector('.pbar'), best = t.querySelector('.best');
-    if (!bar) return;
-    bar.hidden = p === null; if (p === null) return;
-    bar.style.setProperty('--w', p / 10 + '%'); bar.classList.toggle('max', p >= 1000);
-    best.querySelector('.p').textContent = p ? fmtPts(p) + ' pts' : '';
-    best.classList.toggle('has', p > 0);
-    t.title = p ? fmtPts(p) + ' / 1000 pts' : '';
+    const k = String(t.dataset.n), first = !!(D && D.mine[k] && D.mine[k] === D.best[k]);
+    t.classList.toggle('first', first);
+    t.title = first ? 'Meilleur temps du niveau' : '';
   });
 }
 function ptsPreview(n) {
@@ -8835,9 +8869,7 @@ function ptsView(c) {
     return;
   }
   if (D.me && D.me.total) {
-    const sum = mkEl('div', 'pts-sum');
-    const cell = (l, v) => { const d = mkEl('div'); d.append(mkEl('span', null, l), mkEl('b', null, v)); return d; };
-    sum.append(cell('Total' + (D.me.rank ? ' · #' + D.me.rank : ''), fmtPts(D.me.total)), cell('Niveaux', fmtPts(D.me.levels || 0)), cell('Semaines', fmtPts((D.me.wk || 0) + (D.me.cur || 0))));
+    const sum = mkEl('div', 'pts-sum'); sum.append(mkEl('span', null, fmtPts(D.me.total)), mkEl('i', 'cube'));
     c.appendChild(sum);
   }
   const box = mkEl('div', 'pts-list');
@@ -8846,7 +8878,8 @@ function ptsView(c) {
     const ol = mkEl('ol', 'board'), me = D.me ? D.me.uid : null;
     const row = p => {
       const li = mkEl('li', (p.rank <= 3 ? 'r' + p.rank : '') + (p.uid === me ? ' me' : ''));
-      li.append(mkEl('span', 'rk', String(p.rank)), mkEl('span', 'ps', p.pseudo || '?'), mkEl('span', 'tm', fmtPts(p.total)));
+      const tm = mkEl('span', 'tm', fmtPts(p.total)); tm.appendChild(mkEl('i', 'cube'));
+      li.append(mkEl('span', 'rk', String(p.rank)), mkEl('span', 'ps', p.pseudo || '?'), tm);
       return li;
     };
     D.list.slice(0, 50).forEach(p => ol.appendChild(row(p)));
@@ -8855,7 +8888,11 @@ function ptsView(c) {
     box.appendChild(ol);
   }
   c.appendChild(box);
-  c.appendChild(mkEl('p', 'acct-p', 'Chaque niveau rapporte jusqu’à 1000 pts : le meilleur temps prend tout, les autres selon leur écart (deux fois plus lent = 500). Le niveau de la semaine aussi, et ses points restent acquis.'));
+  const f = mkEl('div', 'pts-formula'), fr = mkEl('span', 'fr');
+  fr.append(mkEl('span', null, 'meilleur temps'), mkEl('span', null, 'ton temps'));
+  f.append(mkEl('i', 'cube'), document.createTextNode('= 1000 ×'), fr);
+  f.title = 'Par niveau, et pour chaque niveau de la semaine';
+  c.appendChild(f);
 }
 
 function navReveal() {
@@ -9154,6 +9191,8 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
   const mrk = meLi.querySelector('.rk'), mtm = meLi.querySelector('.tm'), newRank = mrk.textContent;
   mrk.textContent = oldRank; if (oldMs) mtm.textContent = fmtT(oldMs) + ' s';
   meLi.classList.add('climb'); if (oi === Infinity) meLi.style.opacity = '0';
+  const podium = +newRank >= 1 && +newRank <= 3;
+  if (podium) meLi.classList.add('pod', 'p' + newRank);
   for (const [li, dy] of moves) { li.style.transition = 'none'; li.style.transform = `translateY(${dy}px)`; }
   void box.offsetWidth;
   for (const [li] of moves) li.style.transition = '';
@@ -9170,13 +9209,34 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
       const q = Math.min(1, (now - s0) / dur), e = q < .5 ? 2 * q * q : 1 - Math.pow(-2 * q + 2, 2) / 2;
       if (Number.isFinite(a)) mrk.textContent = String(Math.round(a + (b - a) * e));
       if (q < 1) requestAnimationFrame(tick);
-      else { mrk.textContent = newRank; mrk.classList.add('flip'); setTimeout(() => meLi.classList.remove('climb'), 900); }
+      else {
+        mrk.textContent = newRank; mrk.classList.add('flip');
+        if (podium) podiumFx(box, meLi, +newRank);
+        else setTimeout(() => meLi.classList.remove('climb'), 900);
+      }
     };
     requestAnimationFrame(tick);
     setTimeout(() => lis.forEach(li => { if (li.dataset.rk) { const rk = li.querySelector('.rk'); rk.textContent = li.dataset.rk; rk.classList.add('flip'); } }), reduced ? 0 : 380);
     setTimeout(() => { if (out && lis[lis.length - 1].isConnected) lis[lis.length - 1].remove(); }, reduced ? 0 : 850);
   }, wait);
   return true;
+}
+// Arrivée sur le podium : la ligne s'illumine, des rayons et des éclats de sa couleur (or, argent, bronze)
+function podiumFx(box, li, rank) {
+  li.classList.remove('climb', 'go', 'pod'); li.classList.add('podium', 'p' + rank);
+  if (reduced) return;
+  const fx = mkEl('div', 'pod-fx p' + rank);
+  fx.style.cssText = `left:${li.offsetLeft}px;top:${li.offsetTop}px;width:${li.offsetWidth}px;height:${li.offsetHeight}px`;
+  fx.append(mkEl('i', 'glow'), mkEl('i', 'rays'), mkEl('i', 'ring'));
+  const n = rank === 1 ? 18 : 12;
+  for (let i = 0; i < n; i++) {
+    const st = mkEl('b'), a = (i / n) * Math.PI * 2 + Math.random() * .4, d = 50 + Math.random() * (rank === 1 ? 110 : 70);
+    st.style.cssText = `--x:${10 + Math.random() * 80}%;--s:${8 + Math.random() * 10}px;--dx:${Math.cos(a) * d * 1.6}px;--dy:${Math.sin(a) * d}px;--d:${Math.random() * .18}s`;
+    fx.appendChild(st);
+  }
+  box.appendChild(fx);
+  sfx('check');
+  setTimeout(() => fx.remove(), 2200);
 }
 function acctReset() {
   if (!ACCT.user) return;
@@ -9356,7 +9416,7 @@ function acctRender() {
     chips.appendChild(all); rl.appendChild(chips);
     const go = confirmBtn('Reset', 'Sûr ?', 'danger', async () => {
       if (!A.sel.size) return;
-      const k = await adminResetLevels([...A.sel], true);
+      const k = await adminResetLevels([...A.sel], true); ptsRefresh(true);
       A.sel.clear(); acctRender(); acctMsg(`Reset fait (${k} temps effacés).`, true);
     });
     go.disabled = !A.sel.size; rl.appendChild(go); c.appendChild(rl);
