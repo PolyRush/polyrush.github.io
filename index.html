@@ -977,6 +977,8 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-week .ed-btn{width:100%;padding:9px}
 .pv-list .board li.aud{cursor:pointer}
 .pv-list .board li.sus .ps::after{content:" ⚠";color:var(--red-deep)}
+.pv-list .board li.srv-wait .ps::after{content:" · vérif…";color:var(--muted);font-size:.8em;font-weight:700}
+.pv-list .board li.srv-bad .ps::after{content:" · refusé";color:var(--red-deep);font-size:.8em;font-weight:800}
 .pv-list .board li.sus{box-shadow:inset 3px 0 0 var(--red-deep)}
 .adm-line{display:flex;gap:8px;align-items:stretch}
 .adm-line.top{align-items:flex-start}
@@ -7812,6 +7814,7 @@ function validateGhost(g, n) {
 }
 async function adminAudit(n, rows, list) {
   const db = ACCT.db, lis = [...list.querySelectorAll('li')];
+  await srvVerdicts(true);
   const box = $('pvAdmin'); box.hidden = true; box.textContent = '';
   rows.forEach(async (r, i) => {
     const li = lis[i]; if (!li) return;
@@ -7822,6 +7825,9 @@ async function adminAudit(n, rows, list) {
     li.classList.toggle('sus', bad.length > 0); li.classList.add('aud');
     li.title = bad.length ? '⚠ ' + bad.join(' · ') : 'Replay vérifié';
     li.onclick = e => { if (e.target.closest('.rp, .ps, .tm')) return; adminPanel(n, r, bad); };
+    const sv = srvVerdict(bkey(n), r);   // l'avis du serveur : refusé (sera supprimé) ou pas encore vérifié
+    li.classList.toggle('srv-bad', sv === 0); li.classList.toggle('srv-wait', sv === undefined);
+    if (sv === 0) li.title = 'Refusé par le serveur · ' + li.title; else if (sv === undefined) li.title = 'Pas encore vérifié par le serveur · ' + li.title;
   });
 }
 function adminPanel(n, r, bad) {
@@ -9156,7 +9162,8 @@ async function srvVerdicts(force) {
   catch (e) {}
   return SRV;
 }
-const srvVerdict = (k, r) => SRV.v[k + '|' + r.uid + '|' + r.ms];
+// verdict du serveur pour ce temps précis (niveau, joueur, temps, envoi) ; les semaines archivées n'ont pas d'envoi : ancien format
+const srvVerdict = (k, r) => r.at ? SRV.v[k + '|' + r.uid + '|' + r.ms + '|' + r.at] : SRV.v[k + '|' + r.uid + '|' + r.ms];
 // un temps compte tout de suite ; il ne disparaît que si la vérification du serveur (toutes les heures) le rejette
 const srvOk = (k, r) => srvVerdict(k, r) !== 0;
 const ptsOf = (best, ms) => ms > 0 && best > 0 ? Math.min(1000, Math.round(1000 * best / ms)) : 0;

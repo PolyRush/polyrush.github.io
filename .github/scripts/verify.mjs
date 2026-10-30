@@ -25,10 +25,10 @@ if (wdoc) keys.push('w' + wdoc.id);
 
 const todo = [], live = new Set(), queued = new Set(), zeros = [];
 const want = (k, d) => {
-  const r = d.data(), id = `${k}|${d.id}|${r.ms}`;
+  const r = d.data(), id = `${k}|${d.id}|${r.ms}|${r.at || 0}`;   // un envoi précis : un nouveau temps (même s'il vaut pareil) est revérifié
   live.add(id);
-  if (!REPORT && V[id] === 0) zeros.push({ k, uid: d.id, ms: r.ms, pseudo: r.pseudo || '?', id });   // déjà refusé mais encore là : à supprimer
-  if ((REPORT || !(id in V)) && !queued.has(id)) { queued.add(id); todo.push({ k, uid: d.id, ms: r.ms, pseudo: r.pseudo || '?', id }); }
+  if (!REPORT && V[id] === 0) zeros.push({ k, uid: d.id, ms: r.ms, at: r.at || 0, pseudo: r.pseudo || '?', id });   // déjà refusé mais encore là : à supprimer
+  if ((REPORT || !(id in V)) && !queued.has(id)) { queued.add(id); todo.push({ k, uid: d.id, ms: r.ms, at: r.at || 0, pseudo: r.pseudo || '?', id }); }
 };
 for (const k of keys) {
   const snap = await db.collection('scores').doc(k).collection('runs').get();
@@ -71,7 +71,7 @@ async function check(t) {
 async function purge(t) {
   const runs = c => db.collection(c).doc(t.k).collection('runs').doc(t.uid);
   const cur = await runs('scores').get();
-  if (cur.exists && cur.data().ms !== t.ms) return;                // il a refait un temps entre-temps : ce nouveau temps sera vérifié à son tour
+  if (cur.exists && (cur.data().ms !== t.ms || (cur.data().at || 0) !== t.at)) return;                // il a refait un temps entre-temps : ce nouveau temps sera vérifié à son tour
   await Promise.all([runs('scores').delete(), runs('ghosts').delete()]);
   await meta('board').set({ cuts: { [t.uid]: { [t.k]: Date.now() } } }, { merge: true });
 }
@@ -111,7 +111,7 @@ if (browser) await browser.close();
 if (REPORT) { console.log(`::notice::Rapport vitesse (${REP.length}) : ${REP.join(' ; ')}`); if (DET.length) console.log(`::notice::Détail : ${DET.join(' ### ')}`); process.exit(0); }
 // on oublie les verdicts des temps qui ne sont plus au classement (sauf ceux des niveaux de la semaine : leurs points restent)
 const now = new Set();
-for (const k of keys) { const snap = await db.collection('scores').doc(k).collection('runs').get(); for (const d of snap.docs) now.add(`${k}|${d.id}|${d.data().ms}`); }
+for (const k of keys) { const snap = await db.collection('scores').doc(k).collection('runs').get(); for (const d of snap.docs) now.add(`${k}|${d.id}|${d.data().ms}|${d.data().at || 0}`); }
 for (const id of Object.keys(V)) if (!now.has(id) && id[0] !== 'w') delete V[id];
 await meta('verified').set({ v: V, upd: Date.now() });
 console.log(`::notice::Vérifiés : ${ok} bons, ${bad} refusés, ${skip} remis à plus tard`);
