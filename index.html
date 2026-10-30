@@ -498,6 +498,7 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .pf-back:hover{color:var(--ink)}
 .pf-h{display:flex;align-items:center;gap:10px;margin-right:40px}
 .acct-card .pf-h h2{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-rk.hid{background:var(--lock-bg);color:var(--muted);font:800 11px/1 var(--font-ui);letter-spacing:.08em;text-transform:uppercase;font-style:normal}
 .pf-rk{flex:none;padding:6px 9px;border-radius:8px;background:var(--ink);color:#fff;font:italic 900 15px/1 var(--font-display)}
 .pf-rk.m1,.pf-rk.m2,.pf-rk.m3{color:var(--ink);background:repeating-linear-gradient(118deg,rgba(255,255,255,.14) 0 1.5px,transparent 1.5px 4px),var(--metal);box-shadow:inset 0 0 0 2px rgba(17,17,17,.75),0 0 12px rgba(var(--g),.55)}
 .pf-rk.m1{--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);--g:var(--g-gold)}
@@ -8964,12 +8965,12 @@ async function ptsLoad(force) {
     const bd = bm.d || {}, resets = bd.userResets || {}, gReset = +bd.reset || 0;
     const ok = x => x.uid === me || (!bm.hidden.has(x.uid) && !banned.has(x.uid));
     const P = {}, who = uid => P[uid] || (P[uid] = { uid, pseudo: '', lv: {}, ms: {}, nLv: 0, wk: 0, cur: 0, total: 0 });
-    const best = {}, mine = {};
+    const best = {}, mine = {}, H = {};   // H : joueurs masqués (pour leur fiche, rien d'autre)
     keys.forEach((k, i) => {
       const snap = cols[i]; if (!snap) return;
       const n = k[0] === 'w' ? WEEKLY_N : +k;
       const all = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-      all.forEach(r => { if (r.uid === me) mine[k] = r.ms; });            // son propre temps compte toujours pour soi
+      all.forEach(r => { if (r.uid === me) mine[k] = r.ms; if (r.uid !== me && bm.hidden.has(r.uid)) { const h = H[r.uid] || (H[r.uid] = { uid: r.uid, pseudo: r.pseudo || '', ms: {}, lv: {}, wk: 0, cur: 0 }); h.ms[k] = r.ms; } });
       const rows = all.filter(r => r.uid === me || (VERD[verdKey(n, r)] !== 'bad' && srvOk(k, r)));
       rows.forEach(r => { const p = who(r.uid); if (r.pseudo) p.pseudo = r.pseudo; p.ms[k] = r.ms; });
       const S = ptsScore(rows, ok); best[k] = S.best;
@@ -8989,8 +8990,13 @@ async function ptsLoad(force) {
     let rank = 0, prev = -1;
     list.forEach((p, i) => { if (p.total !== prev) rank = i + 1; p.rank = rank; prev = p.total; });
     if (me && ACCT.pseudo && P[me]) P[me].pseudo = ACCT.pseudo;
+    for (const uid in H) {                                         // leurs points, comme s'ils comptaient encore (fiche seulement)
+      const h = H[uid]; let lv = 0;
+      for (const k in h.ms) { const p = ptsOf(best[k] && best[k] < h.ms[k] ? best[k] : h.ms[k], h.ms[k]); if (k[0] === 'w') h.cur = p; else { h.lv[k] = p; lv += p; } }
+      h.levels = lv; h.total = lv + h.cur; h.hidden = true;
+    }
     syncRecords(keys, cols, mine);
-    PTS.data = { list, best, mine, me: me ? (P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
+    PTS.data = { list, best, mine, hidden: H, me: me ? (P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
     PTS.t = Date.now();
     return PTS.data;
   })();
@@ -9219,22 +9225,26 @@ document.addEventListener('click', e => {
   const ps = e.target.closest && e.target.closest('.ps[data-uid], .pod-who[data-uid]');
   if (!ps || !ACCT.on) return;
   e.stopPropagation(); e.preventDefault();
-  ACCT.pl = { uid: ps.dataset.uid, pseudo: (ps.querySelector('.pod-ps') || ps).textContent, from: !acctEl.hidden && ACCT.view === 'points' ? 'points' : null };
+  ACCT.pl = { uid: ps.dataset.uid, pseudo: (ps.querySelector('.pod-ps') || ps).textContent, from: !acctEl.hidden && ['points', 'players', 'friends'].includes(ACCT.view) ? ACCT.view : null };
   acctOpen('player');
 }, true);
 function playerView(c) {
   const pl = ACCT.pl || {}, D = PTS.data;
   c.classList.add('wide');
-  if (pl.from) { const bk = mkEl('button', 'pf-back', '← Classement général'); bk.addEventListener('click', () => acctOpen('points')); c.appendChild(bk); }
+  if (pl.from) {
+    const bk = mkEl('button', 'pf-back', '← ' + ({ points: 'Classement général', players: 'Joueurs', friends: 'Amis' }[pl.from] || 'Retour'));
+    bk.addEventListener('click', () => acctOpen(pl.from)); c.appendChild(bk);
+  }
   if (!D) {
     c.appendChild(mkEl('h2', null, pl.pseudo || 'Joueur')); c.appendChild(mkEl('p', 'acct-p', 'Chargement…'));
     ptsLoad().then(() => { if (ACCT.view === 'player' && !acctEl.hidden) acctRender(); });
     return;
   }
-  const p = D.list.find(x => x.uid === pl.uid) || (D.me && D.me.uid === pl.uid ? D.me : null) || { uid: pl.uid, ms: {}, lv: {}, total: 0 };
+  const p = D.list.find(x => x.uid === pl.uid) || (D.me && D.me.uid === pl.uid ? D.me : null) || (D.hidden && D.hidden[pl.uid]) || { uid: pl.uid, ms: {}, lv: {}, total: 0 };
   const h = mkEl('div', 'pf-h'), nm = mkEl('h2', null, p.pseudo || pl.pseudo || 'Joueur');
   h.appendChild(nm);
   if (p.rank) { const rk = mkEl('span', 'pf-rk' + (p.rank <= 3 ? ' m' + p.rank : ''), '#' + p.rank); h.appendChild(rk); }
+  else if (p.hidden && isAdmin()) h.appendChild(mkEl('span', 'pf-rk hid', 'Masqué'));
   c.appendChild(h);
   pfBody(c, p, D);
   if (ACCT.user && ACCT.pseudo && pl.uid !== ACCT.user.uid) {
@@ -9453,7 +9463,7 @@ function friendsView(c) {
   };
   const psEl = (uid, name) => { const ps = mkEl('span', 'ps', name); ps.dataset.uid = uid; return ps; };
   if (tab === 'list') {
-    const fr = frMutual();
+    const fr = frMutual().filter(u => !(D && D.hidden && D.hidden[u]));   // un joueur masqué n'apparaît nulle part
     if (!fr.length) body.appendChild(mkEl('p', 'acct-empty', 'Pas encore d’amis. Ajoute-les avec leur pseudo dans « Ajouter ».'));
     else {
       // toi et tes amis, du meilleur total au moins bon
@@ -9717,15 +9727,11 @@ async function boardMeta(force) {
 }
 async function shownTop(n, k = 10) {
   const [rows, bm] = await Promise.all([acctTop(n, k + 10), boardMeta()]);
-  // l'admin voit tout : les suspects sont signalés, les joueurs masqués apparaissent en gris
-  if (isAdmin()) {
-    const out = []; let vis = 0;
-    for (const r of rows) { const h = bm.hidden.has(r.uid); if (!h && vis >= k) break; out.push(h ? { ...r, hidden: true } : r); if (!h) vis++; }
-    return out;
-  }
+  // l'admin voit les suspects (signalés), mais un joueur masqué n'existe plus pour personne (sa fiche reste consultable)
+  if (isAdmin()) return rows.filter(r => !bm.hidden.has(r.uid)).slice(0, k);
   const me = ACCT.user ? ACCT.user.uid : null;
   await srvVerdicts();
-  const vis = rows.filter(r => r.uid === me || (!bm.hidden.has(r.uid) && srvVerdict(bkey(n), r) !== 0));   // un joueur masqué voit quand même ses temps
+  const vis = rows.filter(r => r.uid === me || (!bm.hidden.has(r.uid) && srvVerdict(bkey(n), r) !== 0));   // un joueur masqué voit quand même ses temps (lui seul)
   const v = await Promise.all(vis.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
   return vis.filter((r, i) => v[i] !== 'bad').slice(0, k);
 }
@@ -10132,7 +10138,7 @@ function acctRender() {
       if (!shown.length) { list.appendChild(mkEl('p', 'pl-empty', P.length ? 'Aucun pseudo ne correspond.' : 'Aucun joueur pour l’instant.')); return; }
       for (const pl of shown) {
         const off = bm.hidden.has(pl.uid), row = mkEl('div', 'pl-row' + (off ? ' off' : ''));
-        const nm = mkEl('span', 'pl-n', pl.pseudo); nm.title = pl.pseudo;
+        const nm = mkEl('span', 'pl-n ps', pl.pseudo); nm.title = 'Voir la fiche de ' + pl.pseudo; nm.dataset.uid = pl.uid;
         const pub = mkEl('button', 'pub' + (off ? '' : ' on'));
         pub.innerHTML = (off ? EYE_OFF : EYE) + (off ? 'Masqué' : 'Public');
         pub.title = off ? 'Ses temps sont cachés du classement : clic pour les montrer' : 'Ses temps sont au classement : clic pour les cacher';
