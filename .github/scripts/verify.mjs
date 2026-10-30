@@ -56,6 +56,7 @@ async function check(t) {
   if (REPORT) {
     REP.push(`${t.k}/${t.pseudo}/${t.ms}=${res.spd ? res.spd.max.toFixed(3) : '?'}${res.ok ? '' : '(refusé : ' + res.bad.join(' · ') + ')'}`);
     if (res.spd && res.spd.max > 16.1) DET.push(`${t.k}/${t.pseudo} → ${res.spd.win}`);
+    if (res.ng && res.ng.length) DET.push(`vide ${t.k}/${t.pseudo} → ${JSON.stringify(res.ng)}`);
     return 'done';
   }
   V[t.id] = res.ok ? 1 : 0; dirty = true;
