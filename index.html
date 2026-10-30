@@ -568,7 +568,12 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .pod-s.m1 .pod-av{width:62px;height:62px;font-size:27px}
 .pod-cr{position:absolute;top:-24px;left:50%;width:26px;height:22px;margin-left:-13px;color:#e9a00c;filter:drop-shadow(0 1px 0 #3a2600) drop-shadow(0 0 6px rgba(255,190,40,.7));animation:podCr .6s var(--ease-pop) both;animation-delay:calc(var(--d) + .55s)}
 .pod-cr svg{width:100%;height:100%}
-.pod-s .ps[data-uid]{justify-self:center}
+.pod-who{display:grid;justify-items:center;gap:6px;min-width:0;max-width:100%;cursor:pointer}
+.pod-who .pod-av{transition:scale .25s var(--ease-pop),translate .25s var(--ease-pop),box-shadow .2s}
+.pod-who .pod-ps{padding:3px 0 5px;margin:-3px 0 -5px;background:linear-gradient(currentColor,currentColor) no-repeat 0 calc(100% - 1px)/0% 2px;transition:background-size .22s var(--ease-out)}
+@media (hover:hover){.pod-who:hover .pod-av{translate:0 -3px;scale:1.07;box-shadow:3px 3px 0 var(--ink),inset 0 2px 0 rgba(255,255,255,.7),0 0 24px rgba(var(--g),.85)}
+  .pod-who:hover .pod-ps{background-size:100% 2px}}
+.pod-who:active .pod-av{translate:0 1px;scale:.97}
 .pod-ps{max-width:100%;font:800 14px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;animation:rowIn .4s var(--ease-out) both;animation-delay:calc(var(--d) + .45s)}
 .pod-s.me .pod-ps{color:var(--red-deep)}
 .pod-tot{font:800 15px/1 var(--font-num);font-variant-numeric:tabular-nums;justify-items:center;animation:rowIn .4s var(--ease-out) both;animation-delay:calc(var(--d) + .5s)}
@@ -9167,10 +9172,10 @@ const holdEnd = () => document.querySelectorAll('.hold').forEach(x => x.classLis
 /* Fiche d'un joueur : un clic sur un pseudo, dans n'importe quel classement. Ses 10 niveaux avec ses temps (en or là où il
    a le meilleur temps ; au survol, les points de ce temps), et son total en bas. */
 document.addEventListener('click', e => {
-  const ps = e.target.closest && e.target.closest('.ps[data-uid]');
+  const ps = e.target.closest && e.target.closest('.ps[data-uid], .pod-who[data-uid]');
   if (!ps || !ACCT.on) return;
   e.stopPropagation(); e.preventDefault();
-  ACCT.pl = { uid: ps.dataset.uid, pseudo: ps.textContent, from: !acctEl.hidden && ACCT.view === 'points' ? 'points' : null };
+  ACCT.pl = { uid: ps.dataset.uid, pseudo: (ps.querySelector('.pod-ps') || ps).textContent, from: !acctEl.hidden && ACCT.view === 'points' ? 'points' : null };
   acctOpen('player');
 }, true);
 function playerView(c) {
@@ -9254,8 +9259,10 @@ function ptsView(c) {
       const p = D.list[i], st = mkEl('div', 'pod-s m' + (i + 1) + (p ? '' : ' empty') + (p && p.uid === me ? ' me' : ''));
       if (p) {
         if (i === 0) { const cr = mkEl('span', 'pod-cr'); cr.innerHTML = ICON_CROWN; st.appendChild(cr); }
-        st.appendChild(mkEl('span', 'pod-av', (p.pseudo || '?')[0].toUpperCase()));
-        const ps = mkEl('span', 'ps pod-ps', p.pseudo || '?'); ps.dataset.uid = p.uid; st.appendChild(ps);
+        // le médaillon et le pseudo forment un seul bouton vers la fiche du joueur
+        const who = mkEl('span', 'pod-who'); who.dataset.uid = p.uid; who.setAttribute('role', 'button'); who.title = 'Voir la fiche de ' + (p.pseudo || '?');
+        who.append(mkEl('span', 'pod-av', (p.pseudo || '?')[0].toUpperCase()), mkEl('span', 'pod-ps', p.pseudo || '?'));
+        st.appendChild(who);
         st.appendChild(totTag(p, 'pod-tot'));
       } else st.appendChild(mkEl('span', 'pod-av', '?'));
       const base = mkEl('div', 'pod-base'); base.appendChild(mkEl('b', null, p ? String(p.rank) : String(i + 1)));
