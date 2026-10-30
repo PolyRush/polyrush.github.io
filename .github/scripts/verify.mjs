@@ -50,7 +50,7 @@ async function check(t) {
   const g = await db.collection('ghosts').doc(t.k).collection('runs').doc(t.uid).get();
   const gd = g.exists ? g.data() : null;
   if (gd && gd.ms !== t.ms) return 'later';                          // replay en cours d'envoi : plus tard
-  const res = gd ? await page.evaluate(([k, w, gg]) => window.__polyCheck(k, w, gg), [t.k, t.k[0] === 'w' ? wdoc : null, { d: gd.d, ms: gd.ms }])
+  const res = gd ? await page.evaluate(([k, w, gg]) => window.__polyCheck(k, w, gg), [t.k, t.k[0] === 'w' ? wdoc : null, { d: gd.d, ms: gd.ms, t0: gd.t0 || 0 }])
     : { ok: false, bad: ['Pas de replay'] };
   if (res.err) { console.log(`::warning::${t.k} · ${t.pseudo} : ${res.err}`); return 'later'; }
   if (REPORT) {
@@ -110,7 +110,7 @@ if (REPORT) {
   const rj = await db.collection('rejected').get();
   for (const d of rj.docs) {
     const r = d.data(); if (!r.g || !r.g.d) continue;
-    const res = await page.evaluate(([k, w, gg]) => window.__polyCheck(k, w, gg), [r.k, r.k[0] === 'w' ? wdoc : null, { d: r.g.d, ms: r.ms }]).catch(e => ({ err: e.message }));
+    const res = await page.evaluate(([k, w, gg]) => window.__polyCheck(k, w, gg), [r.k, r.k[0] === 'w' ? wdoc : null, { d: r.g.d, ms: r.ms, t0: r.g.t0 || 0 }]).catch(e => ({ err: e.message }));
     REP.push(`[refusé gardé] ${r.k}/${r.pseudo}/${r.ms}=${res.spd ? res.spd.max.toFixed(3) : '?'}${res.err ? '(' + res.err + ')' : res.ok ? ' → accepté maintenant' : '(encore refusé : ' + res.bad.join(' · ') + ')'}`);
     if (res.ng && res.ng.length) DET.push(`vide ${r.k}/${r.pseudo} → ${JSON.stringify(res.ng)}`);
   }

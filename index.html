@@ -7996,7 +7996,7 @@ function onFinish() {
   // Avant tout : le replay de cette course passe le même contrôle que chez les autres joueurs et sur le serveur.
   // Un temps non valide (vitesse modifiée, téléportation…) n'est ni enregistré, ni envoyé, ni compté.
   let invalid = null;
-  if (!ED.test && REC && boardOK(LEVEL)) { try { const b = validateGhost({ d: REC.rows.join(';'), ms }, LEVEL); if (b.length) invalid = b; } catch (e) {} }
+  if (!ED.test && REC && boardOK(LEVEL)) { try { const b = validateGhost({ d: REC.rows.join(';'), ms, t0: REC.t0 }, LEVEL);   // t0 : l'horloge du monde au départ (plateformes mobiles) if (b.length) invalid = b; } catch (e) {} }
   if (invalid) {
     // un temps qui aurait battu son record : copie pour l'admin (liste « Temps refusés »), au cas où le contrôle se tromperait
     const pv = ED.test ? 0 : records[recKey(LEVEL)];
