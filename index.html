@@ -511,6 +511,7 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .pf-t{position:relative;overflow:hidden;--i:0;aspect-ratio:1/.92;display:grid;align-content:space-between;padding:7px 8px;border:2.5px solid var(--ink);border-radius:10px;background:var(--card);box-shadow:var(--sh-1);cursor:default}
 .pf-t .n{font:italic 900 20px/1 var(--font-display);letter-spacing:-.03em}
 .pf-t .tm{font:800 11.5px/1 var(--font-num);font-variant-numeric:tabular-nums;justify-self:start}
+.tm .pt.pend{font-size:.8em;letter-spacing:.04em;text-transform:uppercase;opacity:.7}
 .pf-t .tm.hp{display:inline-grid;justify-items:start;align-items:center;overflow:hidden;padding:2px 0;margin:-2px 0}
 .pf-t .tm.hp > *{grid-area:1/1;transition:transform .32s cubic-bezier(.3,.75,.2,1),opacity .22s ease}
 .pf-t .tm .pt{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;opacity:0;transform:translateY(85%)}
@@ -7733,8 +7734,10 @@ function adminPanel(n, r, bad) {
 async function pvMine(n) {
   const m = $('pvMine'), rp = $('pvRp');
   rp.hidden = true; rp.onclick = null; m.onclick = null; m.classList.remove('aud', 'sus'); m.title = '';
+  const lab = m.querySelector('span'); lab.textContent = 'Ton record';
   if (!ACCT.on || !ACCT.user || !boardOK(n)) return;
   const uid = ACCT.user.uid, db = ACCT.db;
+  if (ACCT.bm && ACCT.bm.hidden.has(uid)) { lab.textContent = 'Ton record · masqué'; m.title = 'Ton compte est masqué : tu n’apparais pas au classement et ne gagnes pas de points'; }
   let r = null;
   try { const d = await db.collection('scores').doc(bkey(n)).collection('runs').doc(uid).get(); if (d.exists) r = { uid, ...d.data() }; } catch (e) {}
   if (!PV || PV.n !== n || !r) return;
@@ -9040,6 +9043,11 @@ async function ptsLoad(force) {
       all.forEach(r => { if (r.uid === me) mine[k] = r.ms; if (bm.hidden.has(r.uid)) { const h = H[r.uid] || (H[r.uid] = { uid: r.uid, pseudo: r.pseudo || '', ms: {}, lv: {}, wk: 0, cur: 0 }); h.ms[k] = r.ms; } });
       const rows = all.filter(r => r.uid === me || (VERD[verdKey(n, r)] !== 'bad' && srvOk(k, r)));
       rows.forEach(r => { const p = who(r.uid); if (r.pseudo) p.pseudo = r.pseudo; p.ms[k] = r.ms; });
+      // temps pas encore vérifiés par le serveur : affichés sur la fiche (comme au classement), mais sans points pour l'instant
+      all.forEach(r => {
+        if (rows.includes(r) || bm.hidden.has(r.uid) || banned.has(r.uid) || VERD[verdKey(n, r)] === 'bad' || srvVerdict(k, r) === 0) return;
+        const p = who(r.uid); if (r.pseudo) p.pseudo = r.pseudo; p.ms[k] = r.ms; (p.pend || (p.pend = {}))[k] = true;
+      });
       const S = ptsScore(rows, ok); best[k] = S.best;
       for (const uid in S.pts) { const p = who(uid); if (n === WEEKLY_N) p.cur = S.pts[uid]; else { p.lv[k] = S.pts[uid]; p.nLv++; } }
     });
@@ -9061,7 +9069,7 @@ async function ptsLoad(force) {
     if (me && bm.hidden.has(me) && !H[me]) H[me] = { uid: me, pseudo: '', ms: {}, lv: {}, nLv: 0, wk: 0, cur: 0, levels: 0, total: 0, hidden: true };   // masqué même sans aucun temps
     if (me && H[me] && ACCT.pseudo) H[me].pseudo = ACCT.pseudo;
     syncRecords(keys, cols, mine);
-    PTS.data = { list, best, mine, hidden: H, me: me ? (H[me] || P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
+    PTS.data = { list, all: P, best, mine, hidden: H, me: me ? (H[me] || P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
     PTS.t = Date.now();
     return PTS.data;
   })();
@@ -9307,7 +9315,7 @@ function playerView(c) {
     ptsLoad().then(() => { if (ACCT.view === 'player' && !acctEl.hidden) acctRender(); });
     return;
   }
-  const p = D.list.find(x => x.uid === pl.uid) || (D.me && D.me.uid === pl.uid ? D.me : null) || (D.hidden && D.hidden[pl.uid]) || { uid: pl.uid, ms: {}, lv: {}, total: 0 };
+  const p = D.list.find(x => x.uid === pl.uid) || (D.me && D.me.uid === pl.uid ? D.me : null) || (D.hidden && D.hidden[pl.uid]) || (D.all && D.all[pl.uid]) || { uid: pl.uid, ms: {}, lv: {}, total: 0 };
   const h = mkEl('div', 'pf-h'), nm = mkEl('h2', null, p.pseudo || pl.pseudo || 'Joueur');
   h.appendChild(nm);
   if (p.rank) { const rk = mkEl('span', 'pf-rk' + (p.rank <= 3 ? ' m' + p.rank : ''), '#' + p.rank); h.appendChild(rk); }
@@ -9326,11 +9334,11 @@ function pfBody(c, p, D) {
     const k = String(n), ms = (p.ms || {})[k], t = mkEl('div', 'pf-t'); t.style.setProperty('--i', n - 1);
     t.appendChild(mkEl('span', 'n', String(n).padStart(2, '0')));
     if (ms) {
-      const gold = !p.hidden && D.best[k] && ms === D.best[k];
+      const pend = !!(p.pend && p.pend[k]), gold = !p.hidden && !pend && D.best[k] && ms === D.best[k];
       if (gold) { t.classList.add('gold'); const cr = mkEl('span', 'cr'); cr.innerHTML = ICON_CROWN; t.appendChild(cr); }
-      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms))); tm.appendChild(ptsTag(D.best[k] || ms, ms, p.hidden));
+      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms))); tm.appendChild(pend ? pendTag() : ptsTag(D.best[k] || ms, ms, p.hidden));
       t.appendChild(tm);
-      t.title = `Niveau ${n} : ${fmtT(ms)} s`;
+      t.title = `Niveau ${n} : ${fmtT(ms)} s` + (pend ? ' · en cours de vérification, pas encore de points' : '');
     } else {
       // pas fini : ouvert pour lui (niveau 1, précédent fini, ou il a un temps plus loin) = tuile vide ; sinon verrouillé
       const pms = p.ms || {}, open = !!getBuilder(n) && (n === 1 || pms[String(n - 1)] || Object.keys(pms).some(x => +x > n));   // pas encore construit : verrouillé
@@ -9344,8 +9352,9 @@ function pfBody(c, p, D) {
     const k = D.wkKey, ms = (p.ms || {})[k], t = mkEl('div', 'pf-t pf-wk'); t.style.setProperty('--i', 10);
     t.append(mkEl('span', 'n', 'Semaine'), mkEl('span', 'wk', 'S' + weekNum(WEEKLY.from || WEEKLY.created)));
     if (ms) {
-      if (!p.hidden && D.best[k] && ms === D.best[k]) { t.classList.add('gold'); const cr = mkEl('span', 'cr'); cr.innerHTML = ICON_CROWN; t.appendChild(cr); }
-      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms) + ' s')); tm.appendChild(ptsTag(D.best[k] || ms, ms, p.hidden));
+      const pend = !!(p.pend && p.pend[k]);
+      if (!p.hidden && !pend && D.best[k] && ms === D.best[k]) { t.classList.add('gold'); const cr = mkEl('span', 'cr'); cr.innerHTML = ICON_CROWN; t.appendChild(cr); }
+      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms) + ' s')); tm.appendChild(pend ? pendTag() : ptsTag(D.best[k] || ms, ms, p.hidden));
       t.appendChild(tm);
     }
     c.appendChild(t);
@@ -9882,6 +9891,8 @@ async function boardMine(n, rows, el) {
   } catch (e) { console.warn(e); }
 }
 // Au survol d'un temps : les points qu'il rapporte prennent sa place
+// temps en attente de la vérification du serveur (toutes les heures) : au survol, « vérif. » à la place des points
+function pendTag() { const p = mkEl('span', 'pt pend', 'vérif.'); p.title = 'En cours de vérification : les points arrivent après'; return p; }
 function ptsTag(best, ms, zero) { const p = mkEl('span', 'pt', fmtPts(zero ? 0 : ptsOf(best, ms))); p.appendChild(mkEl('i', 'cube')); return p; }
 function boardList(rows, el, lv) {
   el.textContent = '';
