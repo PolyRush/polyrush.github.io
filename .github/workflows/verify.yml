@@ -1,9 +1,9 @@
-# Anti-triche : chaque nouveau temps du classement est rejoué par le jeu (replay contre le vrai niveau) toutes les heures.
+# Anti-triche : chaque nouveau temps du classement est rejoué par le jeu (replay contre le vrai niveau) toutes les 5 minutes.
 # Les points d'un temps ne comptent, pour les autres joueurs, qu'une fois ce temps vérifié.
 name: Vérification des temps
 on:
   schedule:
-    - cron: '23 * * * *'       # toutes les heures
+    - cron: '*/5 * * * *'      # toutes les 5 minutes (GitHub peut retarder un peu les tâches planifiées)
   workflow_dispatch:
     inputs:
       report:
