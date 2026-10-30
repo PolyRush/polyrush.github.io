@@ -339,13 +339,14 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 @media (max-height:520px){.pts-card{top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;right:calc(64px + env(safe-area-inset-right,0px));padding:5px 5px 5px 12px;column-gap:10px;box-shadow:var(--sh-2)}
   .pc-v{font-size:20px}.pc-r{min-width:0;padding:5px 9px}.pc-r b{font-size:15px}}
 /* sur chaque tuile : une barre en bas, remplie selon les points gagnés ; au survol, les points prennent la place du temps */
-.tile.first{border-color:#c98a00;box-shadow:4px 4px 0 var(--ink),0 0 0 3px rgba(var(--g-gold),.45),0 0 26px rgba(var(--g-gold),.55);animation:firstGlow 2.6s ease-in-out infinite}
+.tile.first{--so:4px;border-color:#c98a00;box-shadow:var(--so) var(--so) 0 var(--ink),0 0 0 3px rgba(var(--g-gold),.45),0 0 26px rgba(var(--g-gold),.55);animation:firstGlow 2.6s ease-in-out infinite}
+.tile.first.open:hover,.tile.first.open:focus-visible{--so:7px}
+.tile.first.open:active{--so:2px}
 .screen.show .tile.first{animation:tileIn .55s var(--ease-pop) backwards,firstGlow 2.6s ease-in-out .8s infinite;animation-delay:calc(var(--i) * 38ms + 180ms),.8s}
-@keyframes firstGlow{50%{box-shadow:4px 4px 0 var(--ink),0 0 0 4px rgba(var(--g-gold),.6),0 0 38px rgba(var(--g-gold),.8)}}
+@keyframes firstGlow{0%,100%{box-shadow:var(--so) var(--so) 0 var(--ink),0 0 0 3px rgba(var(--g-gold),.45),0 0 26px rgba(var(--g-gold),.55)}50%{box-shadow:var(--so) var(--so) 0 var(--ink),0 0 0 4px rgba(var(--g-gold),.6),0 0 38px rgba(var(--g-gold),.8)}}
 .tile.first .corner{background:var(--m-gold);color:var(--ink);box-shadow:inset 0 0 0 1.5px rgba(17,17,17,.6)}
 .tile.first::after{content:"";position:absolute;top:-30%;bottom:-30%;left:0;width:40%;z-index:1;pointer-events:none;
   background:linear-gradient(90deg,transparent,rgba(255,226,120,.75),transparent);transform:translateX(-160%) skewX(var(--skew));animation:medShine 3.6s ease-in-out 1.2s infinite}
-.tile.first.open:hover{animation:none}
 @media (prefers-reduced-motion:reduce){.tile.first,.tile.first::after,.pts-card .pc-r::after{animation:none}}
 /* fiche du niveau */
 .pv-pts{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 12px 10px;border-top:1.5px solid rgba(17,17,17,.1)}
