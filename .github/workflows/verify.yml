@@ -1,21 +1,24 @@
-# Anti-triche : chaque nouveau temps du classement est rejoué par le jeu (replay contre le vrai niveau) toutes les 5 minutes.
+# Anti-triche : chaque nouveau temps du classement est rejoué par le jeu (replay contre le vrai niveau) dans les secondes qui suivent.
 # Les points d'un temps ne comptent, pour les autres joueurs, qu'une fois ce temps vérifié.
 name: Vérification des temps
 on:
   schedule:
-    - cron: '*/5 * * * *'      # toutes les 5 minutes (GitHub peut retarder un peu les tâches planifiées)
+    - cron: '*/10 * * * *'     # relance régulière : chaque tâche veille ~50 min, la suivante attend son tour
   workflow_dispatch:
     inputs:
       report:
         description: 'Rapport de vitesse de tous les temps, sans rien enregistrer (1 = oui)'
         default: '0'
+      loop:
+        description: 'Veille (minutes) : vérifie chaque nouveau temps dès son envoi'
+        default: '50'
 permissions:
   contents: read
 concurrency: { group: verify, cancel-in-progress: false }
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 65
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,3 +29,4 @@ jobs:
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
           REPORT: ${{ github.event.inputs.report || '0' }}
+          LOOP_MIN: ${{ github.event_name == 'schedule' && '50' || github.event.inputs.loop || '0' }}
