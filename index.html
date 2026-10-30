@@ -10172,7 +10172,7 @@ function acctRender() {
       const ok = q.filter(w => w.ok).length; let until = null;
       for (const w of q) { if (!w.ok) break; until = w.t; }
       qt.textContent = '';
-      qt.append(mkEl('b', null, ok + '/4'), document.createTextNode(' lundis prêts' + (until ? ' · jusqu’au ' + fmtMonday(until) : '')));
+      qt.append(mkEl('b', null, ok + '/4'), document.createTextNode(' lundis prêts' + (until ? ' · jusqu’au ' + fmtMonday(until) : '') + ' · automatique'));
       if (!q[0].ok) { qt.classList.add('warn'); qt.append(mkEl('br'), document.createTextNode('Rien de prêt pour le ' + fmtMonday(q[0].t) + ' : le niveau ne changera pas')); }
       qb.disabled = ok === 4;
     });
