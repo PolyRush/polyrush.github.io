@@ -4988,20 +4988,35 @@ const UI = { mode: 'menu', screen: 'title', busy: false, from: null };   // from
 let fly = null, menuT = 0, pendingFinish = false, finToken = 0;
 const run = { state: 'off', start: 0, end: 0, shown: '' };
 const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-let records = {};
-try { records = JSON.parse(localStorage.getItem('polyrush.records') || '{}') || {}; } catch (e) { records = {}; }
-const saveRecords = () => { try { localStorage.setItem('polyrush.records', JSON.stringify(records)); } catch (e) {} bumpUnlock(); };
+/* Records et niveaux débloqués : rangés par compte sur cet appareil (polyrush.rec.<uid>, polyrush.unl.<uid>), et à part
+   pour le jeu sans compte (« g »). Un nouveau compte ne récupère donc pas la progression d'un autre compte du même
+   navigateur ; seul un tout nouveau compte reprend la partie jouée sans compte juste avant. */
+const LS = { get: k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }, del: k => { try { localStorage.removeItem(k); } catch (e) {} } };
+if (LS.get('polyrush.records') !== null || LS.get('polyrush.unlock') !== null) {   // ancien rangement, commun à tous les comptes
+  if (LS.get('polyrush.rec.g') === null) { LS.set('polyrush.rec.g', LS.get('polyrush.records') || '{}'); LS.set('polyrush.unl.g', LS.get('polyrush.unlock') || '1'); LS.set('polyrush.g.old', '1'); }
+  LS.del('polyrush.records'); LS.del('polyrush.unlock');
+}
+let recOwner = LS.get('polyrush.last') || 'g', records = {};
+const loadRecs = o => { try { return JSON.parse(LS.get('polyrush.rec.' + o) || '{}') || {}; } catch (e) { return {}; } };
+records = loadRecs(recOwner);
+const saveRecords = () => { LS.set('polyrush.rec.' + recOwner, JSON.stringify(records)); bumpUnlock(); };
 /* Niveaux débloqués : un niveau terminé ouvre le suivant pour de bon, même si son record est effacé ensuite
    (gardé ici et sur le compte). Un record sur un niveau prouve aussi qu'il était ouvert. */
-let unlockMax = 1;
-try { unlockMax = Math.max(1, +localStorage.getItem('polyrush.unlock') || 1); } catch (e) {}
+let unlockMax = Math.max(1, +LS.get('polyrush.unl.' + recOwner) || 1);
+// Changer de propriétaire des records (connexion, déconnexion, autre compte) : on recharge les siens
+function recSwitch(o) {
+  if (o === recOwner) return;
+  recOwner = o; LS.set('polyrush.last', o);
+  records = loadRecs(o); unlockMax = Math.max(1, +LS.get('polyrush.unl.' + o) || 1);
+  try { buildLevelGrid(); } catch (e) {}
+}
 function bumpUnlock(fromCloud) {
   let m = Math.max(unlockMax, +fromCloud || 0);
   for (const k in records) { const n = +k; if (n >= 1 && n <= 10 && records[k]) m = Math.max(m, n + 1); }
   m = Math.min(m, 11);
   const up = m > unlockMax; unlockMax = m;
-  try { localStorage.setItem('polyrush.unlock', String(m)); } catch (e) {}
-  try { if (ACCT.user && (up || (fromCloud !== undefined && m > (+fromCloud || 0)))) ACCT.db.collection('users').doc(ACCT.user.uid).set({ unlock: m }, { merge: true }).catch(() => {}); } catch (e) {}
+  LS.set('polyrush.unl.' + recOwner, String(m));
+  try { if (ACCT.user && ACCT.user.uid === recOwner && (up || (fromCloud !== undefined && m > (+fromCloud || 0)))) ACCT.db.collection('users').doc(ACCT.user.uid).set({ unlock: m }, { merge: true }).catch(() => {}); } catch (e) {}
   return up;
 }
 bumpUnlock();
@@ -9661,9 +9676,28 @@ async function dropMyRecord(keys) {
 }
 async function acctUser(u) {
   ACCT.user = u; ACCT.pseudo = null; ACCT.known = true;
+  recSwitch(u ? u.uid : 'g');
   if (!u) { acctRender(); bootDone(); if (ACCT.pending) acctOpen('login'); return; }
   try {
     const ref = ACCT.db.collection('users').doc(u.uid), snap = await ref.get(), d = snap.exists ? snap.data() : {};
+    // tout nouveau compte : il reprend la partie jouée sans compte sur cet appareil (pas celle d'un autre compte)
+    if (!snap.exists && LS.get('polyrush.g.old') === null) {
+      const g = loadRecs('g'); for (const k in g) if (+g[k] > 0 && (!records[k] || g[k] < records[k])) records[k] = g[k];
+      unlockMax = Math.max(unlockMax, +LS.get('polyrush.unl.g') || 1); saveRecords();
+    }
+    // Avant, la progression était commune à tous les comptes d'un navigateur : un compte créé après un autre a pu en
+    // hériter. Une seule fois par compte : sans aucun temps au classement, ses records et déblocages repartent de zéro.
+    if (snap.exists && !d.unlockV) {
+      let any = true;
+      try {
+        const got = await Promise.all(Object.keys(BUILTIN).map(Number).filter(n => n >= 1 && n <= 10)
+          .map(n => ACCT.db.collection('scores').doc(String(n)).collection('runs').doc(u.uid).get()));
+        any = got.some(x => x.exists);
+      } catch (e) { any = true; }
+      const fix = any ? { unlockV: 2 } : { unlockV: 2, unlock: 1, records: {} };
+      if (!any) { d.unlock = 1; d.records = {}; records = {}; unlockMax = 1; LS.set('polyrush.rec.' + u.uid, '{}'); LS.set('polyrush.unl.' + u.uid, '1'); buildLevelGrid(); }
+      try { await ref.update(fix); } catch (e) { console.warn(e); }
+    }
     ACCT.pseudo = d.pseudo || null;
     // Remises à zéro par l'admin (tout, ce joueur, un niveau, ou un temps de ce joueur sur un niveau) : les records
     // d'avant disparaissent. Chaque appareil garde ce qu'il a déjà appliqué (ses records sont à lui), le compte aussi :
@@ -9690,7 +9724,7 @@ async function acctUser(u) {
     for (const k in cloud) { const v = Math.round(+cloud[k]); if (v > 0 && (!records[k] || v < records[k])) records[k] = v; }
     for (const k in records) if (!cloud[k] || records[k] < cloud[k]) push = true;
     saveRecords(); buildLevelGrid();
-    if (push) await ref.set({ records: { ...records }, maj: Date.now() }, { merge: true });
+    if (push) await ref.set({ records: { ...records }, maj: Date.now(), ...(snap.exists ? {} : { unlockV: 2 }) }, { merge: true });
     if (ACCT.pseudo) acctPushBoard(false);
   } catch (e) { console.warn(e); }
   // Connecté avec un pseudo : la fenêtre de connexion se ferme d'elle-même (le profil ne s'ouvre que sur demande)
