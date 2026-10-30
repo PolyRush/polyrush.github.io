@@ -439,6 +439,38 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .fb-l{position:relative}
 .fin-board .board li.p1{--g:var(--g-gold)} .fin-board .board li.p2{--g:var(--g-silver)} .fin-board .board li.p3{--g:var(--g-bronze)}
 .fin-board .board li.pod.go{box-shadow:var(--sh-2),0 0 0 3px rgba(var(--g),.55),0 0 26px rgba(var(--g),.85)}
+/* podium de tous les classements (niveau, arrivée, général) : plaques d'or, d'argent et de bronze, métal brossé,
+   un reflet qui passe de temps en temps ; le 1er a en plus son liseré de lumière qui tourne */
+.board li.r1:nth-child(n),.board li.r2:nth-child(n),.board li.r3:nth-child(n){position:relative;color:var(--ink);border-color:rgba(17,17,17,.8);
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.8) 47%,rgba(255,255,255,.18) 52%,transparent 60%) 160% 0/320% 100% no-repeat,
+    repeating-linear-gradient(118deg,rgba(255,255,255,.12) 0 1.5px,transparent 1.5px 4px),var(--metal);
+  box-shadow:inset 0 1.5px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.16),0 0 14px rgba(var(--g),.4);
+  animation:foilRow 6.5s cubic-bezier(.45,0,.2,1) var(--fd) infinite}
+.board li.r1:nth-child(n){--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);--g:var(--g-gold);--fd:.3s}
+.board li.r2:nth-child(n){--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%);--g:var(--g-silver);--fd:2.2s}
+.board li.r3:nth-child(n){--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%);--g:var(--g-bronze);--fd:4.1s}
+.pv-list .board li.r1:nth-child(n),.pv-list .board li.r2:nth-child(n),.pv-list .board li.r3:nth-child(n){
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.8) 47%,rgba(255,255,255,.18) 52%,transparent 60%) 160% 0/320% 100% no-repeat,
+    repeating-linear-gradient(118deg,rgba(255,255,255,.12) 0 1.5px,transparent 1.5px 4px),var(--metal);
+  box-shadow:inset 0 0 0 1.5px rgba(17,17,17,.7),inset 0 2.5px 0 rgba(255,255,255,.6),inset 0 -3px 0 rgba(0,0,0,.16),0 0 14px rgba(var(--g),.4)}
+.board li.r1:nth-child(n) .ps,.board li.r2:nth-child(n) .ps,.board li.r3:nth-child(n) .ps{text-shadow:0 1px 0 rgba(255,255,255,.55)}
+.board li.r1:nth-child(n) .rk{background:var(--ink);color:#ffd34d;box-shadow:none}
+.board li.r2:nth-child(n) .rk{background:var(--ink);color:#eef1f5;box-shadow:none}
+.board li.r3:nth-child(n) .rk{background:var(--ink);color:#f5b47a;box-shadow:none}
+.board li.r1:nth-child(n)::after{content:"";position:absolute;inset:-2px;z-index:1;pointer-events:none;border-radius:11px;padding:2.5px;
+  background:conic-gradient(from var(--ga),transparent 0 58%,rgba(255,255,255,0) 61%,#fff 72%,#fffbe6 75%,rgba(255,255,255,0) 86%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  animation:goldRing 4s linear infinite}
+.board li.me.r1:nth-child(n),.board li.me.r2:nth-child(n),.board li.me.r3:nth-child(n){border-color:var(--ink);box-shadow:var(--sh-1),inset 0 1.5px 0 rgba(255,255,255,.7),inset 0 -2px 0 rgba(0,0,0,.16),0 0 16px rgba(var(--g),.55)}
+.pv-list .board li.me.r1:nth-child(n),.pv-list .board li.me.r2:nth-child(n),.pv-list .board li.me.r3:nth-child(n){box-shadow:inset 0 0 0 2px var(--ink),inset 4px 0 0 var(--ink),0 0 16px rgba(var(--g),.55)}
+@media (prefers-reduced-motion:reduce){.board li.r1:nth-child(n),.board li.r2:nth-child(n),.board li.r3:nth-child(n),.board li.r1:nth-child(n)::after{animation:none}}
+/* la place de la carte du menu : même métal */
+.pts-card.r1 .pc-r,.pts-card.r2 .pc-r,.pts-card.r3 .pc-r{background:repeating-linear-gradient(118deg,rgba(255,255,255,.14) 0 1.5px,transparent 1.5px 4px),var(--metal);color:var(--ink);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.75),inset 0 -3px 0 rgba(0,0,0,.18),inset 0 0 0 2px rgba(17,17,17,.75),0 0 16px rgba(var(--g),.6)}
+.pts-card.r1{--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);--g:var(--g-gold)}
+.pts-card.r2{--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%);--g:var(--g-silver)}
+.pts-card.r3{--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%);--g:var(--g-bronze)}
+.pts-card.r1 .pc-r b,.pts-card.r2 .pc-r b,.pts-card.r3 .pc-r b{text-shadow:0 1px 0 rgba(255,255,255,.6)}
 /* rang qui défile comme un compteur pendant la montée */
 .fin-board .board li .rk.roll{display:block;overflow:hidden;line-height:22px;text-align:center}
 .fin-board .board li .rk .odo{display:block;transition:transform var(--dur,1s) cubic-bezier(.6,0,.2,1)}
