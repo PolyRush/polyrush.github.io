@@ -362,13 +362,20 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .pts-sum div:first-child b{font-size:22px;color:var(--red)}
 .pts-list{max-height:min(46vh,420px);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 4px 0}
 /* à côté du temps : ce qu'il rapporte */
-.fin-trow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 14px}
-.fin-gain{display:inline-flex;align-items:center;gap:5px;padding:7px 11px 7px 12px;border:2.5px solid var(--ink);border-radius:999px;background:var(--card);box-shadow:var(--sh-1);
-  font:italic 900 14px/1 var(--font-display);text-transform:uppercase;color:var(--ink);white-space:nowrap;transform-origin:0 50%}
-.fin-gain b{font:800 19px/1 var(--font-num);font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--red);margin-right:2px}
-.fin-gain i.cube{width:18px;height:18px;margin-left:2px}
-.fin-gain.in{animation:gainIn .55s var(--ease-pop) both}
-@keyframes gainIn{from{opacity:0;transform:translateX(-14px) scale(.5)}}
+.fin-trow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 20px}
+/* le gain, tamponné de travers à droite du temps */
+.fin-gain{position:relative;display:grid;justify-items:center;padding:6px 10px 5px;border:3px solid var(--red);border-radius:8px;color:var(--red);
+  transform:rotate(-10deg);white-space:nowrap;pointer-events:none}
+.fin-gain::before{content:"";position:absolute;inset:3px;border:1.5px solid var(--red);border-radius:5px;opacity:.55}
+.fin-gain b{font:italic 900 clamp(34px,8vw,48px)/.9 var(--font-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.fin-gain span{display:flex;align-items:center;gap:5px;margin-top:2px;font:italic 900 13px/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase}
+.fin-gain i.cube{width:15px;height:15px}
+.fin-gain.wait{visibility:hidden}
+.fin-gain.in{animation:stamp2 .42s cubic-bezier(.5,0,.75,0) both}
+@keyframes stamp2{0%{opacity:0;transform:rotate(-3deg) scale(2.6)}70%{opacity:1;transform:rotate(-11deg) scale(.94)}85%{transform:rotate(-9.5deg) scale(1.03)}100%{transform:rotate(-10deg) scale(1)}}
+.fin-card.thump{animation:thump .28s ease-out}
+@keyframes thump{30%{transform:translateY(3px) scale(.995)}}
+@media (prefers-reduced-motion:reduce){.fin-gain.in,.fin-card.thump{animation:none}}
 /* arrivée : les points jaillissent du temps et filent en bas à droite, où le total sort, monte, puis se range */
 #ptsFx{position:fixed;inset:0;width:100%;height:100%;z-index:31;pointer-events:none}
 .pts-hud{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:32;pointer-events:none;
@@ -845,7 +852,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
     <div id="finRec" class="rec" hidden>Nouveau record</div>
     <div class="burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="fin-eye"><i aria-hidden="true"></i><span id="finEye">Arrivée</span></div>
-    <div class="fin-trow"><div id="finTime" class="ftime">0,000</div><div id="finGain" class="fin-gain" hidden><b>+0</b>pts<i class="cube" aria-hidden="true"></i></div></div>
+    <div class="fin-trow"><div id="finTime" class="ftime">0,000</div><div id="finGain" class="fin-gain" hidden><b>+0</b><span>pts<i class="cube" aria-hidden="true"></i></span></div></div>
     <div id="finDelta" class="delta" hidden></div>
     <div id="finBoard" class="fin-board" hidden></div>
     <div class="fin-act">
@@ -7339,7 +7346,7 @@ function onFinish() {
   if (REC) { qa.set(P.q.x, P.q.y, P.q.z, P.q.w); recSample(run.end, P.x, P.y, P.z, qa, true); }
   // Un essai depuis l'éditeur ne compte pas comme record.
   const prev = ED.test ? 0 : records[recKey(LEVEL)], better = !ED.test && (!prev || ms < prev);
-  if (better) { records[recKey(LEVEL)] = ms; saveRecords(); }
+  if (better) { records[recKey(LEVEL)] = ms; saveRecords(); recFresh[String(recKey(LEVEL))] = Date.now(); }
   sfx('finish', better && !!prev);
   tMain.textContent = fmtT(ms); timerEl.className = 'card done';
   winflash.classList.remove('go'); void winflash.offsetWidth; winflash.classList.add('go');
@@ -8571,8 +8578,10 @@ async function ptsLoad(force) {
     keys.forEach((k, i) => {
       const snap = cols[i]; if (!snap) return;
       const n = k[0] === 'w' ? WEEKLY_N : +k;
-      const rows = snap.docs.map(d => ({ uid: d.id, ...d.data() })).filter(r => VERD[verdKey(n, r)] !== 'bad');
-      rows.forEach(r => { if (r.pseudo) who(r.uid).pseudo = r.pseudo; if (r.uid === me) mine[k] = r.ms; });
+      const all = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
+      all.forEach(r => { if (r.uid === me) mine[k] = r.ms; });            // son propre temps compte toujours pour soi
+      const rows = all.filter(r => r.uid === me || VERD[verdKey(n, r)] !== 'bad');
+      rows.forEach(r => { if (r.pseudo) who(r.uid).pseudo = r.pseudo; });
       const S = ptsScore(rows, ok); best[k] = S.best;
       for (const uid in S.pts) { const p = who(uid); if (n === WEEKLY_N) p.cur = S.pts[uid]; else { p.lv[k] = S.pts[uid]; p.nLv++; } }
     });
@@ -8590,11 +8599,31 @@ async function ptsLoad(force) {
     let rank = 0, prev = -1;
     list.forEach((p, i) => { if (p.total !== prev) rank = i + 1; p.rank = rank; prev = p.total; });
     if (me && ACCT.pseudo && P[me]) P[me].pseudo = ACCT.pseudo;
+    syncRecords(keys, cols, mine);
     PTS.data = { list, best, mine, me: me ? (P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
     PTS.t = Date.now();
     return PTS.data;
   })();
   try { return await PTS.busy; } catch (e) { console.warn(e); return PTS.data; } finally { PTS.busy = null; }
+}
+/* Le classement fait foi : sur les niveaux classés, ton record est ton temps au classement. Un temps effacé (par
+   l'admin, ou à la main dans la base) emporte le record avec lui. Un record tout juste fait est laissé tranquille le
+   temps qu'il arrive au classement. */
+const recFresh = {};
+function syncRecords(keys, cols, mine) {
+  if (!ACCT.user || !ACCT.pseudo) return;
+  let ch = false;
+  keys.forEach((k, i) => {
+    if (!cols[i]) return;                                          // classement illisible : on ne touche à rien
+    const n = k[0] === 'w' ? WEEKLY_N : +k;
+    if (!boardOK(n) || Date.now() - (recFresh[k] || 0) < 120000) return;
+    const b = mine[k] || 0, r = +records[k] || 0;
+    if (b ? r !== b : r) { if (b) records[k] = b; else delete records[k]; ch = true; }
+  });
+  if (!ch) return;
+  saveRecords(); buildLevelGrid();
+  if (UI.screen === 'level' && PV) { const rk = recKey(PV.n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]); }
+  ACCT.db.collection('users').doc(ACCT.user.uid).update({ records: { ...records }, maj: Date.now() }).catch(e => console.warn(e));
 }
 // Points de ce joueur sur un niveau (n : 1-10 ou WEEKLY_N)
 function ptsLevel(n) {
@@ -8665,11 +8694,17 @@ function finPoints(n, ms, prev, better, tok) {
     if (+n === WEEKLY_N) D.me.cur = newP; else { if (!D.me.lv[k]) D.me.nLv++; D.me.lv[k] = newP; D.me.levels = (D.me.levels || 0) + gain; }
     D.me.total = newTot; PTS.t = 0;
   }
-  const fg = $('finGain'); fg.hidden = true; fg.classList.remove('in');
-  if (gain > 0) setTimeout(() => {
+  const fg = $('finGain'); fg.classList.remove('in');
+  fg.hidden = !(gain > 0); if (!(gain > 0)) return;
+  fg.querySelector('b').textContent = '+' + fmtPts(gain); fg.classList.add('wait');   // sa place est gardée : le temps ne bouge pas
+  setTimeout(() => {
     if (tok !== finToken) return;
-    fg.querySelector('b').textContent = '+' + fmtPts(gain); fg.hidden = false; void fg.offsetWidth; fg.classList.add('in');
-    ptsBurst($('finTime'), gain, oldTot, tok);
+    fg.classList.remove('wait'); void fg.offsetWidth; fg.classList.add('in');
+    setTimeout(() => {                                   // l'impact du tampon, puis les points en sortent
+      if (tok !== finToken) return;
+      const card = fg.closest('.fin-card'); card.classList.remove('thump'); void card.offsetWidth; card.classList.add('thump');
+      ptsBurst(fg.querySelector('b'), gain, oldTot, tok);
+    }, reduced ? 0 : 330);
   }, reduced ? 200 : 950);
 }
 /* La gerbe : des points tombent du temps, rebondissent, puis filent vers le compteur qui sort en bas à droite ;
@@ -8704,9 +8739,9 @@ function ptsBurst(fromEl, gain, oldTot, tok) {
   const R = fromEl.getBoundingClientRect(), N = Math.max(14, Math.min(48, Math.round(gain / 8))), per = gain / N;
   const parts = [], sparks = [];
   for (let i = 0; i < N; i++) {
-    const a = -Math.PI / 2 + (Math.random() - .5) * 2.4, sp = 160 + Math.random() * 300;
-    parts.push({ born: (i / N) * 0.55 + Math.random() * 0.05, x: R.left + R.width * (0.1 + Math.random() * 0.8), y: R.top + R.height * (0.25 + Math.random() * 0.55),
-      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ta: 0.26 + Math.random() * 0.16, tb: 0.42 + Math.random() * 0.26, s: 6 + Math.random() * 3.5,
+    const a = -Math.PI / 2 + 0.35 + (Math.random() - .5) * 1.3, sp = 90 + Math.random() * 150;
+    parts.push({ born: (i / N) * 0.6 + Math.random() * 0.04, x: R.left + R.width * (0.3 + Math.random() * 0.4), y: R.top + R.height * (0.35 + Math.random() * 0.3),
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ta: 0.16 + Math.random() * 0.12, tb: 0.42 + Math.random() * 0.26, s: 6 + Math.random() * 3.5,
       r: Math.random() * 6, vr: (Math.random() - .5) * 16, col: FX_COL[i % FX_COL.length], t: 0, px: 0, py: 0, done: false });
   }
   let got = 0, left = N, last = performance.now(), tickAt = 0;
