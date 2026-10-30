@@ -490,9 +490,9 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .board li .tm.hp.hold .pt{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.board li .tm.hp > *{transition:opacity .15s}.board li .tm .pt,.board li .tm.hp:hover .tv{transform:none}}
 /* pseudos cliquables : ouvrent la fiche du joueur */
-.board .ps[data-uid]{justify-self:start;max-width:100%;cursor:pointer;padding:3px 0 5px;margin:-3px 0 -5px;   /* place pour le trait (le pseudo coupe ce qui dépasse) */
+.ps[data-uid]{justify-self:start;max-width:100%;cursor:pointer;padding:3px 0 5px;margin:-3px 0 -5px;   /* place pour le trait (le pseudo coupe ce qui dépasse) */
   background:linear-gradient(currentColor,currentColor) no-repeat 0 calc(100% - 1px)/0% 2px;transition:background-size .22s var(--ease-out)}
-@media (hover:hover){.board .ps[data-uid]:hover{background-size:100% 2px}}
+@media (hover:hover){.ps[data-uid]:hover{background-size:100% 2px}}
 /* fiche d'un joueur */
 .pf-back{justify-self:start;margin:-6px 0 -2px;padding:0;border:0;background:none;font:800 12px/1 var(--font-ui);color:var(--muted);cursor:pointer}
 .pf-back:hover{color:var(--ink)}
@@ -554,6 +554,84 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .pf-tot i.cube{width:24px;height:24px}
 @media (max-width:440px){.pf-grid{gap:5px}.pf-t{padding:5px 5px;border-width:2px}.pf-t .n{font-size:16px}.pf-t .tm{font-size:9.5px}.pf-t .cr{width:14px;height:14px;top:4px;right:4px}}
 @media (prefers-reduced-motion:reduce){.pf-t,.pf-t.gold,.pf-tot,.pts-sum,.pts-formula{animation:none}}
+
+/* classement général : un vrai podium, puis la suite, et ma place en bas */
+.pts-view{row-gap:14px}
+.pod{display:grid;grid-template-columns:1fr 1.18fr 1fr;align-items:end;gap:10px;padding-top:30px;margin-bottom:-2px}
+.pod-s{position:relative;display:grid;justify-items:center;gap:6px;min-width:0}
+.pod-s.m1{--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);--g:var(--g-gold);--h:118px;--d:.5s}
+.pod-s.m2{--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%);--g:var(--g-silver);--h:84px;--d:.28s}
+.pod-s.m3{--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%);--g:var(--g-bronze);--h:64px;--d:.06s}
+.pod-av{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;border:3px solid var(--ink);color:var(--ink);font:italic 900 22px/1 var(--font-display);
+  background:repeating-linear-gradient(118deg,rgba(255,255,255,.14) 0 1.5px,transparent 1.5px 4px),var(--metal);
+  box-shadow:var(--sh-1),inset 0 2px 0 rgba(255,255,255,.7),0 0 16px rgba(var(--g),.6);animation:podAv .5s var(--ease-pop) both;animation-delay:calc(var(--d) + .35s)}
+.pod-s.m1 .pod-av{width:62px;height:62px;font-size:27px}
+.pod-cr{position:absolute;top:-24px;left:50%;width:26px;height:22px;margin-left:-13px;color:#e9a00c;filter:drop-shadow(0 1px 0 #3a2600) drop-shadow(0 0 6px rgba(255,190,40,.7));animation:podCr .6s var(--ease-pop) both;animation-delay:calc(var(--d) + .55s)}
+.pod-cr svg{width:100%;height:100%}
+.pod-s .ps[data-uid]{justify-self:center}
+.pod-ps{max-width:100%;font:800 14px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;animation:rowIn .4s var(--ease-out) both;animation-delay:calc(var(--d) + .45s)}
+.pod-s.me .pod-ps{color:var(--red-deep)}
+.pod-tot{font:800 15px/1 var(--font-num);font-variant-numeric:tabular-nums;justify-items:center;animation:rowIn .4s var(--ease-out) both;animation-delay:calc(var(--d) + .5s)}
+.pod-tot .tv{display:inline-flex;align-items:center;gap:5px}
+.pod-tot i.cube{width:15px;height:15px}
+.pod-tot .pt.sum{gap:6px}
+.pod-tot .sm{display:grid;justify-items:center;gap:1px}
+.pod-tot .sm b{font:800 12.5px/1 var(--font-num)}
+.pod-tot .sm small{font:700 8px/1 var(--font-ui);letter-spacing:.05em;color:var(--muted)}
+.pod-tot .op{font:800 12px/1 var(--font-num);color:var(--muted);margin-top:-8px}
+@media (hover:hover){.pod-s .tm.hp:hover .tv{opacity:0;transform:translateY(-85%)}.pod-s .tm.hp:hover .pt{opacity:1;transform:none}}
+.pod-s .tm.hp.hold .tv{opacity:0;transform:translateY(-85%)}
+.pod-s .tm.hp.hold .pt{opacity:1;transform:none}
+.pod-s .tm.hp{display:inline-grid;justify-items:center;align-items:center;overflow:hidden;padding:3px 0;margin:-3px 0}
+.pod-s .tm.hp > *{grid-area:1/1;transition:transform .32s cubic-bezier(.3,.75,.2,1),opacity .22s ease}
+.pod-s .tm .pt{display:inline-flex;align-items:center;opacity:0;transform:translateY(85%)}
+.pod-base{position:relative;overflow:hidden;width:100%;height:var(--h);margin-top:4px;display:grid;justify-items:center;align-content:start;padding-top:8px;box-sizing:border-box;
+  border:2.5px solid var(--ink);border-bottom:0;border-radius:12px 12px 0 0;color:var(--ink);
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.85) 47%,rgba(255,255,255,.2) 52%,transparent 60%) 160% 0/320% 100% no-repeat,
+    repeating-linear-gradient(118deg,rgba(255,255,255,.12) 0 1.5px,transparent 1.5px 4px),var(--metal);
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.75),inset 0 -6px 10px rgba(0,0,0,.12),0 0 22px rgba(var(--g),.45);
+  transform-origin:50% 100%;animation:podRise .6s cubic-bezier(.2,.9,.3,1.15) both,foilRow 5.5s cubic-bezier(.45,0,.2,1) infinite;animation-delay:var(--d),calc(var(--d) + 1.2s)}
+.pod-base b{font:italic 900 34px/1 var(--font-display);text-shadow:0 1px 0 rgba(255,255,255,.65);letter-spacing:-.03em}
+.pod-s.m1 .pod-base b{font-size:44px}
+.pod-s.m1 .pod-base::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:inherit;padding:2.5px;
+  background:conic-gradient(from var(--ga),transparent 0 58%,rgba(255,255,255,0) 61%,#fff 72%,#fffbe6 75%,rgba(255,255,255,0) 86%,transparent 100%);
+  -webkit-mask:linear-gradient(#000 0 0) content-box,linear-gradient(#000 0 0);-webkit-mask-composite:xor;mask:linear-gradient(#000 0 0) content-box exclude,linear-gradient(#000 0 0);
+  animation:goldRing 3.6s linear infinite}
+.pod-s.empty .pod-av{opacity:.35}
+.pod-s.empty .pod-base{opacity:.35;animation:podRise .6s cubic-bezier(.2,.9,.3,1.15) both;animation-delay:var(--d)}
+@keyframes podRise{from{transform:scaleY(0)}}
+@keyframes podAv{from{opacity:0;transform:translateY(14px) scale(.6)}}
+@keyframes podCr{from{opacity:0;transform:translateY(-12px) rotate(-25deg) scale(.4)}}
+.pod + .pts-list{border-top:2.5px solid var(--ink);padding-top:10px;margin-top:-14px}
+.pts-view .pts-list{max-height:min(30vh,280px)}
+/* ma place, en bas */
+.pts-me{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 14px 10px 10px;border:2.5px solid var(--ink);border-radius:12px;background:#fff0ee;box-shadow:var(--sh-2);
+  animation:pfIn .45s var(--ease-pop) .5s backwards}
+.pts-me .rk{min-width:42px;height:34px;padding:0 6px;box-sizing:border-box;border-radius:8px;display:grid;place-items:center;background:var(--ink);color:#fff;font:italic 900 18px/1 var(--font-display)}
+.pts-me .rk.m1,.pts-me .rk.m2,.pts-me .rk.m3{color:var(--ink);background:repeating-linear-gradient(118deg,rgba(255,255,255,.14) 0 1.5px,transparent 1.5px 4px),var(--metal);box-shadow:inset 0 0 0 2px rgba(17,17,17,.75),0 0 12px rgba(var(--g),.55)}
+.pts-me .rk.m1{--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);--g:var(--g-gold)}
+.pts-me .rk.m2{--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%);--g:var(--g-silver)}
+.pts-me .rk.m3{--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%);--g:var(--g-bronze)}
+.pts-me .who{display:grid;gap:4px;min-width:0}
+.pts-me .lab{font:800 10px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.pts-me .ps{font:800 15px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pts-me .me-tot{font:800 22px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.03em;display:inline-grid;justify-items:end;align-items:center;overflow:hidden;padding:4px 0;margin:-4px 0}
+.pts-me .me-tot > *{grid-area:1/1;transition:transform .32s cubic-bezier(.3,.75,.2,1),opacity .22s ease}
+.pts-me .me-tot .tv{display:inline-flex;align-items:center;gap:6px}
+.pts-me .me-tot i.cube{width:20px;height:20px}
+.pts-me .me-tot .pt{display:inline-flex;align-items:center;gap:7px;opacity:0;transform:translateY(85%)}
+.pts-me .me-tot .sm{display:grid;justify-items:center;gap:2px}
+.pts-me .me-tot .sm b{font:800 16px/1 var(--font-num)}
+.pts-me .me-tot .sm small{font:700 9px/1 var(--font-ui);letter-spacing:.05em;color:var(--muted)}
+.pts-me .me-tot .op{font:800 15px/1 var(--font-num);color:var(--muted);margin-top:-10px}
+@media (hover:hover){.pts-me .me-tot:hover .tv{opacity:0;transform:translateY(-85%)}.pts-me .me-tot:hover .pt{opacity:1;transform:none}}
+.pts-me .me-tot.hold .tv{opacity:0;transform:translateY(-85%)}
+.pts-me .me-tot.hold .pt{opacity:1;transform:none}
+.pts-view .pts-formula{padding:7px 10px;font-size:12px;background:none;opacity:.8}
+.pts-view .pts-formula i.cube{width:16px;height:16px}
+@media (max-width:440px){.pod{gap:6px}.pod-av{width:42px;height:42px;font-size:19px}.pod-s.m1 .pod-av{width:52px;height:52px}.pod-ps{font-size:12.5px}.pod-tot{font-size:13px}
+  .pod-s.m1{--h:100px}.pod-s.m2{--h:72px}.pod-s.m3{--h:56px}}
+@media (prefers-reduced-motion:reduce){.pod-av,.pod-cr,.pod-ps,.pod-tot,.pod-base,.pts-me,.pod-s.m1 .pod-base::after{animation:none}}
 /* rang qui défile comme un compteur pendant la montée */
 .fin-board .board li .rk.roll{display:block;overflow:hidden;line-height:22px;text-align:center}
 .fin-board .board li .rk .odo{display:block;transition:transform var(--dur,1s) cubic-bezier(.6,0,.2,1)}
@@ -9089,7 +9167,7 @@ const holdEnd = () => document.querySelectorAll('.hold').forEach(x => x.classLis
 /* Fiche d'un joueur : un clic sur un pseudo, dans n'importe quel classement. Ses 10 niveaux avec ses temps (en or là où il
    a le meilleur temps ; au survol, les points de ce temps), et son total en bas. */
 document.addEventListener('click', e => {
-  const ps = e.target.closest && e.target.closest('.board .ps[data-uid]');
+  const ps = e.target.closest && e.target.closest('.ps[data-uid]');
   if (!ps || !ACCT.on) return;
   e.stopPropagation(); e.preventDefault();
   ACCT.pl = { uid: ps.dataset.uid, pseudo: ps.textContent, from: !acctEl.hidden && ACCT.view === 'points' ? 'points' : null };
@@ -9151,7 +9229,7 @@ function pfBody(c, p, D) {
   c.appendChild(tot);
 }
 function ptsView(c) {
-  c.classList.add('wide');
+  c.classList.add('wide', 'pts-view');
   c.appendChild(mkEl('h2', null, 'Classement général'));
   const D = PTS.data;
   if (!D) {
@@ -9159,37 +9237,55 @@ function ptsView(c) {
     ptsLoad().then(() => { if (ACCT.view === 'points' && !acctEl.hidden) acctRender(); });
     return;
   }
-  if (D.me && D.me.total) {
-    // mon total ; au survol (appui long sur téléphone) : niveaux + semaines
-    const sum = mkEl('div', 'pf-tot pts-big'), ta = mkEl('div', 'a'), tb = mkEl('div', 'b');
-    ta.append(mkEl('b', null, fmtPts(D.me.total)), mkEl('i', 'cube'));
+  const me = D.me ? D.me.uid : null;
+  // un total ; au survol (appui long sur téléphone) : niveaux + semaines
+  const totTag = (p, cls) => {
+    const tm = mkEl('span', 'tm hp ' + (cls || '')), tv = mkEl('span', 'tv', fmtPts(p.total)), pt = mkEl('span', 'pt sum');
+    tv.appendChild(mkEl('i', 'cube'));
     const part = (v, l) => { const x = mkEl('span', 'sm'); x.append(mkEl('b', null, fmtPts(v)), mkEl('small', null, l)); return x; };
-    tb.append(part(D.me.levels || 0, 'niveaux'), mkEl('span', 'op', '+'), part((D.me.wk || 0) + (D.me.cur || 0), 'semaines'), mkEl('i', 'cube'));
-    sum.append(ta, tb);
-    c.appendChild(sum);
-  }
-  const box = mkEl('div', 'pts-list');
-  if (!D.list.length) box.appendChild(mkEl('p', 'acct-empty', 'Personne n’a encore de points.'));
+    pt.append(part(p.levels || 0, 'niveaux'), mkEl('span', 'op', '+'), part((p.wk || 0) + (p.cur || 0), 'semaines'));
+    tm.append(tv, pt); return tm;
+  };
+  if (!D.list.length) { c.appendChild(mkEl('p', 'acct-empty', 'Personne n’a encore de points.')); }
   else {
-    const ol = mkEl('ol', 'board'), me = D.me ? D.me.uid : null;
-    const row = p => {
-      const li = mkEl('li', (p.rank <= 3 ? 'r' + p.rank : '') + (p.uid === me ? ' me' : ''));
-      li.style.setProperty('--ri', Math.min(ol.children.length, 12));
-      const tm = mkEl('span', 'tm hp'), tv = mkEl('span', 'tv', fmtPts(p.total)), pt = mkEl('span', 'pt sum');
-      tv.appendChild(mkEl('i', 'cube'));
-      const part = (v, l) => { const x = mkEl('span', 'sm'); x.append(mkEl('b', null, fmtPts(v)), mkEl('small', null, l)); return x; };
-      pt.append(part(p.levels || 0, 'niveaux'), mkEl('span', 'op', '+'), part((p.wk || 0) + (p.cur || 0), 'semaines'));
-      tm.append(tv, pt);
-      const ps = mkEl('span', 'ps', p.pseudo || '?'); ps.dataset.uid = p.uid;
-      li.append(mkEl('span', 'rk', String(p.rank)), ps, tm);
-      return li;
-    };
-    D.list.slice(0, 50).forEach(p => ol.appendChild(row(p)));
-    const mi = D.list.findIndex(p => p.uid === me);
-    if (mi >= 50) { ol.appendChild(mkEl('li', 'gap', '⋯')); ol.appendChild(row(D.list[mi])); }
-    box.appendChild(ol);
+    // le podium : 2e à gauche, 1er au centre (plus haut), 3e à droite
+    const pod = mkEl('div', 'pod');
+    for (const i of [1, 0, 2]) {
+      const p = D.list[i], st = mkEl('div', 'pod-s m' + (i + 1) + (p ? '' : ' empty') + (p && p.uid === me ? ' me' : ''));
+      if (p) {
+        if (i === 0) { const cr = mkEl('span', 'pod-cr'); cr.innerHTML = ICON_CROWN; st.appendChild(cr); }
+        st.appendChild(mkEl('span', 'pod-av', (p.pseudo || '?')[0].toUpperCase()));
+        const ps = mkEl('span', 'ps pod-ps', p.pseudo || '?'); ps.dataset.uid = p.uid; st.appendChild(ps);
+        st.appendChild(totTag(p, 'pod-tot'));
+      } else st.appendChild(mkEl('span', 'pod-av', '?'));
+      const base = mkEl('div', 'pod-base'); base.appendChild(mkEl('b', null, p ? String(p.rank) : String(i + 1)));
+      st.appendChild(base);
+      pod.appendChild(st);
+    }
+    c.appendChild(pod);
+    // la suite, à partir du 4e
+    const rest = D.list.slice(3, 50);
+    if (rest.length) {
+      const box = mkEl('div', 'pts-list'), ol = mkEl('ol', 'board');
+      rest.forEach(p => {
+        const li = mkEl('li', p.uid === me ? 'me' : ''); li.style.setProperty('--ri', Math.min(ol.children.length, 12));
+        const ps = mkEl('span', 'ps', p.pseudo || '?'); ps.dataset.uid = p.uid;
+        li.append(mkEl('span', 'rk', String(p.rank)), ps, totTag(p));
+        ol.appendChild(li);
+      });
+      box.appendChild(ol); c.appendChild(box);
+    }
   }
-  c.appendChild(box);
+  // en bas : ma place et mon total
+  const mine = mkEl('div', 'pts-me');
+  if (D.me && D.me.total) {
+    const r = D.me.rank, rk = mkEl('span', 'rk' + (r && r <= 3 ? ' m' + r : ''), r ? '#' + r : '–');
+    const ps = mkEl('span', 'ps', ACCT.pseudo || D.me.pseudo || 'Toi'); if (me) ps.dataset.uid = me;
+    const lab = mkEl('span', 'lab', 'Ta place');
+    const who = mkEl('span', 'who'); who.append(lab, ps);
+    mine.append(rk, who, totTag(D.me, 'me-tot'));
+  } else mine.appendChild(mkEl('span', 'lab', 'Finis un niveau pour entrer au classement'));
+  c.appendChild(mine);
   const f = mkEl('div', 'pts-formula'), fr = mkEl('span', 'fr');
   fr.append(mkEl('span', null, 'meilleur temps'), mkEl('span', null, 'ton temps'));
   f.append(mkEl('i', 'cube'), document.createTextNode('= 1000 ×'), fr);
@@ -9631,7 +9727,7 @@ function acctRender() {
   if (ACCT.on) { $('bEditor').hidden = !isAdmin(); navIdx(); }
   weeklyMenu();
   if (acctEl.hidden) return;
-  const c = acctCard; c.textContent = ''; c.classList.remove('wide');
+  const c = acctCard; c.textContent = ''; c.classList.remove('wide', 'pts-view');
   const x = mkEl('button', 'acct-x', '×'); x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', acctClose); c.appendChild(x);
   const v = ACCT.view;
   if (v === 'points') { ptsView(c); return; }
