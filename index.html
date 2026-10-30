@@ -7957,7 +7957,7 @@ function onFinish() {
     finRec.hidden = !better;
     $('finEye').textContent = ED.test ? 'Essai terminé' : LEVEL === WEEKLY_N ? 'Niveau de la semaine' : 'Niveau ' + String(LEVEL).padStart(2, '0');
     finTime.classList.toggle('void', !!invalid);
-    if (invalid) { finDelta.textContent = 'Temps non valide : ' + invalid[0]; finDelta.className = 'delta worse invalid'; finDelta.hidden = false; }
+    if (invalid) { finDelta.textContent = 'Temps non valide'; finDelta.className = 'delta worse invalid'; finDelta.hidden = false; }
     else if (prev) {
       const d = ms - prev;
       finDelta.textContent = (d < 0 ? '−' : d > 0 ? '+' : '±') + fmtT(Math.abs(d)) + ' s';
