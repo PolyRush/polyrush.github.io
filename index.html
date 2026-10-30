@@ -19,6 +19,7 @@
   --paper:#f6f7f9; --red:#f0443a; --red-deep:#c4271f; --red-hi:#ff6a5e; --gold:#ffc53d; --go:#1fbf5f; --lock:#b9c0c9; --lock-bg:#eceff2; --lock-bg2:#e2e6ea;
   /* Système : bords d'encre épais, ombres franches décalées (4 tailles), tout ce qui file penche du même angle */
   --sh-1:2px 2px 0 var(--ink); --sh-2:3px 3px 0 var(--ink); --sh-3:5px 5px 0 var(--ink); --sh-4:8px 8px 0 var(--ink);
+  --cube:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg stroke='%23111' stroke-width='7' stroke-linejoin='round'%3E%3Cpolygon points='50,8 86.4,29 86.4,71 50,92 13.6,71 13.6,29' fill='%23111'/%3E%3Cpolygon points='50,8 86.4,29 50,50 13.6,29' fill='%23fff'/%3E%3Cpolygon points='13.6,29 50,50 50,92 13.6,71' fill='%23cfd5dd'/%3E%3Cpolygon points='50,50 86.4,29 86.4,71 50,92' fill='%23f0443a'/%3E%3C/g%3E%3C/svg%3E");   /* le cube du logo : l'icône des points */
   --skew:-8deg;   /* = angle de l'italique de Chivo : dalles, balayages et soulignés restent parallèles aux lettres */
   --font-display:'Chivo','Arial Black','Segoe UI',system-ui,sans-serif;
   --ease-out:cubic-bezier(.2,.85,.25,1); --ease-pop:cubic-bezier(.2,1.5,.4,1); --ease-io:cubic-bezier(.75,0,.25,1);
@@ -318,7 +319,8 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 .pts-card:hover,.pts-card:focus-visible{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink);outline:none}
 .pts-card:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);transition-duration:.06s}
 .pc-l{grid-column:1;display:flex;align-items:center;gap:7px;font:800 10.5px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.pc-l::before{content:"";width:9px;height:9px;background:var(--red);transform:skewX(var(--skew));border-radius:1px}
+.pc-l::before,.ph-l::before{content:"";width:14px;height:14px;background:var(--cube) center/contain no-repeat}
+i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cube) center/contain no-repeat;vertical-align:-.08em}
 .pc-v{grid-column:1;font:800 36px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;white-space:nowrap}
 .pc-v small{font:italic 900 .4em/1 var(--font-display);letter-spacing:.02em;text-transform:uppercase;color:var(--muted);margin-left:5px}
 .pc-r{grid-column:2;grid-row:1 / span 2;align-self:stretch;display:grid;place-content:center;justify-items:center;gap:5px;min-width:58px;padding:0 10px;border-radius:9px;background:var(--ink);color:#fff;transition:background .2s}
@@ -359,6 +361,14 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 .pts-sum b{font:800 19px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .pts-sum div:first-child b{font-size:22px;color:var(--red)}
 .pts-list{max-height:min(46vh,420px);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 4px 0}
+/* à côté du temps : ce qu'il rapporte */
+.fin-trow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:6px 14px}
+.fin-gain{display:inline-flex;align-items:center;gap:5px;padding:7px 11px 7px 12px;border:2.5px solid var(--ink);border-radius:999px;background:var(--card);box-shadow:var(--sh-1);
+  font:italic 900 14px/1 var(--font-display);text-transform:uppercase;color:var(--ink);white-space:nowrap;transform-origin:0 50%}
+.fin-gain b{font:800 19px/1 var(--font-num);font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:-.03em;color:var(--red);margin-right:2px}
+.fin-gain i.cube{width:18px;height:18px;margin-left:2px}
+.fin-gain.in{animation:gainIn .55s var(--ease-pop) both}
+@keyframes gainIn{from{opacity:0;transform:translateX(-14px) scale(.5)}}
 /* arrivée : les points jaillissent du temps et filent en bas à droite, où le total sort, monte, puis se range */
 #ptsFx{position:fixed;inset:0;width:100%;height:100%;z-index:31;pointer-events:none}
 .pts-hud{position:fixed;right:calc(16px + env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:32;pointer-events:none;
@@ -367,7 +377,6 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 .pts-hud.in{transform:none}
 .pts-hud.out{transform:translateY(calc(100% + 48px));transition:transform .45s var(--ease-io)}
 .ph-l{grid-column:1 / -1;display:flex;align-items:center;gap:7px;font:800 10.5px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
-.ph-l::before{content:"";width:9px;height:9px;background:var(--red);transform:skewX(var(--skew));border-radius:1px}
 #ptsHudV{display:inline-block;min-width:3ch;font:800 34px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;transform-origin:50% 75%}
 #ptsHudV.tick{animation:phTick .14s ease-out}
 @keyframes phTick{50%{transform:scale(1.08)}}
@@ -788,7 +797,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
 @media (max-height:520px) and (min-width:600px){
   .fin-card{width:min(680px,100%);grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:26px;row-gap:10px;justify-items:stretch;align-items:center;padding:24px 22px 18px}
   .fin-card .fin-eye{grid-column:1;grid-row:1;justify-self:center;align-self:end;margin:0}
-  .fin-card .ftime{grid-column:1;grid-row:2;justify-self:center}
+  .fin-card .fin-trow{grid-column:1;grid-row:2;justify-self:center}
   .fin-card .delta{grid-column:1;grid-row:3;justify-self:center;align-self:start}
   .fin-card .fin-board{grid-column:2;grid-row:1 / span 3}
   .fin-card .fin-act{grid-column:2;grid-row:4}
@@ -836,7 +845,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
     <div id="finRec" class="rec" hidden>Nouveau record</div>
     <div class="burst" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
     <div class="fin-eye"><i aria-hidden="true"></i><span id="finEye">Arrivée</span></div>
-    <div id="finTime" class="ftime">0,000</div>
+    <div class="fin-trow"><div id="finTime" class="ftime">0,000</div><div id="finGain" class="fin-gain" hidden><b>+0</b>pts<i class="cube" aria-hidden="true"></i></div></div>
     <div id="finDelta" class="delta" hidden></div>
     <div id="finBoard" class="fin-board" hidden></div>
     <div class="fin-act">
@@ -7290,7 +7299,10 @@ function adminPanel(n, r, bad) {
   row.append(del, ban); box.appendChild(row);
 }
 async function adminDelete(n, uid) {
-  const db = ACCT.db;
+  const db = ACCT.db, k = String(recKey(n));
+  try { await db.collection('meta').doc('board').set({ cuts: { [uid]: { [k]: Date.now() } } }, { merge: true }); } catch (e) { console.warn(e); }
+  if (ACCT.user && uid === ACCT.user.uid) dropMyRecord([recKey(n)]);
+  if (PTS) PTS.t = 0;
   for (const col of ['scores', 'ghosts']) { try { await db.collection(col).doc(bkey(n)).collection('runs').doc(uid).delete(); } catch (e) { console.warn(e); } }
 }
 async function adminUnban(uid) {
@@ -7308,7 +7320,7 @@ $('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
 $('bPts').addEventListener('click', () => { if (!UI.busy) acctOpen('points'); });
 
 function resetRun() {
-  finToken++; pendingFinish = false; REC = null; ptsHudHide(true);
+  finToken++; pendingFinish = false; REC = null; ptsHudHide(true); $('finGain').hidden = true;
   finishEl.hidden = true; finishEl.classList.remove('show');
   run.state = LEVEL && UI.mode === 'play' ? 'ready' : 'off';
   run.shown = ''; timerEl.className = 'card ready'; tMain.textContent = fmtT(0);
@@ -8640,7 +8652,7 @@ async function ptsRefresh(force) {
 }
 // Arrivée : combien ce temps rapporte, avec une barre qui se remplit et le total qui monte
 function finPoints(n, ms, prev, better, tok) {
-  const D = PTS.data;
+  const D = PTS.data; $('finGain').hidden = true;
   if (ED.test || !ACCT.on || !ACCT.user || !ACCT.pseudo || !boardOK(n) || !D || !D.me) return;
   const k = +n === WEEKLY_N ? D.wkKey : String(n); if (!k) return;
   const oldMs = D.mine[k] || 0, newMs = better ? ms : (oldMs || ms);
@@ -8653,11 +8665,24 @@ function finPoints(n, ms, prev, better, tok) {
     if (+n === WEEKLY_N) D.me.cur = newP; else { if (!D.me.lv[k]) D.me.nLv++; D.me.lv[k] = newP; D.me.levels = (D.me.levels || 0) + gain; }
     D.me.total = newTot; PTS.t = 0;
   }
-  if (gain > 0) setTimeout(() => { if (tok === finToken) ptsBurst($('finTime'), gain, oldTot, tok); }, reduced ? 200 : 950);
+  const fg = $('finGain'); fg.hidden = true; fg.classList.remove('in');
+  if (gain > 0) setTimeout(() => {
+    if (tok !== finToken) return;
+    fg.querySelector('b').textContent = '+' + fmtPts(gain); fg.hidden = false; void fg.offsetWidth; fg.classList.add('in');
+    ptsBurst($('finTime'), gain, oldTot, tok);
+  }, reduced ? 200 : 950);
 }
 /* La gerbe : des points tombent du temps, rebondissent, puis filent vers le compteur qui sort en bas à droite ;
    chacun ajoute sa part au total en arrivant. */
 const FX_COL = ['#f0443a', '#f0443a', '#ff6a5e', '#ffc53d'];
+// Le cube du logo, dessiné en petit (centre 0,0, rayon r)
+function drawCube(c, r) {
+  const k = 0.866 * r, h = r / 2;
+  c.lineJoin = 'round'; c.lineWidth = Math.max(1.5, r * 0.22); c.strokeStyle = '#111';
+  c.beginPath(); c.moveTo(0, -r); c.lineTo(k, -h); c.lineTo(k, h); c.lineTo(0, r); c.lineTo(-k, h); c.lineTo(-k, -h); c.closePath(); c.fillStyle = '#111'; c.fill(); c.stroke();
+  const face = (pts, col) => { c.beginPath(); c.moveTo(pts[0], pts[1]); for (let i = 2; i < pts.length; i += 2) c.lineTo(pts[i], pts[i + 1]); c.closePath(); c.fillStyle = col; c.fill(); c.stroke(); };
+  face([0, -r, k, -h, 0, 0, -k, -h], '#fff'); face([-k, -h, 0, 0, 0, r, -k, h], '#cfd5dd'); face([0, 0, k, -h, k, h, 0, r], '#f0443a');
+}
 function ptsHudHide(now) {
   const hud = $('ptsHud'); if (hud.hidden) return;
   if (now) { hud.hidden = true; hud.classList.remove('in', 'out', 'done'); return; }
@@ -8676,12 +8701,12 @@ function ptsBurst(fromEl, gain, oldTot, tok) {
   const dpr = Math.min(2, devicePixelRatio || 1), W = innerWidth, H = innerHeight;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); cv.hidden = false;
   const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const R = fromEl.getBoundingClientRect(), N = Math.max(16, Math.min(70, Math.round(gain / 5))), per = gain / N;
+  const R = fromEl.getBoundingClientRect(), N = Math.max(14, Math.min(48, Math.round(gain / 8))), per = gain / N;
   const parts = [], sparks = [];
   for (let i = 0; i < N; i++) {
     const a = -Math.PI / 2 + (Math.random() - .5) * 2.4, sp = 160 + Math.random() * 300;
     parts.push({ born: (i / N) * 0.55 + Math.random() * 0.05, x: R.left + R.width * (0.1 + Math.random() * 0.8), y: R.top + R.height * (0.25 + Math.random() * 0.55),
-      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ta: 0.26 + Math.random() * 0.16, tb: 0.42 + Math.random() * 0.26, s: 4.5 + Math.random() * 3.5,
+      vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, ta: 0.26 + Math.random() * 0.16, tb: 0.42 + Math.random() * 0.26, s: 6 + Math.random() * 3.5,
       r: Math.random() * 6, vr: (Math.random() - .5) * 16, col: FX_COL[i % FX_COL.length], t: 0, px: 0, py: 0, done: false });
   }
   let got = 0, left = N, last = performance.now(), tickAt = 0;
@@ -8714,9 +8739,7 @@ function ptsBurst(fromEl, gain, oldTot, tok) {
         }
       }
       p.px = x; p.py = y;
-      c.save(); c.translate(x, y); c.rotate(p.r);
-      c.fillStyle = p.col; c.strokeStyle = '#111'; c.lineWidth = 2; c.lineJoin = 'round';
-      c.beginPath(); c.rect(-p.s, -p.s, p.s * 2, p.s * 2); c.fill(); c.stroke(); c.restore();
+      c.save(); c.translate(x, y); c.rotate(p.r * 0.35); drawCube(c, p.s * 1.25); c.restore();
     }
     for (const sp of sparks) {                            // petit anneau à chaque arrivée
       sp.t += dt; const q = sp.t / 0.28; if (q >= 1) continue;
@@ -8804,34 +8827,54 @@ function acctMsg(e, ok) {
   el.textContent = typeof e === 'string' ? e : (ERRS[code] ?? ('Erreur : ' + code));
   el.classList.toggle('ok', !!ok);
 }
+// Remises à zéro qui touchent ce joueur : { '*': tout, '@': ce joueur, '<niveau>': un niveau } → date
+function resetsFor(B, uid) {
+  const R = {};
+  if (+B.reset) R['*'] = +B.reset;
+  if (B.userResets && +B.userResets[uid]) R['@'] = +B.userResets[uid];
+  for (const k in (B.resets || {})) if (+B.resets[k]) R[k] = +B.resets[k];
+  const c = B.cuts && B.cuts[uid] || {};
+  for (const k in c) if (+c[k] > (R[k] || 0)) R[k] = +c[k];
+  return R;
+}
+function localSeen(v) {
+  try { if (v) { localStorage.setItem('polyrush.seen', JSON.stringify(v)); return v; } return JSON.parse(localStorage.getItem('polyrush.seen') || '{}') || {}; }
+  catch (e) { return v || {}; }
+}
+// Le record de ce joueur sur un niveau disparaît tout de suite (ici et sur le compte), quand l'admin efface son propre temps
+async function dropMyRecord(keys) {
+  if (!ACCT.user) return;
+  for (const k of keys) delete records[k];
+  saveRecords(); buildLevelGrid(); if (PTS) PTS.t = 0;
+  const loc = localSeen(), ls = loc[ACCT.user.uid] || (loc[ACCT.user.uid] = {}), now = Date.now();
+  for (const k of keys) ls[String(k)] = now;
+  localSeen(loc);
+  try { await ACCT.db.collection('users').doc(ACCT.user.uid).update({ records: { ...records }, maj: now }); } catch (e) { console.warn(e); }
+}
 async function acctUser(u) {
   ACCT.user = u; ACCT.pseudo = null; ACCT.known = true;
   if (!u) { acctRender(); bootDone(); if (ACCT.pending) acctOpen('login'); return; }
   try {
     const ref = ACCT.db.collection('users').doc(u.uid), snap = await ref.get(), d = snap.exists ? snap.data() : {};
     ACCT.pseudo = d.pseudo || null;
-    // Remise à zéro générale par l'admin : les records d'avant ne comptent plus (ni ici, ni sur le compte)
+    // Remises à zéro par l'admin (tout, ce joueur, un niveau, ou un temps de ce joueur sur un niveau) : les records
+    // d'avant disparaissent. Chaque appareil garde ce qu'il a déjà appliqué (ses records sont à lui), le compte aussi :
+    // sinon un autre navigateur qui avait encore l'ancien record le remettrait sur le compte.
     let cloud = d.records || {};
     try {
-      const m = await ACCT.db.collection('meta').doc('board').get(), reset = m.exists ? +m.data().reset || 0 : 0;
-      ACCT.replays = m.exists && m.data().replays === true;
-      if (reset && (+d.seen || 0) < reset) {
-        records = {}; cloud = {};
-        await ref.set({ records: {}, seen: reset, maj: Date.now() }, { merge: true });
-        await ref.update({ records: {} }).catch(() => {});
+      const m = await ACCT.db.collection('meta').doc('board').get(), B = m.exists ? m.data() : {};
+      ACCT.replays = B.replays === true;
+      const R = resetsFor(B, u.uid), loc = localSeen(), ls = loc[u.uid] || (loc[u.uid] = {}), cs = { ...(d.seenK || {}) };
+      // anciens repères du compte (avant ce système) : le compte les avait déjà appliqués
+      const legacy = k => k === '*' ? +d.seen || 0 : k === '@' ? +d.seenMe || 0 : +(d.seenLv || {})[k] || 0;
+      let lc = false, cc = false;
+      for (const k in R) {
+        const t = R[k], hit = key => k === '*' || k === '@' || String(key) === k;
+        if ((+ls[k] || 0) < t) { for (const key of Object.keys(records)) if (hit(key)) delete records[key]; ls[k] = t; lc = true; }
+        if (Math.max(+cs[k] || 0, legacy(k)) < t) { for (const key of Object.keys(cloud)) if (hit(key)) delete cloud[key]; cs[k] = t; cc = true; }
       }
-      // Remise à zéro de certains niveaux seulement : leurs records d'avant disparaissent (ici et sur le compte)
-      // Remise à zéro de ce joueur (panneau admin, liste des joueurs) : ses records d'avant disparaissent
-      const mine = m.exists && m.data().userResets ? +m.data().userResets[u.uid] || 0 : 0;
-      if (mine && (+d.seenMe || 0) < mine) {
-        records = {}; cloud = {}; saveRecords();
-        await ref.set({ records: {}, seenMe: mine, maj: Date.now() }, { merge: true });
-        await ref.update({ records: {} }).catch(() => {});
-      }
-      const lv = m.exists && m.data().resets || {}, seenLv = { ...(d.seenLv || {}) };
-      let cut = false;
-      for (const k in lv) if ((+seenLv[k] || 0) < +lv[k]) { delete records[k]; delete cloud[k]; seenLv[k] = +lv[k]; cut = true; }
-      if (cut) { saveRecords(); await ref.update({ records: { ...cloud }, seenLv, maj: Date.now() }).catch(() => ref.set({ records: { ...cloud }, seenLv, maj: Date.now() }, { merge: true })); }
+      if (lc) { saveRecords(); localSeen(loc); }
+      if (cc) await ref.update({ records: { ...cloud }, seenK: cs, maj: Date.now() }).catch(() => ref.set({ records: { ...cloud }, seenK: cs, maj: Date.now() }, { merge: true }));
     } catch (e) { console.warn(e); }
     // Records : le meilleur temps de chaque côté (ce navigateur et le compte)
     let push = !snap.exists;
@@ -8858,7 +8901,8 @@ async function adminResetAll() {
       if (col === 'scores') k += snap.docs.length;
     } catch (e) { console.warn(e); }
   }
-  records = {}; saveRecords(); buildLevelGrid();
+  records = {}; saveRecords(); buildLevelGrid(); if (PTS) PTS.t = 0;
+  { const loc = localSeen(); (loc[ACCT.user.uid] || (loc[ACCT.user.uid] = {}))['*'] = now; localSeen(loc); }
   try { await db.collection('users').doc(ACCT.user.uid).set({ records: {}, seen: now, maj: now }, { merge: true }); await db.collection('users').doc(ACCT.user.uid).update({ records: {} }); } catch (e) { console.warn(e); }
   return k;
 }
@@ -8871,7 +8915,8 @@ async function adminResetLevels(list, recs) {
     const upd = {}; for (const n of list) upd[String(recKey(n))] = now;
     await db.collection('meta').doc('board').set({ resets: upd }, { merge: true });
     for (const n of list) delete records[recKey(n)];
-    saveRecords(); buildLevelGrid();
+    saveRecords(); buildLevelGrid(); if (PTS) PTS.t = 0;
+    { const loc = localSeen(), ls = loc[ACCT.user.uid] || (loc[ACCT.user.uid] = {}); for (const n of list) ls[String(recKey(n))] = now; localSeen(loc); }
     try { await db.collection('users').doc(ACCT.user.uid).update({ records: { ...records }, maj: now }); } catch (e) { console.warn(e); }
   }
   for (const n of list) for (const col of ['scores', 'ghosts']) {
@@ -9295,6 +9340,7 @@ function acctRender() {
           clearTimeout(armed); armed = 0;
           acctDo(async () => {
             await ACCT.db.collection('meta').doc('board').set({ userResets: { [pl.uid]: Date.now() } }, { merge: true });
+            if (ACCT.user && pl.uid === ACCT.user.uid) await dropMyRecord(Object.keys(records));
             for (const n of boardLevels()) await adminDelete(n, pl.uid);
             for (const k in VERD) if (k.includes('|' + pl.uid + '|')) delete VERD[k];
             acctMsg(pl.pseudo + ' : temps effacés.', true); draw();
