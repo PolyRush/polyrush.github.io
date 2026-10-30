@@ -5264,7 +5264,8 @@ async function watchGhost(n, uid, pseudo) {
     if (MAP !== 'level' + n) loadMap('level' + n);
     hideScreens(); UI.mode = 'replay'; restart(); setGhostLook(true);
     RP = { on: true, n, s, i: 0, t: 0, end: s[s.length - 1][0] / 10, t0: g.t0 || 0, who: g.pseudo || pseudo || '?', ms: g.ms, done: false,
-      cp: new THREE.Vector3(), cq: new THREE.Quaternion(), fp: false, touch: true, vy: 0, hold: Infinity, intro: false };   // en pause jusqu'à la fin de la transition
+      cp: new THREE.Vector3(), cq: new THREE.Quaternion(), fp: false, touch: true, vy: 0, hold: Infinity, intro: false,   // en pause jusqu'à la fin de la transition
+      ei: 0, lj: -1e9, chk: null, dead: false, cks: solids.filter(b => b.check).map(b => b.check) };
     replayFrame(0);
     hudEl.hidden = false; backBtn.hidden = false;
     $('repWho').textContent = RP.who + ' · ' + fmtT(RP.ms) + ' s'; $('repBar').classList.remove('end'); $('repBar').hidden = false;
@@ -5285,10 +5286,11 @@ const _ra = new THREE.Quaternion(), _rb = new THREE.Quaternion();
 function replayFrame(fdt) {
   if (!RP.on) return;
   if (!RP.intro && !UI.busy) { RP.intro = true; replayIntro(); }
-  if (RP.hold > 0) { RP.hold -= fdt; if (RP.hold <= 0.4 && !RP.introOut) { RP.introOut = true; const el = $('repIntro'); el.classList.remove('in'); el.classList.add('out'); } fdt = 0; }   // petite pause avant le départ
+  if (RP.hold > 0) { RP.hold -= fdt; if (RP.hold <= 0.4 && !RP.introOut) { RP.introOut = true; const el = $('repIntro'); el.classList.remove('in'); el.classList.add('out'); } if (RP.hold <= 0) sfx('start'); fdt = 0; }   // petite pause avant le départ
   RP.t = Math.min(RP.t + fdt / DT, RP.end);
   const s = RP.s;
   while (RP.i < s.length - 2 && s[RP.i + 1][0] / 10 <= RP.t) RP.i++;
+  if (RP.hold <= 0 && !RP.done) replaySfx();
   const A = s[RP.i], B = s[Math.min(RP.i + 1, s.length - 1)], ta = A[0] / 10, tb = B[0] / 10;
   const k = tb > ta ? clamp((RP.t - ta) / (tb - ta), 0, 1) : 0, L = (j, d) => (A[j] + (B[j] - A[j]) * k) / d;
   P.x = P.px = L(1, 100); P.y = P.py = L(2, 100); P.z = P.pz = L(3, 100);
@@ -5326,8 +5328,25 @@ function replayIntro() {
   setTimeout(() => { if (RP.on && RP.introOut) el.hidden = true; }, (RP.hold + 0.2) * 1000);
 }
 // Arrivée : la même célébration qu'en jeu, puis l'écran de fin du replay
+/* Les bruitages du replay, retrouvés dans l'enregistrement : saut, atterrissage, point de reprise, chute (comme en partie) */
+function replaySfx() {
+  const s = RP.s;
+  for (let j = RP.ei + 1; j <= RP.i; j++) {
+    const a = s[j - 1], b = s[j], Fa = a[15], Fb = b[15], dx = b[1] - a[1], dy = b[2] - a[2], dz = b[3] - a[3];
+    if ((dx * dx + dy * dy + dz * dz) / 1e4 > 100 || b[2] / 100 < KILL_Y + 1) { if (!RP.dead) { RP.dead = true; sfx('fall'); } continue; }   // chute, puis il réapparaît
+    RP.dead = false;
+    const climb = (Fa | Fb) & 4, tj = b[0] / 10 * DT;
+    if (!climb && tj - RP.lj > 0.18 && ((Fb & 16 && !(Fa & 16)) || (Fa & 1 && !(Fb & 1) && b[17] / 10 > CFG.jumpV * 0.5))) { RP.lj = tj; sfx('jump'); }
+    if (Fb & 2 && !(Fa & 2)) sfx('land', -Math.min(a[17], b[17]) / 10);
+    if (Fb & 1) {
+      const x = b[1] / 100, y = b[2] / 100, z = b[3] / 100;
+      for (const c of RP.cks) if (c !== RP.chk && Math.hypot(x - c.x, z - c.z) < 3.3 && Math.abs(y - c.y) < 2) { RP.chk = c; sfx('check'); }
+    }
+  }
+  RP.ei = Math.max(RP.ei, RP.i);
+}
 function replayEnd() {
-  RP.done = true; $('repBar').hidden = true;
+  RP.done = true; $('repBar').hidden = true; sfx('finish', false);
   winflash.classList.remove('go'); void winflash.offsetWidth; winflash.classList.add('go');
   if (W && W.onFinish) W.onFinish();
   const tok = RP.tok = (RP.tok || 0) + 1;
@@ -5344,7 +5363,7 @@ function replayRestart() {
   RP.tok = (RP.tok || 0) + 1;
   $('repEnd').hidden = true; $('repEnd').classList.remove('show'); $('repBar').hidden = false;
   resetRun();                                              // range la célébration de l'arrivée
-  RP.t = 0; RP.i = 0; RP.done = false; RP.touch = true;
+  RP.t = 0; RP.i = 0; RP.done = false; RP.touch = true; RP.ei = 0; RP.lj = -1e9; RP.chk = null; RP.dead = false;
   replayIntro();
 }
 $('repAgain').addEventListener('click', replayRestart);
