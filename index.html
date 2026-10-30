@@ -476,6 +476,43 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .board li .tm.hp:hover .tv{opacity:0;transform:translateY(-85%)}
 .board li .tm.hp:hover .pt{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.board li .tm.hp > *{transition:opacity .15s}.board li .tm .pt,.board li .tm.hp:hover .tv{transform:none}}
+/* pseudos cliquables : ouvrent la fiche du joueur */
+.board .ps[data-uid]{cursor:pointer;text-underline-offset:3px;text-decoration-thickness:2px}
+.board .ps[data-uid]:hover{text-decoration-line:underline}
+/* fiche d'un joueur */
+.pf-back{justify-self:start;margin:-6px 0 -2px;padding:0;border:0;background:none;font:800 12px/1 var(--font-ui);color:var(--muted);cursor:pointer}
+.pf-back:hover{color:var(--ink)}
+.pf-h{display:flex;align-items:center;gap:10px;margin-right:40px}
+.acct-card .pf-h h2{margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pf-rk{flex:none;padding:6px 9px;border-radius:8px;background:var(--ink);color:#fff;font:italic 900 15px/1 var(--font-display)}
+.pf-rk.m1,.pf-rk.m2,.pf-rk.m3{color:var(--ink);background:repeating-linear-gradient(118deg,rgba(255,255,255,.14) 0 1.5px,transparent 1.5px 4px),var(--metal);box-shadow:inset 0 0 0 2px rgba(17,17,17,.75),0 0 12px rgba(var(--g),.55)}
+.pf-rk.m1{--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);--g:var(--g-gold)}
+.pf-rk.m2{--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%);--g:var(--g-silver)}
+.pf-rk.m3{--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%);--g:var(--g-bronze)}
+.pf-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.pf-t{position:relative;overflow:hidden;aspect-ratio:1/.92;display:grid;align-content:space-between;padding:7px 8px;border:2.5px solid var(--ink);border-radius:10px;background:var(--card);box-shadow:var(--sh-1);cursor:default}
+.pf-t .n{font:italic 900 20px/1 var(--font-display);letter-spacing:-.03em}
+.pf-t .tm{font:800 11.5px/1 var(--font-num);font-variant-numeric:tabular-nums;justify-self:start}
+.pf-t .tm.hp{display:inline-grid;justify-items:start;align-items:center;overflow:hidden;padding:2px 0;margin:-2px 0}
+.pf-t .tm.hp > *{grid-area:1/1;transition:transform .32s cubic-bezier(.3,.75,.2,1),opacity .22s ease}
+.pf-t .tm .pt{display:inline-flex;align-items:center;gap:4px;white-space:nowrap;opacity:0;transform:translateY(85%)}
+.pf-t .tm .pt i.cube{width:12px;height:12px}
+.pf-t:hover .tm.hp .tv{opacity:0;transform:translateY(-85%)}
+.pf-t:hover .tm.hp .pt{opacity:1;transform:none}
+.pf-t.none{color:var(--lock);border-color:var(--lock);box-shadow:none;background:repeating-linear-gradient(135deg,var(--lock-bg) 0 7px,#e7eaee 7px 14px)}
+.pf-t.gold{border-color:#3a2600;color:#2a1a00;
+  background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.85) 47%,rgba(255,255,255,.2) 52%,transparent 60%) 160% 0/320% 100% no-repeat,
+    repeating-linear-gradient(118deg,rgba(255,255,255,.12) 0 1.5px,transparent 1.5px 4px),linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);
+  box-shadow:var(--sh-1),inset 0 2px 0 rgba(255,255,255,.75),inset 0 -3px 0 rgba(110,60,0,.3),0 0 14px rgba(255,186,30,.5);animation:foilRow 5s cubic-bezier(.45,0,.2,1) .4s infinite}
+.pf-t.gold .n{text-shadow:0 1px 0 rgba(255,255,255,.7)}
+.pf-t .cr{position:absolute;top:6px;right:6px;width:18px;height:18px;display:grid;place-items:center;border-radius:5px;background:var(--ink);color:#ffd34d}
+.pf-t .cr svg{width:70%;height:70%}
+.pf-tot{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 12px;border:2.5px solid var(--ink);border-radius:12px;box-shadow:var(--sh-1)}
+.pf-tot .l{font:800 11px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.pf-tot b{font:800 30px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.pf-tot i.cube{width:24px;height:24px}
+@media (max-width:440px){.pf-grid{gap:5px}.pf-t{padding:5px 5px;border-width:2px}.pf-t .n{font-size:16px}.pf-t .tm{font-size:9.5px}.pf-t .cr{width:14px;height:14px;top:4px;right:4px}}
+@media (prefers-reduced-motion:reduce){.pf-t.gold{animation:none}}
 /* rang qui défile comme un compteur pendant la montée */
 .fin-board .board li .rk.roll{display:block;overflow:hidden;line-height:22px;text-align:center}
 .fin-board .board li .rk .odo{display:block;transition:transform var(--dur,1s) cubic-bezier(.6,0,.2,1)}
@@ -8744,7 +8781,7 @@ async function ptsLoad(force) {
     const banned = new Set(bans && bans.exists && Array.isArray(bans.data().uids) ? bans.data().uids : []);
     const bd = bm.d || {}, resets = bd.userResets || {}, gReset = +bd.reset || 0;
     const ok = x => x.uid === me || (!bm.hidden.has(x.uid) && !banned.has(x.uid));
-    const P = {}, who = uid => P[uid] || (P[uid] = { uid, pseudo: '', lv: {}, nLv: 0, wk: 0, cur: 0, total: 0 });
+    const P = {}, who = uid => P[uid] || (P[uid] = { uid, pseudo: '', lv: {}, ms: {}, nLv: 0, wk: 0, cur: 0, total: 0 });
     const best = {}, mine = {};
     keys.forEach((k, i) => {
       const snap = cols[i]; if (!snap) return;
@@ -8752,7 +8789,7 @@ async function ptsLoad(force) {
       const all = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
       all.forEach(r => { if (r.uid === me) mine[k] = r.ms; });            // son propre temps compte toujours pour soi
       const rows = all.filter(r => r.uid === me || (VERD[verdKey(n, r)] !== 'bad' && srvOk(k, r)));
-      rows.forEach(r => { if (r.pseudo) who(r.uid).pseudo = r.pseudo; });
+      rows.forEach(r => { const p = who(r.uid); if (r.pseudo) p.pseudo = r.pseudo; p.ms[k] = r.ms; });
       const S = ptsScore(rows, ok); best[k] = S.best;
       for (const uid in S.pts) { const p = who(uid); if (n === WEEKLY_N) p.cur = S.pts[uid]; else { p.lv[k] = S.pts[uid]; p.nLv++; } }
     });
@@ -8985,6 +9022,46 @@ async function ptsArchive(doc) {
   await ref.set({ weeks: { [key]: { id: W.id, from: W.from, ms } }, names }, { merge: true });
 }
 // Fenêtre « Classement général »
+/* Fiche d'un joueur : un clic sur un pseudo, dans n'importe quel classement. Ses 10 niveaux avec ses temps (en or là où il
+   a le meilleur temps ; au survol, les points de ce temps), et son total en bas. */
+document.addEventListener('click', e => {
+  const ps = e.target.closest && e.target.closest('.board .ps[data-uid]');
+  if (!ps || !ACCT.on) return;
+  e.stopPropagation(); e.preventDefault();
+  ACCT.pl = { uid: ps.dataset.uid, pseudo: ps.textContent, from: !acctEl.hidden && ACCT.view === 'points' ? 'points' : null };
+  acctOpen('player');
+}, true);
+function playerView(c) {
+  const pl = ACCT.pl || {}, D = PTS.data;
+  c.classList.add('wide');
+  if (pl.from) { const bk = mkEl('button', 'pf-back', '← Classement général'); bk.addEventListener('click', () => acctOpen('points')); c.appendChild(bk); }
+  if (!D) {
+    c.appendChild(mkEl('h2', null, pl.pseudo || 'Joueur')); c.appendChild(mkEl('p', 'acct-p', 'Chargement…'));
+    ptsLoad().then(() => { if (ACCT.view === 'player' && !acctEl.hidden) acctRender(); });
+    return;
+  }
+  const p = D.list.find(x => x.uid === pl.uid) || (D.me && D.me.uid === pl.uid ? D.me : null) || { uid: pl.uid, ms: {}, lv: {}, total: 0 };
+  const h = mkEl('div', 'pf-h'), nm = mkEl('h2', null, p.pseudo || pl.pseudo || 'Joueur');
+  h.appendChild(nm);
+  if (p.rank) { const rk = mkEl('span', 'pf-rk' + (p.rank <= 3 ? ' m' + p.rank : ''), '#' + p.rank); h.appendChild(rk); }
+  c.appendChild(h);
+  const g = mkEl('div', 'pf-grid'), me = D.me ? D.me.uid : null;
+  for (let n = 1; n <= 10; n++) {
+    const k = String(n), ms = (p.ms || {})[k], t = mkEl('div', 'pf-t');
+    t.appendChild(mkEl('span', 'n', String(n).padStart(2, '0')));
+    if (ms) {
+      const gold = D.best[k] && ms === D.best[k];
+      if (gold) { t.classList.add('gold'); const cr = mkEl('span', 'cr'); cr.innerHTML = ICON_CROWN; t.appendChild(cr); }
+      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms))); tm.appendChild(ptsTag(D.best[k] || ms, ms));
+      t.appendChild(tm);
+      t.title = `Niveau ${n} : ${fmtT(ms)} s`;
+    } else { t.classList.add('none'); t.appendChild(mkEl('span', 'tm', '—')); }
+    g.appendChild(t);
+  }
+  c.appendChild(g);
+  const tot = mkEl('div', 'pf-tot'); tot.append(mkEl('span', 'l', 'Total'), mkEl('b', null, fmtPts(p.total || 0)), mkEl('i', 'cube'));
+  c.appendChild(tot);
+}
 function ptsView(c) {
   c.classList.add('wide');
   c.appendChild(mkEl('h2', null, 'Classement général'));
@@ -9005,7 +9082,8 @@ function ptsView(c) {
     const row = p => {
       const li = mkEl('li', (p.rank <= 3 ? 'r' + p.rank : '') + (p.uid === me ? ' me' : ''));
       const tm = mkEl('span', 'tm', fmtPts(p.total)); tm.appendChild(mkEl('i', 'cube'));
-      li.append(mkEl('span', 'rk', String(p.rank)), mkEl('span', 'ps', p.pseudo || '?'), tm);
+      const ps = mkEl('span', 'ps', p.pseudo || '?'); ps.dataset.uid = p.uid;
+      li.append(mkEl('span', 'rk', String(p.rank)), ps, tm);
       return li;
     };
     D.list.slice(0, 50).forEach(p => ol.appendChild(row(p)));
@@ -9240,7 +9318,8 @@ async function boardMine(n, rows, el) {
     const gap = mkEl('li', 'gap', '⋯'), li = mkEl('li', 'me mine');
     const tm = mkEl('span', 'tm'); tm.appendChild(mkEl('span', 'tv', fmtT(ms) + ' s'));
     if (+ol.dataset.best) { tm.appendChild(ptsTag(+ol.dataset.best, ms)); tm.classList.add('hp'); }
-    li.append(mkEl('span', 'rk', String(ahead + 1 + (snap.size >= 2000 ? '+' : ''))), mkEl('span', 'ps', mine.data().pseudo || ACCT.pseudo || '?'), tm);
+    const ps = mkEl('span', 'ps', mine.data().pseudo || ACCT.pseudo || '?'); ps.dataset.uid = uid;
+    li.append(mkEl('span', 'rk', String(ahead + 1 + (snap.size >= 2000 ? '+' : ''))), ps, tm);
     li.title = 'Ta place au classement';
     ol.append(gap, li);
   } catch (e) { console.warn(e); }
@@ -9258,7 +9337,7 @@ function boardList(rows, el, lv) {
     const li = document.createElement('li'); li.dataset.uid = r.uid; if (ACCT.user && r.uid === ACCT.user.uid) li.className = 'me';
     if (r.hidden) { li.classList.add('hid'); li.title = 'Masqué : seul toi le vois'; } else { rank++; if (rank <= 3) li.classList.add('r' + rank); }
     const a = document.createElement('span'); a.className = 'rk'; a.textContent = r.hidden ? '–' : rank;
-    const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
+    const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?'; b.dataset.uid = r.uid;
     const c = document.createElement('span'); c.className = 'tm'; c.appendChild(mkEl('span', 'tv', fmtT(r.ms) + ' s'));
     if (!r.hidden && best) { c.appendChild(ptsTag(best, r.ms)); c.classList.add('hp'); }
     li.append(a, b, c);
@@ -9453,6 +9532,7 @@ function acctRender() {
   const x = mkEl('button', 'acct-x', '×'); x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', acctClose); c.appendChild(x);
   const v = ACCT.view;
   if (v === 'points') { ptsView(c); return; }
+  if (v === 'player') { playerView(c); return; }
   if (v === 'login') {
     c.appendChild(mkEl('h2', null, 'Compte'));
     if (ACCT.pending) c.appendChild(mkEl('p', 'acct-need', 'Connecte-toi pour jouer : tes records et ta place au classement sont gardés sur ton compte.'));
