@@ -72,6 +72,17 @@ if (todo.length) {
 if (!DRY && curFrom < cur) {
   const q = await meta(wkKey(cur)).get();
   if (q.exists) {
+    if (curDoc && curDoc.id) {
+      // la semaine qui s'achève : on range les temps de chacun, ses points restent acquis (calculés par le jeu)
+      const key = wkKey(curFrom), ref = meta('points'), p = await ref.get();
+      if (!(p.exists && p.data().weeks && p.data().weeks[key])) {
+        const snap = await db.collection('scores').doc('w' + curDoc.id).collection('runs').get();
+        const ms = {}, names = {};
+        snap.docs.forEach(x => { const r = x.data(); if (r.ms > 0) { ms[x.id] = r.ms; names[x.id] = r.pseudo || ''; } });
+        await ref.set({ weeks: { [key]: { id: String(curDoc.id), from: curFrom, ms } }, names }, { merge: true });
+        console.log(`::notice::Semaine ${key} rangée pour les points : ${Object.keys(ms).length} joueur(s)`);
+      }
+    }
     await meta('weekly').set({ ...q.data(), from: cur, pub: curDoc ? !!curDoc.pub : !!q.data().pub });
     await meta(wkKey(cur)).delete();
     console.log(`::notice::Niveau de la semaine mis en place : ${wkKey(cur)}`);

@@ -307,6 +307,80 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 .lv-col{display:grid;gap:clamp(30px,5vh,48px);width:100%;max-width:640px}
 @media (max-width:480px){.tile .num{font-size:clamp(19px,5.6vw,24px)}.tile .corner{width:14px;height:14px;right:6%;top:6%;border-radius:4px}.tile .best{font-size:8px;left:8%;right:4%}}
 
+
+/* ---------- Points ----------
+   1000 pts par niveau pour le meilleur temps, moins si on est plus lent (1000 × meilleur ÷ le sien) ; chaque niveau de
+   la semaine en rapporte aussi, et ses points restent acquis une fois la semaine finie. */
+.pts-card{position:absolute;right:max(16px,env(safe-area-inset-right,0px),4vw);bottom:calc(max(20px,6vh) + env(safe-area-inset-bottom,0px));
+  display:grid;grid-template-columns:auto auto;align-items:center;column-gap:18px;row-gap:5px;padding:13px 13px 13px 18px;
+  border:2.5px solid var(--ink);border-radius:14px;background:var(--card);color:var(--ink);cursor:pointer;text-align:left;font:inherit;
+  box-shadow:var(--sh-3);transition:transform .18s var(--ease-pop),box-shadow .18s var(--ease-pop)}
+.pts-card:hover,.pts-card:focus-visible{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink);outline:none}
+.pts-card:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);transition-duration:.06s}
+.pc-l{grid-column:1;display:flex;align-items:center;gap:7px;font:800 10.5px/1 var(--font-ui);letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+.pc-l::before{content:"";width:9px;height:9px;background:var(--red);transform:skewX(var(--skew));border-radius:1px}
+.pc-v{grid-column:1;font:800 36px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;white-space:nowrap}
+.pc-v small{font:italic 900 .4em/1 var(--font-display);letter-spacing:.02em;text-transform:uppercase;color:var(--muted);margin-left:5px}
+.pc-r{grid-column:2;grid-row:1 / span 2;align-self:stretch;display:grid;place-content:center;justify-items:center;gap:5px;min-width:58px;padding:0 10px;border-radius:9px;background:var(--ink);color:#fff;transition:background .2s}
+.pc-r b{font:italic 900 26px/1 var(--font-display);letter-spacing:-.02em}
+.pc-r span{font:800 9.5px/1 var(--font-ui);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.pts-card.first .pc-r{background:var(--red)}
+.pts-card.bump .pc-v{animation:ptsBump .5s var(--ease-pop)}
+@keyframes ptsBump{40%{transform:scale(1.08)}}
+#scrTitle.navwait .pts-card{opacity:0;animation:none}
+.screen.show .pts-card{animation:ptsIn .6s var(--ease-pop) backwards;animation-delay:.55s}
+@keyframes ptsIn{from{opacity:0;transform:translateY(22px) scale(.94)}}
+@media (max-width:640px){.pts-card{column-gap:12px;padding:10px 10px 10px 14px}.pc-v{font-size:28px}.pc-r{min-width:50px}.pc-r b{font-size:22px}}
+@media (max-height:520px){.pts-card{top:calc(12px + env(safe-area-inset-top,0px));bottom:auto;right:calc(64px + env(safe-area-inset-right,0px));padding:5px 5px 5px 12px;row-gap:0;column-gap:10px;box-shadow:var(--sh-2)}
+  .pc-l{display:none}.pc-v{grid-row:1;font-size:20px}.pc-r{grid-row:1;min-width:0;padding:5px 9px;gap:0}.pc-r b{font-size:15px}.pc-r span{display:none}}
+/* sur chaque tuile : une barre en bas, remplie selon les points gagnés ; au survol, les points prennent la place du temps */
+.tile .pbar{left:0;right:0;bottom:0;height:5px;background:var(--lock-bg2);overflow:hidden}
+.tile .pbar b{display:block;height:100%;width:var(--w,0%);background:var(--red);transition:width .7s var(--ease-out),background .2s}
+.tile .pbar.max b{background:var(--gold)}
+.tile.hard .pbar{background:rgba(255,255,255,.18)}
+.tile.open:hover .pbar,.tile.open:focus-visible .pbar{background:rgba(255,255,255,.3)}
+.tile.open:hover .pbar b,.tile.open:focus-visible .pbar b{background:#fff}
+.tile .best .p{display:none}
+.tile.open:hover .best.has .t,.tile.open:focus-visible .best.has .t{display:none}
+.tile.open:hover .best.has .p,.tile.open:focus-visible .best.has .p{display:inline}
+/* fiche du niveau */
+.pv-pts{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 12px 10px;border-top:1.5px solid rgba(17,17,17,.1)}
+.pv-pts > span{font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.12em;color:var(--muted)}
+.pv-pts .pp-bar{height:8px;border-radius:99px;background:rgba(17,17,17,.1);overflow:hidden}
+.pv-pts .pp-bar i{display:block;height:100%;width:var(--w,0%);border-radius:99px;background:var(--red);transition:width .8s var(--ease-out)}
+.pv-pts.max .pp-bar i{background:var(--gold)}
+.pv-pts b{font:800 20px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em;white-space:nowrap}
+.pv-pts b small{font-size:.55em;color:var(--muted);letter-spacing:0;margin-left:2px}
+/* arrivée : les points gagnés */
+.fin-pts{width:100%;box-sizing:border-box;display:grid;gap:9px;padding:11px 13px 12px;border:2.5px solid var(--ink);border-radius:12px;background:var(--paper)}
+.fp-row{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.fp-gain{display:flex;align-items:baseline;gap:5px;font:italic 900 14px/1 var(--font-display);text-transform:uppercase;color:var(--muted)}
+.fp-gain b{font:800 28px/1 var(--font-num);font-style:normal;font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:var(--red)}
+.fp-gain.zero b{color:var(--ink)}
+.fp-gain.pop b{animation:pop .45s var(--ease-pop)}
+.fp-tot{font:800 10.5px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+.fp-tot b{font:800 16px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--ink);margin-left:6px}
+.fp-bar{position:relative;height:12px;border:2px solid var(--ink);border-radius:99px;background:var(--card);overflow:hidden}
+.fp-bar i{position:absolute;top:0;bottom:0;left:0}
+.fp-bar .o{width:var(--o,0%);background:var(--ink)}
+.fp-bar .n{left:var(--o,0%);width:0;background:var(--red);transition:width 1s var(--ease-out)}
+.fp-bar .n::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,rgba(255,255,255,.6),transparent);transform:translateX(-100%)}
+.fin-pts.go .fp-bar .n{width:var(--d,0%)}
+.fin-pts.go .fp-bar .n::after{animation:fpShine .9s ease-out .6s}
+@keyframes fpShine{to{transform:translateX(100%)}}
+.fin-pts.max .fp-bar .n{background:var(--gold)}
+.fp-note{margin:-2px 0 0;font:700 11.5px/1.3 var(--font-ui);color:var(--muted)}
+#finish.show .fin-pts{animation:rise .45s var(--ease-out) .95s backwards}
+/* classement général */
+.pts-sum{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:6px}
+.pts-sum div{display:grid;gap:6px;padding:9px 10px;border:2px solid var(--lock-bg2);border-radius:10px}
+.pts-sum div:first-child{border-color:var(--ink);box-shadow:var(--sh-1)}
+.pts-sum span{font:800 10px/1 var(--font-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.pts-sum b{font:800 19px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.pts-sum div:first-child b{font-size:22px;color:var(--red)}
+.pts-list{max-height:min(46vh,420px);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 4px 0}
+@media (prefers-reduced-motion:reduce){.screen.show .pts-card,.pts-card.bump .pc-v,.fp-gain.pop b,.fin-pts.go .fp-bar .n::after{animation:none}.fp-bar .n{transition:none}}
+
 /* ---------- Chrono ---------- */
 #hud{position:fixed;left:50%;top:calc(12px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:15;pointer-events:none}
 #hud.enter{animation:hudIn .6s var(--ease-pop) backwards}
@@ -709,10 +783,12 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 @media (max-height:520px) and (min-width:600px){
   .fin-card{width:min(680px,100%);grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);column-gap:26px;row-gap:10px;justify-items:stretch;align-items:center;padding:24px 22px 18px}
-  .fin-card .ftime{grid-column:1;grid-row:1;justify-self:center;align-self:end}
-  .fin-card .delta{grid-column:1;grid-row:2;justify-self:center;align-self:start}
-  .fin-card .fin-board{grid-column:2;grid-row:1}
-  .fin-card .fin-act{grid-column:2;grid-row:2}
+  .fin-card .fin-eye{grid-column:1;grid-row:1;justify-self:center;align-self:end;margin:0}
+  .fin-card .ftime{grid-column:1;grid-row:2;justify-self:center}
+  .fin-card .delta{grid-column:1;grid-row:3;justify-self:center;align-self:start}
+  .fin-card .fin-pts{grid-column:1;grid-row:4}
+  .fin-card .fin-board{grid-column:2;grid-row:1 / span 3}
+  .fin-card .fin-act{grid-column:2;grid-row:4}
 }
 @media (prefers-reduced-motion:reduce){
   #toast,#flash{transition:none}
@@ -757,6 +833,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
     <div class="fin-eye"><i aria-hidden="true"></i><span id="finEye">Arrivée</span></div>
     <div id="finTime" class="ftime">0,000</div>
     <div id="finDelta" class="delta" hidden></div>
+    <div id="finPts" class="fin-pts" hidden><div class="fp-row"><span id="fpGain" class="fp-gain"><b>+0</b>pts</span><span class="fp-tot">Total<b id="fpTot">0</b></span></div><div class="fp-bar"><i class="o"></i><i class="n"></i></div><p id="fpNote" class="fp-note" hidden></p></div>
     <div id="finBoard" class="fin-board" hidden></div>
     <div class="fin-act">
       <button id="finRetry" class="mbtn small primary"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg></span><span class="tx">Rejouer</span></button>
@@ -781,6 +858,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
       </nav>
       <button id="bAcct" class="acct-chip stag" style="--i:6" hidden><span class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8.5" r="3.6"/><path d="M5 20c.9-3.6 3.6-5.5 7-5.5s6.1 1.9 7 5.5"/></svg><b></b></span><span class="tx"><span class="nm">Se connecter</span></span><svg class="go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
+      <button id="bPts" class="pts-card" hidden aria-label="Classement général"><span class="pc-l">Tes points</span><span class="pc-v"><span id="ptsTot">0</span><small>pts</small></span><span class="pc-r"><b id="ptsRank">#–</b><span id="ptsOf"></span></span></button>
   </section>
   <section id="scrEditor" class="screen" aria-label="Éditeur">
     <div class="lv-col">
@@ -814,6 +892,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
           <div id="pvAdmin" class="pv-admin" hidden></div>
         </div>
         <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b></div>
+        <div id="pvPts" class="pv-pts" hidden><span>Points</span><div class="pp-bar"><i></i></div><b><span id="pvPtsV">0</span><small>/1000</small></b></div>
         <div id="pvWeek" class="pv-week" hidden>
           <p id="pvWeekInfo"></p>
           <button id="bReroll" class="ed-btn">Reroll</button>
@@ -4547,7 +4626,8 @@ function buildLevelGrid() {
     if (getBuilder(i) && (i === 1 || records[i - 1])) {
       const done = !!records[i];
       b.className = 'tile open' + (i >= 8 ? ' hard' : '') + (done ? ' done' : ' next'); b.setAttribute('aria-label', 'Niveau ' + i + (i >= 8 ? ', difficile' : '') + (done ? ', terminé' : ''));
-      b.innerHTML = `<span class="num">${num}</span><span class="corner">${done ? ICON_CHECK : i >= 8 ? ICON_FLAME : ICON_PLAY}</span><span class="best">${done ? fmtT(records[i]) + ' s' : ''}</span>`;
+      b.innerHTML = `<span class="num">${num}</span><span class="corner">${done ? ICON_CHECK : i >= 8 ? ICON_FLAME : ICON_PLAY}</span><span class="best"><span class="t">${done ? fmtT(records[i]) + ' s' : ''}</span><span class="p"></span></span><span class="pbar" aria-hidden="true"><b></b></span>`;
+      b.dataset.n = i;
       b.addEventListener('click', () => openLevel(i));
     } else {
       b.className = 'tile locked' + (i >= 8 ? ' hard' : ''); b.setAttribute('aria-label', `Niveau ${i}${i >= 8 ? ', difficile' : ''}, verrouillé`); b.setAttribute('aria-disabled', 'true');
@@ -4559,6 +4639,7 @@ function buildLevelGrid() {
   const nDone = Object.keys(records).filter(k => +k >= 1 && +k <= 10 && records[k]).length;
   $('prog').textContent = $('lvCount').textContent = nDone + '/10';
   $('bLevels').style.setProperty('--prog', nDone * 10 + '%');
+  ptsTiles();
 }
 function screenItems() {
   if (UI.screen === 'level') return [$('bBackLv'), $('bPlay')];
@@ -4577,6 +4658,7 @@ function showScreen(name, back) {
   if (UI.screen !== name && !UI.busy) sfx('page');   // pendant un rideau de chargement, c'est le rideau qui fait le son
   UI.screen = name;
   uiEl.classList.toggle('pvmode', name === 'level');
+  if (name === 'title' || name === 'levels') ptsRefresh();
   for (const k in scr) {
     const el = scr[k], on = k === name;
     if (on) {
@@ -6891,6 +6973,7 @@ async function loadWeekly() {
           WEEKLY = nx;
           if (isAdmin()) {
             const doc = { ...q.data(), from: now, pub: nx.pub };
+            if (m.exists) await ptsArchive(m.data()).catch(e => console.warn(e));   // ses points restent acquis
             await db.collection('meta').doc('weekly').set(doc);
             await db.collection('meta').doc(wkKey(now)).delete().catch(() => {});
           }
@@ -7034,7 +7117,8 @@ function openLevelUI(n, back) {
   $('pvNum').textContent = wk ? 'S' + weekNum(WEEKLY && WEEKLY.created) : String(n).padStart(2, '0');
   weeklyAdminUI(wk);
   const rk = recKey(n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]);
-  pvBoard(n); showScreen('level', back);
+  ptsPreview(n); pvBoard(n); showScreen('level', back);
+  if (ACCT.on && ACCT.user) ptsLoad().then(() => { if (PV && PV.n === n) ptsPreview(n); });
 }
 function openLevel(n) {
   if (UI.busy || !getBuilder(n)) return;
@@ -7217,9 +7301,10 @@ async function adminBan(uid) {
 }
 $('bBackLv').addEventListener('click', () => { if (!UI.busy) screenBack(); });
 $('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
+$('bPts').addEventListener('click', () => { if (!UI.busy) acctOpen('points'); });
 
 function resetRun() {
-  finToken++; pendingFinish = false; REC = null;
+  finToken++; pendingFinish = false; REC = null; $('finPts').hidden = true;
   finishEl.hidden = true; finishEl.classList.remove('show');
   run.state = LEVEL && UI.mode === 'play' ? 'ready' : 'off';
   run.shown = ''; timerEl.className = 'card ready'; tMain.textContent = fmtT(0);
@@ -7258,6 +7343,7 @@ function onFinish() {
     } else finDelta.hidden = true;
     // Le temps passe du chrono au panneau : le chrono du haut s'en va.
     hudEl.classList.remove('enter'); hudEl.classList.add('leave');
+    finPoints(LEVEL, ms, prev, better, tok);
     finishEl.hidden = false; finishEl.classList.remove('show'); void finishEl.offsetWidth; finishEl.classList.add('show');
     const t0 = performance.now(), dur = reduced ? 1 : 850;
     const tick = now => {
@@ -8436,6 +8522,204 @@ function navIdx() {
   let i = 3;
   for (const b of [...document.querySelectorAll('#scrTitle .nav .stag'), $('bAcct')]) if (b && !b.hidden) b.style.setProperty('--i', i++);
 }
+
+/* ---------- Points ----------
+   Par niveau : 1000 × (meilleur temps ÷ son temps), donc 1000 pour le plus rapide, 500 pour deux fois plus lent, 0 si
+   pas fini. Les niveaux 1 à 10 et le niveau de la semaine en cours se calculent en direct depuis les classements ; les
+   semaines finies sont rangées dans meta/points (par la tâche du lundi ou l'admin) avec les temps de chacun, et leurs
+   points restent acquis. Les joueurs masqués ou bannis, et les temps au replay faux, ne comptent pas. */
+var PTS = { t: 0, data: null, busy: null, shown: null };   // var : lu par des fonctions qui peuvent tourner avant cette ligne (PTS vaut alors undefined)
+const ptsOf = (best, ms) => ms > 0 && best > 0 ? Math.min(1000, Math.round(1000 * best / ms)) : 0;
+const fmtPts = n => Math.round(n).toLocaleString('fr-FR');
+function ptsScore(rows, ok) {                 // rows : [{uid, ms}] → { best, pts: {uid: points} }
+  const r = rows.filter(x => x.ms > 0 && ok(x));
+  const best = r.length ? Math.min(...r.map(x => x.ms)) : 0, pts = {};
+  for (const x of r) pts[x.uid] = ptsOf(best, x.ms);
+  return { best, pts };
+}
+async function ptsLoad(force) {
+  if (!ACCT.on || !ACCT.db) return null;
+  if (!force && PTS.data && Date.now() - PTS.t < 180000) return PTS.data;
+  if (PTS.busy) return PTS.busy;
+  PTS.busy = (async () => {
+    const db = ACCT.db, me = ACCT.user ? ACCT.user.uid : null;
+    const lv = Object.keys(BUILTIN).map(Number).filter(n => n >= 1 && n <= 10);
+    const keys = lv.map(String); if (WEEKLY) keys.push('w' + WEEKLY.id);
+    const [bm, bans, arch, ...cols] = await Promise.all([boardMeta(true), db.collection('meta').doc('bans').get().catch(() => null),
+      db.collection('meta').doc('points').get().catch(() => null), ...keys.map(k => db.collection('scores').doc(k).collection('runs').get().catch(() => null))]);
+    const banned = new Set(bans && bans.exists && Array.isArray(bans.data().uids) ? bans.data().uids : []);
+    const bd = bm.d || {}, resets = bd.userResets || {}, gReset = +bd.reset || 0;
+    const ok = x => x.uid === me || (!bm.hidden.has(x.uid) && !banned.has(x.uid));
+    const P = {}, who = uid => P[uid] || (P[uid] = { uid, pseudo: '', lv: {}, nLv: 0, wk: 0, cur: 0, total: 0 });
+    const best = {}, mine = {};
+    keys.forEach((k, i) => {
+      const snap = cols[i]; if (!snap) return;
+      const n = k[0] === 'w' ? WEEKLY_N : +k;
+      const rows = snap.docs.map(d => ({ uid: d.id, ...d.data() })).filter(r => VERD[verdKey(n, r)] !== 'bad');
+      rows.forEach(r => { if (r.pseudo) who(r.uid).pseudo = r.pseudo; if (r.uid === me) mine[k] = r.ms; });
+      const S = ptsScore(rows, ok); best[k] = S.best;
+      for (const uid in S.pts) { const p = who(uid); if (n === WEEKLY_N) p.cur = S.pts[uid]; else { p.lv[k] = S.pts[uid]; p.nLv++; } }
+    });
+    // semaines finies : leurs temps sont gardés, on recompte avec les masqués et bannis d'aujourd'hui
+    const A = arch && arch.exists ? arch.data() : {}, names = A.names || {};
+    for (const wk in (A.weeks || {})) {
+      const W = A.weeks[wk]; if (!W || !W.ms || (W.id && WEEKLY && String(W.id) === String(WEEKLY.id))) continue;
+      const from = +W.from || 0; if (from < gReset) continue;
+      const rows = Object.keys(W.ms).map(uid => ({ uid, ms: +W.ms[uid] })).filter(r => !(+resets[r.uid] > from));
+      const S = ptsScore(rows, ok);
+      for (const uid in S.pts) { const p = who(uid); p.wk += S.pts[uid]; if (!p.pseudo) p.pseudo = names[uid] || ''; }
+    }
+    const list = Object.values(P).map(p => { p.levels = Object.values(p.lv).reduce((a, b) => a + b, 0); p.total = p.levels + p.wk + p.cur; return p; })
+      .filter(p => p.total > 0 && (p.uid === me || !bm.hidden.has(p.uid))).sort((a, b) => b.total - a.total);
+    let rank = 0, prev = -1;
+    list.forEach((p, i) => { if (p.total !== prev) rank = i + 1; p.rank = rank; prev = p.total; });
+    if (me && ACCT.pseudo && P[me]) P[me].pseudo = ACCT.pseudo;
+    PTS.data = { list, best, mine, me: me ? (P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
+    PTS.t = Date.now();
+    return PTS.data;
+  })();
+  try { return await PTS.busy; } catch (e) { console.warn(e); return PTS.data; } finally { PTS.busy = null; }
+}
+// Points de ce joueur sur un niveau (n : 1-10 ou WEEKLY_N)
+function ptsLevel(n) {
+  const D = PTS.data; if (!D || !D.me) return null;
+  if (+n === WEEKLY_N) return D.wkKey ? D.me.cur || 0 : null;
+  return D.me.lv[String(n)] || 0;
+}
+function countTo(el, from, to, dur) {
+  if (reduced || from === to) { el.textContent = fmtPts(to); return; }
+  const t0 = performance.now(), tick = now => {
+    const k = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 3);
+    el.textContent = fmtPts(from + (to - from) * e);
+    if (k < 1 && el.isConnected) requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+function ptsCard() {
+  const b = $('bPts'), D = PTS.data;
+  const on = !!(ACCT.on && ACCT.user && ACCT.pseudo && D && D.me);
+  b.hidden = !on; if (!on) return;
+  const tot = Math.round(D.me.total || 0), el = $('ptsTot');
+  if (PTS.shown !== null && PTS.shown !== tot) { countTo(el, PTS.shown, tot, 700); b.classList.remove('bump'); void b.offsetWidth; b.classList.add('bump'); }
+  else el.textContent = fmtPts(tot);
+  PTS.shown = tot;
+  $('ptsRank').textContent = D.me.rank ? '#' + D.me.rank : '#–';
+  $('ptsOf').textContent = D.list.length ? 'sur ' + D.list.length : '';
+  b.classList.toggle('first', D.me.rank === 1);
+  b.setAttribute('aria-label', `Tes points : ${fmtPts(tot)}${D.me.rank ? ', ' + D.me.rank + 'e sur ' + D.list.length : ''}. Ouvrir le classement général`);
+}
+function ptsTiles() {
+  if (!PTS) return;
+  document.querySelectorAll('#lvGrid .tile.open').forEach(t => {
+    const p = ptsLevel(t.dataset.n), bar = t.querySelector('.pbar'), best = t.querySelector('.best');
+    if (!bar) return;
+    bar.hidden = p === null; if (p === null) return;
+    bar.style.setProperty('--w', p / 10 + '%'); bar.classList.toggle('max', p >= 1000);
+    best.querySelector('.p').textContent = p ? fmtPts(p) + ' pts' : '';
+    best.classList.toggle('has', p > 0);
+    t.title = p ? fmtPts(p) + ' / 1000 pts' : '';
+  });
+}
+function ptsPreview(n) {
+  if (!PTS) return;
+  const box = $('pvPts'), p = boardOK(n) ? ptsLevel(n) : null;
+  box.hidden = p === null; if (p === null) return;
+  $('pvPtsV').textContent = fmtPts(p);
+  box.style.setProperty('--w', p / 10 + '%'); box.classList.toggle('max', p >= 1000);
+}
+async function ptsRefresh(force) {
+  if (!PTS) return;
+  if (!ACCT.on || !ACCT.user) { $('bPts').hidden = true; return; }
+  ptsCard(); ptsTiles();
+  await ptsLoad(force);
+  ptsCard(); ptsTiles();
+}
+// Arrivée : combien ce temps rapporte, avec une barre qui se remplit et le total qui monte
+function finPoints(n, ms, prev, better, tok) {
+  const box = $('finPts'); box.hidden = true; box.classList.remove('go', 'max');
+  const D = PTS.data;
+  if (ED.test || !ACCT.on || !ACCT.user || !ACCT.pseudo || !boardOK(n) || !D || !D.me) return;
+  const k = +n === WEEKLY_N ? D.wkKey : String(n); if (!k) return;
+  const oldMs = D.mine[k] || 0, newMs = better ? ms : (oldMs || ms);
+  const oldBest = D.best[k] || 0, newBest = Math.min(oldBest || Infinity, newMs);
+  const oldP = ptsOf(oldBest, oldMs), newP = ptsOf(newBest, newMs), gain = Math.max(0, newP - oldP);
+  const oldTot = Math.round(D.me.total || 0), newTot = oldTot + gain;
+  // on garde le calcul à jour tout de suite (le classement sera relu au retour au menu)
+  if (gain || (better && newMs !== oldMs)) {
+    D.mine[k] = newMs; D.best[k] = newBest;
+    if (+n === WEEKLY_N) D.me.cur = newP; else { if (!D.me.lv[k]) D.me.nLv++; D.me.lv[k] = newP; D.me.levels = (D.me.levels || 0) + gain; }
+    D.me.total = newTot; PTS.t = 0;
+  }
+  const gEl = $('fpGain'), b = gEl.querySelector('b'), note = $('fpNote');
+  box.style.setProperty('--o', oldP / 10 + '%'); box.style.setProperty('--d', (newP - oldP) / 10 + '%');
+  box.classList.toggle('max', newP >= 1000);
+  gEl.classList.toggle('zero', !gain); gEl.classList.remove('pop');
+  b.textContent = gain ? '+0' : fmtPts(newP);
+  gEl.lastChild.textContent = gain ? 'pts' : 'pts sur ce niveau';
+  $('fpTot').textContent = fmtPts(oldTot);
+  note.hidden = !(gain && newP >= 1000);
+  note.textContent = 'Meilleur temps du niveau : 1000 pts !';
+  box.hidden = false;
+  if (!gain) return;
+  setTimeout(() => {
+    if (tok !== finToken) return;
+    box.classList.add('go');
+    const t0 = performance.now(), dur = reduced ? 1 : 900;
+    const tick = now => {
+      if (tok !== finToken) return;
+      const q = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - q, 3);
+      b.textContent = '+' + fmtPts(gain * e);
+      if (q < 1) requestAnimationFrame(tick); else { gEl.classList.add('pop'); sfx('click'); }
+    };
+    requestAnimationFrame(tick);
+    setTimeout(() => { if (tok === finToken) countTo($('fpTot'), oldTot, newTot, 700); }, reduced ? 0 : 450);
+  }, reduced ? 0 : 1250);
+}
+// Fin de semaine (admin) : on range les temps du niveau qui s'achève, ses points resteront acquis
+async function ptsArchive(doc) {
+  const W = weeklyFrom(doc); if (!W) return;
+  const key = wkKey(W.from), db = ACCT.db, ref = db.collection('meta').doc('points');
+  const cur = await ref.get();
+  if (cur.exists && cur.data().weeks && cur.data().weeks[key]) return;
+  const snap = await db.collection('scores').doc('w' + W.id).collection('runs').get();
+  const ms = {}, names = {};
+  snap.docs.forEach(x => { const r = x.data(); if (r.ms > 0) { ms[x.id] = r.ms; names[x.id] = r.pseudo || ''; } });
+  await ref.set({ weeks: { [key]: { id: W.id, from: W.from, ms } }, names }, { merge: true });
+}
+// Fenêtre « Classement général »
+function ptsView(c) {
+  c.classList.add('wide');
+  c.appendChild(mkEl('h2', null, 'Classement général'));
+  const D = PTS.data;
+  if (!D) {
+    c.appendChild(mkEl('p', 'acct-p', 'Chargement…'));
+    ptsLoad().then(() => { if (ACCT.view === 'points' && !acctEl.hidden) acctRender(); });
+    return;
+  }
+  if (D.me && D.me.total) {
+    const sum = mkEl('div', 'pts-sum');
+    const cell = (l, v) => { const d = mkEl('div'); d.append(mkEl('span', null, l), mkEl('b', null, v)); return d; };
+    sum.append(cell('Total' + (D.me.rank ? ' · #' + D.me.rank : ''), fmtPts(D.me.total)), cell('Niveaux', fmtPts(D.me.levels || 0)), cell('Semaines', fmtPts((D.me.wk || 0) + (D.me.cur || 0))));
+    c.appendChild(sum);
+  }
+  const box = mkEl('div', 'pts-list');
+  if (!D.list.length) box.appendChild(mkEl('p', 'acct-empty', 'Personne n’a encore de points.'));
+  else {
+    const ol = mkEl('ol', 'board'), me = D.me ? D.me.uid : null;
+    const row = p => {
+      const li = mkEl('li', (p.rank <= 3 ? 'r' + p.rank : '') + (p.uid === me ? ' me' : ''));
+      li.append(mkEl('span', 'rk', String(p.rank)), mkEl('span', 'ps', p.pseudo || '?'), mkEl('span', 'tm', fmtPts(p.total)));
+      return li;
+    };
+    D.list.slice(0, 50).forEach(p => ol.appendChild(row(p)));
+    const mi = D.list.findIndex(p => p.uid === me);
+    if (mi >= 50) { ol.appendChild(mkEl('li', 'gap', '⋯')); ol.appendChild(row(D.list[mi])); }
+    box.appendChild(ol);
+  }
+  c.appendChild(box);
+  c.appendChild(mkEl('p', 'acct-p', 'Chaque niveau rapporte jusqu’à 1000 pts : le meilleur temps prend tout, les autres selon leur écart (deux fois plus lent = 500). Le niveau de la semaine aussi, et ses points restent acquis.'));
+}
+
 function navReveal() {
   const t = $('scrTitle'); if (!t.classList.contains('navwait')) return;
   navIdx(); t.classList.remove('navwait');
@@ -8450,7 +8734,7 @@ async function acctInit() {
     ACCT.auth = firebase.auth(); ACCT.db = firebase.firestore(); ACCT.on = true;
     $('bAcct').hidden = false; $('bEditor').hidden = true;
     ACCT.auth.getRedirectResult().catch(e => acctMsg(e));
-    ACCT.auth.onAuthStateChanged(u => { Promise.all([acctUser(u), loadWeekly()]).then(navReveal, navReveal); });   // le niveau de la semaine est relu à chaque connexion
+    ACCT.auth.onAuthStateChanged(u => { PTS.data = null; PTS.t = 0; Promise.all([acctUser(u), loadWeekly()]).then(() => { navReveal(); ptsRefresh(true); }, navReveal); });   // le niveau de la semaine est relu à chaque connexion
   } catch (e) { ACCT.on = false; bootDone(); loadWeekly().then(navReveal, navReveal); }
 }
 const ERRS = {
@@ -8721,6 +9005,7 @@ function acctRender() {
   const c = acctCard; c.textContent = ''; c.classList.remove('wide');
   const x = mkEl('button', 'acct-x', '×'); x.setAttribute('aria-label', 'Fermer'); x.addEventListener('click', acctClose); c.appendChild(x);
   const v = ACCT.view;
+  if (v === 'points') { ptsView(c); return; }
   if (v === 'login') {
     c.appendChild(mkEl('h2', null, 'Compte'));
     if (ACCT.pending) c.appendChild(mkEl('p', 'acct-need', 'Connecte-toi pour jouer : tes records et ta place au classement sont gardés sur ton compte.'));
