@@ -7281,13 +7281,14 @@ function previewCamera(fdt) {
   PV.snap = false;
   camera.position.lerp(_pc, k); camera.quaternion.slerp(_pq, k);
 }
+// « Ton record » sur la fiche du niveau
+function pvRecShow(n) { const rk = recKey(n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]); }
 function openLevelUI(n, back) {
   const wk = n === WEEKLY_N;
   $('pvTitle').textContent = wk ? 'Niveau de la semaine' : 'Niveau ' + String(n).padStart(2, '0');
   $('pvNum').textContent = wk ? 'S' + weekNum(WEEKLY && WEEKLY.created) : String(n).padStart(2, '0');
   weeklyAdminUI(wk);
-  const rk = recKey(n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]);
-  ptsPreview(n); pvBoard(n); showScreen('level', back);
+  pvRecShow(n); ptsPreview(n); pvBoard(n); showScreen('level', back);
   if (ACCT.on && ACCT.user) ptsLoad().then(() => { if (PV && PV.n === n) ptsPreview(n); });
 }
 function openLevel(n) {
@@ -8772,7 +8773,7 @@ function syncRecords(keys, cols, mine) {
   });
   if (!ch) return;
   saveRecords(); buildLevelGrid();
-  if (UI.screen === 'level' && PV) { const rk = recKey(PV.n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]); }
+  if (PV) pvRecShow(PV.n);
   ACCT.db.collection('users').doc(ACCT.user.uid).update({ records: { ...records }, maj: Date.now() }).catch(e => console.warn(e));
 }
 // Points de ce joueur sur un niveau (n : 1-10 ou WEEKLY_N)
@@ -9050,6 +9051,7 @@ async function dropMyRecord(keys) {
   if (!ACCT.user) return;
   for (const k of keys) delete records[k];
   saveRecords(); buildLevelGrid(); if (PTS) PTS.t = 0;
+  if (PV) pvRecShow(PV.n);
   const loc = localSeen(), ls = loc[ACCT.user.uid] || (loc[ACCT.user.uid] = {}), now = Date.now();
   for (const k of keys) ls[String(k)] = now;
   localSeen(loc);
@@ -9121,6 +9123,7 @@ async function adminResetLevels(list, recs) {
     await db.collection('meta').doc('board').set({ resets: upd }, { merge: true });
     for (const n of list) delete records[recKey(n)];
     saveRecords(); buildLevelGrid(); if (PTS) PTS.t = 0;
+    if (PV) pvRecShow(PV.n);
     { const loc = localSeen(), ls = loc[ACCT.user.uid] || (loc[ACCT.user.uid] = {}); for (const n of list) ls[String(recKey(n))] = now; localSeen(loc); }
     try { await db.collection('users').doc(ACCT.user.uid).update({ records: { ...records }, maj: now }); } catch (e) { console.warn(e); }
   }
