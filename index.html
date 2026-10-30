@@ -471,13 +471,14 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .pts-card.r2{--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%);--g:var(--g-silver)}
 .pts-card.r3{--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%);--g:var(--g-bronze)}
 .pts-card.r1 .pc-r b,.pts-card.r2 .pc-r b,.pts-card.r3 .pc-r b{text-shadow:0 1px 0 rgba(255,255,255,.6)}
-/* survol d'un temps : ses points à la place */
-.board li .tm{position:relative;transition:color .15s}
-.board li .tm .pt{position:absolute;right:0;top:50%;display:inline-flex;align-items:center;gap:5px;color:var(--ink);opacity:0;transform:translateY(-50%) scale(.85);transform-origin:right center;
-  transition:opacity .15s,transform .2s var(--ease-pop);pointer-events:none;white-space:nowrap}
+/* survol du temps lui-même : il glisse vers le haut et les points arrivent par en dessous, à la même place */
+.board li .tm.hp{display:inline-grid;justify-items:end;align-items:center;overflow:hidden;padding:2px 0;margin:-2px 0;cursor:default}
+.board li .tm.hp > *{grid-area:1/1;transition:transform .32s cubic-bezier(.3,.75,.2,1),opacity .22s ease}
+.board li .tm .pt{display:inline-flex;align-items:center;gap:5px;white-space:nowrap;opacity:0;transform:translateY(85%)}
 .board li .tm .pt i.cube{width:14px;height:14px}
-.board li.hp:hover .tm{color:transparent}
-.board li.hp:hover .tm .pt{opacity:1;transform:translateY(-50%)}
+.board li .tm.hp:hover .tv{opacity:0;transform:translateY(-85%)}
+.board li .tm.hp:hover .pt{opacity:1;transform:none}
+@media (prefers-reduced-motion:reduce){.board li .tm.hp > *{transition:opacity .15s}.board li .tm .pt,.board li .tm.hp:hover .tv{transform:none}}
 /* rang qui défile comme un compteur pendant la montée */
 .fin-board .board li .rk.roll{display:block;overflow:hidden;line-height:22px;text-align:center}
 .fin-board .board li .rk .odo{display:block;transition:transform var(--dur,1s) cubic-bezier(.6,0,.2,1)}
@@ -537,7 +538,7 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 @keyframes podStar{0%{opacity:0;transform:translate(0,0) scale(0) rotate(0)}25%{opacity:1;transform:translate(calc(var(--dx) * .3),calc(var(--dy) * .3)) scale(1) rotate(60deg)}
   100%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3) rotate(160deg)}}
 @media (prefers-reduced-motion:reduce){.fin-board .board li.podium,.fin-board .board li.podium::after,.fin-board .board li.climbed::after,.pod-fx *,.gold-flash{animation:none}.pod-fx,.gold-flash{display:none}.fin-board .board li .rk .odo{transition:none}}
-.fin-board .board li.climb .tm.flip{animation:pop .35s var(--ease-pop)}
+.fin-board .board li .tv.flip{display:inline-block;animation:pop .35s var(--ease-pop)}
 @media (prefers-reduced-motion:reduce){.screen.show .pts-card,.pts-card.bump .pc-v,.pts-hud.done #ptsHudV,#ptsHudV.tick{animation:none}.fin-board .board li{transition:none}}
 
 /* ---------- Chrono ---------- */
@@ -9240,7 +9241,8 @@ async function boardMine(n, rows, el) {
     const ahead = snap.docs.filter(d => d.id !== uid && !bm.hidden.has(d.id)).length;
     const ol = el.querySelector('ol.board'); if (!ol || !el.isConnected) return;
     const gap = mkEl('li', 'gap', '⋯'), li = mkEl('li', 'me mine');
-    const tm = mkEl('span', 'tm', fmtT(ms) + ' s'); if (+ol.dataset.best) { tm.appendChild(ptsTag(+ol.dataset.best, ms)); li.classList.add('hp'); }
+    const tm = mkEl('span', 'tm'); tm.appendChild(mkEl('span', 'tv', fmtT(ms) + ' s'));
+    if (+ol.dataset.best) { tm.appendChild(ptsTag(+ol.dataset.best, ms)); tm.classList.add('hp'); }
     li.append(mkEl('span', 'rk', String(ahead + 1 + (snap.size >= 2000 ? '+' : ''))), mkEl('span', 'ps', mine.data().pseudo || ACCT.pseudo || '?'), tm);
     li.title = 'Ta place au classement';
     ol.append(gap, li);
@@ -9260,8 +9262,8 @@ function boardList(rows, el, lv) {
     if (r.hidden) { li.classList.add('hid'); li.title = 'Masqué : seul toi le vois'; } else { rank++; if (rank <= 3) li.classList.add('r' + rank); }
     const a = document.createElement('span'); a.className = 'rk'; a.textContent = r.hidden ? '–' : rank;
     const b = document.createElement('span'); b.className = 'ps'; b.textContent = r.pseudo || '?';
-    const c = document.createElement('span'); c.className = 'tm'; c.textContent = fmtT(r.ms) + ' s';
-    if (!r.hidden && best) { c.appendChild(ptsTag(best, r.ms)); li.classList.add('hp'); }
+    const c = document.createElement('span'); c.className = 'tm'; c.appendChild(mkEl('span', 'tv', fmtT(r.ms) + ' s'));
+    if (!r.hidden && best) { c.appendChild(ptsTag(best, r.ms)); c.classList.add('hp'); }
     li.append(a, b, c);
     if (lv && canWatch() && r.ghost) {                      // replay de la course (admin, ou tout le monde si l'admin l'a ouvert)
       const p = document.createElement('button'); p.className = 'rp'; p.title = 'Voir le replay de ' + (r.pseudo || '?'); p.setAttribute('aria-label', p.title);
@@ -9340,7 +9342,8 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
   if (seq.length > 40) seq.splice(1, seq.length - 40);
   mrk.classList.add('roll'); mrk.style.setProperty('--dur', dur + 'ms');
   const odo = mkEl('span', 'odo'); seq.forEach(x => odo.appendChild(mkEl('i', null, x))); mrk.textContent = ''; mrk.appendChild(odo);
-  if (oldMs) mtm.firstChild.nodeValue = fmtT(oldMs) + ' s';
+  const mtv = mtm.querySelector('.tv') || mtm;
+  if (oldMs) mtv.textContent = fmtT(oldMs) + ' s';
   meLi.classList.add('climb'); if (oi === Infinity) meLi.style.opacity = '0';
   const podium = b2 >= 1 && b2 <= 3;
   // chacun garde la couleur de son ancienne place (or, argent, bronze) jusqu'à ce que ça change
@@ -9354,7 +9357,7 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
   const wait = Math.max(0, (reduced ? 500 : 2100) - (performance.now() - t0));   // après la gerbe de points
   setTimeout(() => {
     if (finToken !== tok0 + 1 || !box.isConnected) return;
-    mtm.firstChild.nodeValue = fmtT(ms) + ' s'; mtm.classList.add('flip');
+    mtv.textContent = fmtT(ms) + ' s'; mtv.classList.add('flip');
     meLi.style.opacity = ''; meLi.classList.add('go'); if (out) lis[lis.length - 1].classList.add('go');
     for (const [li] of moves) li.style.transform = '';
     odo.style.transform = `translateY(${-(seq.length - 1) * 22}px)`;
