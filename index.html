@@ -9311,7 +9311,11 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
   if (oldMs) mtm.textContent = fmtT(oldMs) + ' s';
   meLi.classList.add('climb'); if (oi === Infinity) meLi.style.opacity = '0';
   const podium = b2 >= 1 && b2 <= 3;
-  if (podium) meLi.classList.add('pod', 'p' + b2);
+  // chacun garde la couleur de son ancienne place (or, argent, bronze) jusqu'à ce que ça change
+  const setR = (li, r) => { li.classList.remove('r1', 'r2', 'r3'); if (r >= 1 && r <= 3) li.classList.add('r' + r); };
+  setR(meLi, a);
+  if (a >= 1 && a <= 3) meLi.classList.add('pod', 'p' + a);
+  for (const [li] of passes) if (li.dataset.rk) setR(li, +li.dataset.rk - 1);
   for (const [li, dy] of moves) { li.style.transition = 'none'; li.style.transform = `translateY(${dy}px)`; }
   void box.offsetWidth;
   for (const [li] of moves) { li.style.transition = ''; li.style.setProperty('transition-duration', dur + 'ms, .4s, .3s'); }
@@ -9325,12 +9329,13 @@ async function boardClimb(n, box, rows, me, oldMs, ms, t0, tok0) {
     sfx('page');
     // chacun de ceux qu'on double change de rang au moment où on passe devant lui
     for (const [li, f] of passes) setTimeout(() => {
-      const rk = li.querySelector('.rk'); if (li.dataset.rk && rk) rk.textContent = li.dataset.rk;
+      const rk = li.querySelector('.rk'); if (li.dataset.rk && rk) { rk.textContent = li.dataset.rk; setR(li, +li.dataset.rk); }
       li.classList.remove('passed'); void li.offsetWidth; li.classList.add('passed');
     }, reduced ? 0 : easeTime(f) * dur);
     setTimeout(() => {
       if (!box.isConnected) return;
       mrk.classList.remove('roll'); mrk.textContent = newRank; mrk.classList.add('flip');
+      meLi.classList.remove('pod', 'p1', 'p2', 'p3'); setR(meLi, b2);
       lis.forEach(li => li.style.removeProperty('transition-duration'));
       if (out && lis[lis.length - 1].isConnected) lis[lis.length - 1].remove();
       if (podium) podiumFx(box, meLi, b2);
