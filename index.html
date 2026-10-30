@@ -7621,6 +7621,51 @@ function levelLimits() {
     fin
   };
 }
+/* Vitesse de course exacte. Le moteur de marche vise exactement 16 studs/s (par rapport au support) : hors élan reçu
+   (saut depuis une prise, tapis, plateforme mobile ou obstacle qui bouge), le centre du perso ne fait jamais plus de
+   16 studs/s en moyenne sur une demi-seconde (mesuré : 16,000 sur des milliers de passages du robot). On mesure la
+   distance à vol d'oiseau sur 0,5 s (le replay arrondit les positions au centimètre : ≈ 0,1 studs/s d'incertitude). */
+const SPEED_MAX = CFG.speed + 0.1;
+const SPEED_STRICT = false;   // d'abord mesuré sur tous les vrais replays, puis activé
+const _dynZ = { key: '', z: [] };
+function dynZones() {
+  const key = MAP + '|' + solids.length;
+  if (_dynZ.key === key) return _dynZ.z;
+  const z = [];
+  for (const b of solids) {
+    if (b.surf) z.push({ x0: b.c.x - b.rad - 3, x1: b.c.x + b.rad + 3, z0: b.c.z - b.rad - 3, z1: b.c.z + b.rad + 3 });
+    if (!b.kin) continue;
+    const sv = { x: b.c.x, y: b.c.y, z: b.c.z, yaw: b.yaw, cs: b.cs, sn: b.sn };
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (let t = 0; t <= 120; t += 0.05) { b.move(b, t); x0 = Math.min(x0, b.c.x); x1 = Math.max(x1, b.c.x); z0 = Math.min(z0, b.c.z); z1 = Math.max(z1, b.c.z); }
+    b.c.x = sv.x; b.c.y = sv.y; b.c.z = sv.z; b.yaw = sv.yaw; b.cs = sv.cs; b.sn = sv.sn;
+    z.push({ x0: x0 - b.rad - 3, x1: x1 + b.rad + 3, z0: z0 - b.rad - 3, z1: z1 + b.rad + 3 });
+  }
+  _dynZ.key = key; _dynZ.z = z; return z;
+}
+function ghostSpeed(s) {
+  const T = r => r[0] / 10 * DT, Z = dynZones(), near = (x, z) => Z.some(r => x > r.x0 && x < r.x1 && z > r.z0 && z < r.z1);
+  const clean = []; let taint = false, lastClimb = -1e9, lastTp = -1e9;
+  for (let i = 0; i < s.length; i++) {
+    const r = s[i], t = T(r), x = r[1] / 100, z = r[3] / 100, F = r[15];
+    if (F & 4) lastClimb = t;
+    if (i && Math.hypot(r[1] - s[i - 1][1], r[3] - s[i - 1][3]) / 100 > 10) lastTp = t;   // réapparition
+    if (near(x, z)) taint = true; else if (F & 1) taint = false;   // élan d'un tapis / d'une plateforme : jusqu'au prochain appui ailleurs
+    clean[i] = !taint && !(F & 4) && t - lastClimb > 0.6 && t - lastTp > 0.5;
+  }
+  let max = 0, at = 0;
+  for (let i = 0, j = 0, run = 0; i < s.length; i++) {
+    if (!clean[i]) continue;
+    if (j < i) j = i;
+    while (j < s.length - 1 && clean[j + 1] && T(s[j]) - T(s[i]) < 0.5) j++;
+    const dt = T(s[j]) - T(s[i]); if (dt < 0.5) continue;
+    let ok = true; for (let k = i; k <= j; k++) if (!clean[k]) { ok = false; break; }
+    if (!ok) continue;
+    const v = Math.hypot(s[j][1] - s[i][1], s[j][3] - s[i][3]) / 100 / dt;
+    if (v > max) { max = v; at = T(s[i]); }
+  }
+  return { max, at };
+}
 function validateGhost(g, n) {
   const bad = [];
   if (!g || typeof g.d !== 'string') return ['Pas de replay : temps invérifiable'];
@@ -7658,6 +7703,8 @@ function validateGhost(g, n) {
     const v = d / dt; best = Math.max(best, v); if (v > L.vs) sus++;
   }
   if (sus > 3) bad.push(`Vitesse impossible (${best.toFixed(1)} studs/s en moyenne, max ${L.vs.toFixed(0)})`);
+  const SP = ghostSpeed(s);
+  if (SPEED_STRICT && SP.max > SPEED_MAX) bad.push(`Vitesse de course modifiée (${SP.max.toFixed(2)} studs/s, la course normale est à ${CFG.speed})`);
   // Traverser un bloc : le centre du perso (et le milieu entre deux images) ne doit jamais être dans un bloc fixe
   const inside = (x, y, z) => {
     for (const B of solids) {
@@ -10424,7 +10471,8 @@ if (/[?&]autogen=1/.test(location.search)) {
       if (!getBuilder(n)) return { err: 'niveau inconnu' };
       if (MAP !== 'level' + n || n === WEEKLY_N) loadMap('level' + n);
       const bad = validateGhost(g, n);
-      return { ok: !bad.length, bad };
+      let spd = null; try { spd = ghostSpeed(g.d.split(';').map(r => r.split(',').map(Number))); } catch (e) {}
+      return { ok: !bad.length, bad, spd };
     } catch (e) { return { err: String(e && e.message || e) }; }
   };
 }

@@ -5,6 +5,10 @@ on:
   schedule:
     - cron: '23 * * * *'       # toutes les heures
   workflow_dispatch:
+    inputs:
+      report:
+        description: 'Rapport de vitesse de tous les temps, sans rien enregistrer (1 = oui)'
+        default: '0'
 permissions:
   contents: read
 concurrency: { group: verify, cancel-in-progress: false }
@@ -21,3 +25,4 @@ jobs:
       - run: node .github/scripts/verify.mjs
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          REPORT: ${{ github.event.inputs.report || '0' }}
