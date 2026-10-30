@@ -9096,7 +9096,11 @@ function playerView(c) {
   h.appendChild(nm);
   if (p.rank) { const rk = mkEl('span', 'pf-rk' + (p.rank <= 3 ? ' m' + p.rank : ''), '#' + p.rank); h.appendChild(rk); }
   c.appendChild(h);
-  const g = mkEl('div', 'pf-grid'), me = D.me ? D.me.uid : null;
+  pfBody(c, p, D);
+}
+// Les niveaux d'un joueur, son niveau de la semaine et son total (fiche joueur, et « Mon compte »)
+function pfBody(c, p, D) {
+  const g = mkEl('div', 'pf-grid');
   for (let n = 1; n <= 10; n++) {
     const k = String(n), ms = (p.ms || {})[k], t = mkEl('div', 'pf-t'); t.style.setProperty('--i', n - 1);
     t.appendChild(mkEl('span', 'n', String(n).padStart(2, '0')));
@@ -9662,6 +9666,12 @@ function acctRender() {
       const vb = mkEl('button', 'ed-btn', 'Confirmer mon adresse e-mail');
       vb.addEventListener('click', () => acctDo(async () => { await ACCT.user.sendEmailVerification(); acctMsg('E-mail envoyé : clique sur le lien reçu, puis recharge la page.', true); }));
       c.appendChild(vb);
+    }
+    // mes niveaux, ma semaine et mon total (comme sur la fiche d'un joueur)
+    if (ACCT.pseudo) {
+      c.classList.add('wide');
+      if (PTS.data && PTS.data.me) pfBody(c, PTS.data.me, PTS.data);
+      else ptsLoad().then(() => { if (ACCT.view === 'me' && !acctEl.hidden && PTS.data && PTS.data.me) acctRender(); });
     }
     const row = mkEl('div', 'acct-row'), ch = mkEl('button', 'ed-btn', 'Changer de pseudo'), out = mkEl('button', 'ed-btn danger', 'Se déconnecter');
     ch.addEventListener('click', () => { ACCT.view = 'pseudo'; acctRender(); });
