@@ -1,0 +1,23 @@
+# Anti-triche : chaque nouveau temps du classement est rejoué par le jeu (replay contre le vrai niveau) toutes les heures.
+# Les points d'un temps ne comptent, pour les autres joueurs, qu'une fois ce temps vérifié.
+name: Vérification des temps
+on:
+  schedule:
+    - cron: '23 * * * *'       # toutes les heures
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency: { group: verify, cancel-in-progress: false }
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: npm install --no-save playwright@1.47.2 firebase-admin@12.5.0
+      - run: npx playwright install --with-deps chromium
+      - run: node .github/scripts/verify.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}

@@ -8703,6 +8703,19 @@ function navIdx() {
    semaines finies sont rangées dans meta/points (par la tâche du lundi ou l'admin) avec les temps de chacun, et leurs
    points restent acquis. Les joueurs masqués ou bannis, et les temps au replay faux, ne comptent pas. */
 var PTS = { t: 0, data: null, busy: null, shown: null };   // var : lu par des fonctions qui peuvent tourner avant cette ligne (PTS vaut alors undefined)
+/* Anti-triche côté serveur : la tâche « Vérification des temps » (toutes les heures) rejoue chaque nouveau temps contre le
+   vrai niveau et note le verdict dans meta/verified ({ "niveau|joueur|temps": 1 bon / 0 faux }). Un temps faux ne
+   compte jamais ; un temps pas encore vérifié ne rapporte pas de points aux yeux des autres (sauf si la tâche ne tourne
+   plus depuis 6 h : on ne bloque pas tout le monde pour autant). */
+const SRV = { t: 0, v: {}, fresh: false };
+async function srvVerdicts(force) {
+  if (!force && Date.now() - SRV.t < 60000) return SRV;
+  try { const d = await ACCT.db.collection('meta').doc('verified').get(), x = d.exists ? d.data() : {}; SRV.v = x.v || {}; SRV.fresh = Date.now() - (+x.upd || 0) < 6 * 3600e3; SRV.t = Date.now(); }
+  catch (e) {}
+  return SRV;
+}
+const srvVerdict = (k, r) => SRV.v[k + '|' + r.uid + '|' + r.ms];
+const srvOk = (k, r) => { const v = srvVerdict(k, r); return v === 1 || (v === undefined && !SRV.fresh); };
 const ptsOf = (best, ms) => ms > 0 && best > 0 ? Math.min(1000, Math.round(1000 * best / ms)) : 0;
 const fmtPts = n => Math.round(n).toLocaleString('fr-FR');
 function ptsScore(rows, ok) {                 // rows : [{uid, ms}] → { best, pts: {uid: points} }
@@ -8720,7 +8733,7 @@ async function ptsLoad(force) {
     const lv = Object.keys(BUILTIN).map(Number).filter(n => n >= 1 && n <= 10);
     const keys = lv.map(String); if (WEEKLY) keys.push('w' + WEEKLY.id);
     const [bm, bans, arch, ...cols] = await Promise.all([boardMeta(true), db.collection('meta').doc('bans').get().catch(() => null),
-      db.collection('meta').doc('points').get().catch(() => null), ...keys.map(k => db.collection('scores').doc(k).collection('runs').get().catch(() => null))]);
+      db.collection('meta').doc('points').get().catch(() => null), ...keys.map(k => db.collection('scores').doc(k).collection('runs').get().catch(() => null)), srvVerdicts(true)]);
     const banned = new Set(bans && bans.exists && Array.isArray(bans.data().uids) ? bans.data().uids : []);
     const bd = bm.d || {}, resets = bd.userResets || {}, gReset = +bd.reset || 0;
     const ok = x => x.uid === me || (!bm.hidden.has(x.uid) && !banned.has(x.uid));
@@ -8731,7 +8744,7 @@ async function ptsLoad(force) {
       const n = k[0] === 'w' ? WEEKLY_N : +k;
       const all = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
       all.forEach(r => { if (r.uid === me) mine[k] = r.ms; });            // son propre temps compte toujours pour soi
-      const rows = all.filter(r => r.uid === me || VERD[verdKey(n, r)] !== 'bad');
+      const rows = all.filter(r => r.uid === me || (VERD[verdKey(n, r)] !== 'bad' && srvOk(k, r)));
       rows.forEach(r => { if (r.pseudo) who(r.uid).pseudo = r.pseudo; });
       const S = ptsScore(rows, ok); best[k] = S.best;
       for (const uid in S.pts) { const p = who(uid); if (n === WEEKLY_N) p.cur = S.pts[uid]; else { p.lv[k] = S.pts[uid]; p.nLv++; } }
@@ -8741,7 +8754,7 @@ async function ptsLoad(force) {
     for (const wk in (A.weeks || {})) {
       const W = A.weeks[wk]; if (!W || !W.ms || (W.id && WEEKLY && String(W.id) === String(WEEKLY.id))) continue;
       const from = +W.from || 0; if (from < gReset) continue;
-      const rows = Object.keys(W.ms).map(uid => ({ uid, ms: +W.ms[uid] })).filter(r => !(+resets[r.uid] > from));
+      const rows = Object.keys(W.ms).map(uid => ({ uid, ms: +W.ms[uid] })).filter(r => !(+resets[r.uid] > from) && (r.uid === me || srvOk('w' + W.id, r)));
       const S = ptsScore(rows, ok);
       for (const uid in S.pts) { const p = who(uid); p.wk += S.pts[uid]; if (!p.pseudo) p.pseudo = names[uid] || ''; }
     }
@@ -9200,7 +9213,8 @@ async function shownTop(n, k = 10) {
     return out;
   }
   const me = ACCT.user ? ACCT.user.uid : null;
-  const vis = rows.filter(r => r.uid === me || !bm.hidden.has(r.uid));   // un joueur masqué voit quand même ses temps
+  await srvVerdicts();
+  const vis = rows.filter(r => r.uid === me || (!bm.hidden.has(r.uid) && srvVerdict(bkey(n), r) !== 0));   // un joueur masqué voit quand même ses temps
   const v = await Promise.all(vis.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
   return vis.filter((r, i) => v[i] !== 'bad').slice(0, k);
 }
@@ -9675,7 +9689,24 @@ showScreen('title');
 requestAnimationFrame(frame);
 // Génération automatique du niveau de la semaine (tâche planifiée GitHub, voir .github/scripts/weekly.mjs) : ouverte avec
 // ?autogen=1, la page fabrique et fait vérifier un niveau par le robot, sans rien enregistrer ; la tâche l'enregistre.
-if (/[?&]autogen=1/.test(location.search)) window.__polyGen = from => genWeeklyDoc('Génération du niveau…', from);
+if (/[?&]autogen=1/.test(location.search)) {
+  window.__polyGen = from => genWeeklyDoc('Génération du niveau…', from);
+  // Anti-triche : la tâche « Vérification des temps » rejoue ici chaque nouveau temps (replay contre le vrai niveau)
+  window.__polyCheck = (key, weeklyDoc, g) => {
+    try {
+      let n;
+      if (String(key)[0] === 'w') {
+        const W2 = weeklyDoc && String(weeklyDoc.id) === String(key).slice(1) ? weeklyFrom(weeklyDoc) : null;
+        if (!W2) return { err: 'niveau de la semaine introuvable' };
+        WEEKLY = W2; WEEKLY_TRY = null; n = WEEKLY_N;
+      } else n = +key;
+      if (!getBuilder(n)) return { err: 'niveau inconnu' };
+      if (MAP !== 'level' + n || n === WEEKLY_N) loadMap('level' + n);
+      const bad = validateGhost(g, n);
+      return { ok: !bad.length, bad };
+    } catch (e) { return { err: String(e && e.message || e) }; }
+  };
+}
 else acctInit();
 })();
 </script>
