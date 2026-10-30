@@ -596,6 +596,8 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
     repeating-linear-gradient(118deg,rgba(255,255,255,.12) 0 1.5px,transparent 1.5px 4px),var(--metal);
   box-shadow:inset 0 2px 0 rgba(255,255,255,.75),inset 0 -6px 10px rgba(0,0,0,.12),0 0 22px rgba(var(--g),.45);
   transform-origin:50% 100%;animation:podRise .6s cubic-bezier(.2,.9,.3,1.15) both,foilRow 5.5s cubic-bezier(.45,0,.2,1) infinite;animation-delay:var(--d),calc(var(--d) + 1.2s)}
+/* les marches se fondent dans le blanc vers le bas : pas de coupure avec la suite du classement */
+.pod-base{-webkit-mask-image:linear-gradient(#000 45%,rgba(0,0,0,.55) 75%,transparent 100%);mask-image:linear-gradient(#000 45%,rgba(0,0,0,.55) 75%,transparent 100%)}
 .pod-base b{font:italic 900 34px/1 var(--font-display);text-shadow:0 1px 0 rgba(255,255,255,.65);letter-spacing:-.03em}
 .pod-s.m1 .pod-base b{font-size:44px}
 .pod-s.m1 .pod-base::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;border-radius:inherit;padding:2.5px;
@@ -607,7 +609,7 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 @keyframes podRise{from{transform:scaleY(0)}}
 @keyframes podAv{from{opacity:0;transform:translateY(14px) scale(.6)}}
 @keyframes podCr{from{opacity:0;transform:translateY(-12px) rotate(-25deg) scale(.4)}}
-.pod + .pts-list{border-top:2.5px solid var(--ink);padding-top:10px;margin-top:-14px}
+.pod + .pts-list{margin-top:-10px}
 .pts-view .pts-list{max-height:min(30vh,280px)}
 /* ma place, en bas */
 .pts-me{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 14px 10px 10px;border:2.5px solid var(--ink);border-radius:12px;background:#fff0ee;box-shadow:var(--sh-2);
