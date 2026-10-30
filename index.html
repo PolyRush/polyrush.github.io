@@ -1014,6 +1014,11 @@ body.lowfx .pv-glass{background:rgba(255,255,255,.88)}
 .pv-mine b{font:800 22px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.02em}
 .pv-mine b.s::after{content:' s';font-size:.55em;opacity:.55}
 .pv-mine b{margin-left:auto}
+.pv-mine{border-radius:10px;transition:background .18s}
+.pv-mine.aud{cursor:pointer}
+@media (hover:hover){.pv-mine.aud:hover{background:rgba(17,17,17,.045)}}
+.pv-mine.sus span:first-child::after{content:" ⚠";color:var(--red-deep)}
+.pv-mine .pv-reset svg path[fill]{stroke:none}
 .pv-mine .pv-reset{height:26px;margin-left:10px;border:2px solid var(--ink);border-radius:7px;background:var(--card);color:var(--ink);cursor:pointer;display:inline-flex;align-items:center;gap:5px;padding:0 8px 0 6px;font:800 11px/1 var(--font-ui);text-transform:uppercase;letter-spacing:.04em;transition:background .18s,color .18s,border-color .18s}
 .pv-mine .pv-reset svg{width:11px;height:11px}
 .pv-mine .pv-reset .t{font:inherit;color:inherit;letter-spacing:inherit}
@@ -1275,7 +1280,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
           <div id="pvList" class="pv-list"></div>
           <div id="pvAdmin" class="pv-admin" hidden></div>
         </div>
-        <div class="pv-mine"><span>Ton record</span><b id="pvRec">—</b><button id="pvReset" class="pv-reset" hidden title="Effacer ton temps sur ce niveau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg><span class="t">Reset</span></button></div>
+        <div id="pvMine" class="pv-mine"><span>Ton record</span><b id="pvRec">—</b><button id="pvRp" class="pv-reset" hidden title="Voir ton replay"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg><span class="t">Replay</span></button><button id="pvReset" class="pv-reset" hidden title="Effacer ton temps sur ce niveau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg><span class="t">Reset</span></button></div>
         <div id="pvPts" class="pv-pts" hidden><i class="cube" aria-label="Points"></i><div class="pp-bar"><i></i></div><b><span id="pvPtsV">0</span><small>/1000</small></b></div>
         <div id="pvWeek" class="pv-week" hidden>
           <p id="pvWeekInfo"></p>
@@ -7513,7 +7518,7 @@ function previewCamera(fdt) {
 // « Ton record » sur la fiche du niveau
 function pvRecShow(n) {
   const rk = recKey(n), rv = $('pvRec'), b = $('pvReset'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]);
-  b.hidden = !records[rk] || ED.test;
+  b.hidden = !records[rk] || ED.test || !!(ACCT.on && ACCT.user);   // avec un compte : la bande ouvre le panneau du temps (comme au classement)
   if (b._k === rk && b._rec === records[rk] && !b.disabled) return;   // même record : on ne coupe pas un « Sûr ? » en cours
   b._k = rk; b._rec = records[rk]; b.classList.remove('ask'); b.disabled = false; b.querySelector('.t').textContent = 'Reset'; clearTimeout(b._t);
 }
@@ -7562,8 +7567,10 @@ async function pvBoard(n) {
     if (ACCT.user && !isAdmin()) { try { const m = await ACCT.db.collection('meta').doc('board').get(); ACCT.replays = m.exists && m.data().replays === true; } catch (e) {} }
     const rows = await shownTop(n, 10);
     if (!PV || PV.n !== n) return;
+    { const box = $('pvAdmin'); box.hidden = true; box.textContent = ''; box.dataset.uid = ''; }
     boardList(rows, list, n); boardMine(n, rows, list);
     if (isAdmin()) adminAudit(n, rows, list);
+    pvMine(n);
   } catch (e) { list.textContent = 'Classement indisponible.'; }
 }
 
@@ -7698,6 +7705,7 @@ async function adminAudit(n, rows, list) {
   });
 }
 function adminPanel(n, r, bad) {
+  const self = !!(ACCT.user && r.uid === ACCT.user.uid);
   const box = $('pvAdmin');
   if (!box.hidden && box.dataset.uid === r.uid) {                 // recliquer range le panneau
     box.dataset.uid = ''; box.classList.remove('open'); box.classList.add('closing');
@@ -7707,8 +7715,8 @@ function adminPanel(n, r, bad) {
   box.hidden = false; box.textContent = ''; box.dataset.uid = r.uid;
   box.classList.remove('closing', 'open'); void box.offsetWidth; box.classList.add('open');
   const h = mkEl('div', 'pa-h'); h.append(mkEl('b', null, r.pseudo || '?'), mkEl('span', null, fmtT(r.ms) + ' s')); box.appendChild(h);
-  if (bad.length) { const ul = mkEl('ul', 'pa-bad'); for (const t of bad) ul.appendChild(mkEl('li', null, t)); box.appendChild(ul); }
-  else box.appendChild(mkEl('p', 'pa-ok', 'Replay vérifié : rien de suspect.'));
+  if (bad && bad.length) { const ul = mkEl('ul', 'pa-bad'); for (const t of bad) ul.appendChild(mkEl('li', null, t)); box.appendChild(ul); }
+  else if (bad) box.appendChild(mkEl('p', 'pa-ok', 'Replay vérifié : rien de suspect.'));
   const row = mkEl('div', 'acct-row'), del = mkEl('button', 'ed-btn', 'Effacer ce temps'), ban = mkEl('button', 'ed-btn danger', 'Bannir le joueur');
   del.addEventListener('click', async () => { await adminDelete(n, r.uid); toast('Temps effacé', 1200); pvBoard(n); await ptsRefresh(true); if (PV && PV.n === n) ptsPreview(n); });
   let armed = 0;
@@ -7717,7 +7725,28 @@ function adminPanel(n, r, bad) {
     clearTimeout(armed);
     await adminBan(r.uid); toast((r.pseudo || 'Joueur') + ' banni', 1500); pvBoard(n);
   });
-  row.append(del, ban); box.appendChild(row);
+  row.append(del); if (!self && isAdmin()) row.append(ban); box.appendChild(row);
+}
+// La bande « Ton record » se comporte comme ta ligne au classement : bouton Replay, et un clic ouvre le panneau du temps
+// (vérification du replay pour l'admin, « Effacer ce temps » pour tous) ; utile quand ta ligne n'est pas affichée
+async function pvMine(n) {
+  const m = $('pvMine'), rp = $('pvRp');
+  rp.hidden = true; rp.onclick = null; m.onclick = null; m.classList.remove('aud', 'sus'); m.title = '';
+  if (!ACCT.on || !ACCT.user || !boardOK(n)) return;
+  const uid = ACCT.user.uid, db = ACCT.db;
+  let r = null;
+  try { const d = await db.collection('scores').doc(bkey(n)).collection('runs').doc(uid).get(); if (d.exists) r = { uid, ...d.data() }; } catch (e) {}
+  if (!PV || PV.n !== n || !r) return;
+  if (!r.pseudo) r.pseudo = ACCT.pseudo || '';
+  if (r.ghost && canWatch()) { rp.hidden = false; rp.onclick = e => { e.stopPropagation(); watchGhost(n, uid, r.pseudo); }; }
+  let bad = null;
+  if (isAdmin()) {
+    let g = null; try { const d = await db.collection('ghosts').doc(bkey(n)).collection('runs').doc(uid).get(); g = d.exists ? d.data() : null; } catch (e) {}
+    if (!PV || PV.n !== n) return;
+    bad = validateGhost(g, n); m.classList.toggle('sus', bad.length > 0);
+  }
+  m.classList.add('aud'); m.title = bad && bad.length ? '⚠ ' + bad.join(' · ') : 'Ton temps : replay, effacer';
+  m.onclick = e => { if (e.target.closest('.pv-reset')) return; adminPanel(n, r, bad); };
 }
 async function adminDelete(n, uid) {
   const db = ACCT.db, k = String(recKey(n));
