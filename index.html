@@ -8992,11 +8992,7 @@ async function ptsLoad(force) {
     let rank = 0, prev = -1;
     list.forEach((p, i) => { if (p.total !== prev) rank = i + 1; p.rank = rank; prev = p.total; });
     if (me && ACCT.pseudo && P[me]) P[me].pseudo = ACCT.pseudo;
-    for (const uid in H) {                                         // leurs points, comme s'ils comptaient encore (fiche seulement)
-      const h = H[uid]; let lv = 0;
-      for (const k in h.ms) { const p = ptsOf(best[k] && best[k] < h.ms[k] ? best[k] : h.ms[k], h.ms[k]); if (k[0] === 'w') h.cur = p; else { h.lv[k] = p; lv += p; } }
-      h.levels = lv; h.total = lv + h.cur; h.hidden = true;
-    }
+    for (const uid in H) { const h = H[uid]; h.levels = 0; h.total = 0; h.hidden = true; }   // masqué : ses temps (fiche), mais aucun point ; tout revient s'il est démasqué
     if (me && H[me] && ACCT.pseudo) H[me].pseudo = ACCT.pseudo;
     syncRecords(keys, cols, mine);
     PTS.data = { list, best, mine, hidden: H, me: me ? (H[me] || P[me] || { uid: me, lv: {}, nLv: 0, wk: 0, cur: 0, total: 0, levels: 0, rank: 0 }) : null, wkKey: WEEKLY ? 'w' + WEEKLY.id : null };
@@ -9056,7 +9052,7 @@ function ptsTiles() {
   if (!PTS) return;
   const D = PTS.data;
   document.querySelectorAll('#lvGrid .tile.open').forEach(t => {
-    const k = String(t.dataset.n), first = !!(D && D.mine[k] && D.mine[k] === D.best[k]), cn = t.querySelector('.corner');
+    const k = String(t.dataset.n), first = !!(D && !(D.me && D.me.hidden) && D.mine[k] && D.mine[k] === D.best[k]), cn = t.querySelector('.corner');
     if (first === t.classList.contains('first')) return;
     t.classList.toggle('first', first);
     t.title = first ? 'Meilleur temps du niveau' : '';
@@ -9091,6 +9087,7 @@ function finPoints(n, ms, prev, better, tok) {
   if (ED.test || !ACCT.on || !ACCT.user || !ACCT.pseudo || !boardOK(n) || !D || !D.me) return;
   const k = +n === WEEKLY_N ? D.wkKey : String(n); if (!k) return;
   const oldMs = D.mine[k] || 0, newMs = better ? ms : (oldMs || ms);
+  if (D.me.hidden) { D.mine[k] = newMs; return; }   // compte masqué : aucun point gagné
   const oldBest = D.best[k] || 0, newBest = Math.min(oldBest || Infinity, newMs);
   const oldP = ptsOf(oldBest, oldMs), newP = ptsOf(newBest, newMs), gain = Math.max(0, newP - oldP);
   const oldTot = Math.round(D.me.total || 0), newTot = oldTot + gain;
@@ -9263,9 +9260,9 @@ function pfBody(c, p, D) {
     const k = String(n), ms = (p.ms || {})[k], t = mkEl('div', 'pf-t'); t.style.setProperty('--i', n - 1);
     t.appendChild(mkEl('span', 'n', String(n).padStart(2, '0')));
     if (ms) {
-      const gold = D.best[k] && ms === D.best[k];
+      const gold = !p.hidden && D.best[k] && ms === D.best[k];
       if (gold) { t.classList.add('gold'); const cr = mkEl('span', 'cr'); cr.innerHTML = ICON_CROWN; t.appendChild(cr); }
-      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms))); tm.appendChild(ptsTag(D.best[k] || ms, ms));
+      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms))); tm.appendChild(ptsTag(D.best[k] || ms, ms, p.hidden));
       t.appendChild(tm);
       t.title = `Niveau ${n} : ${fmtT(ms)} s`;
     } else {
@@ -9281,8 +9278,8 @@ function pfBody(c, p, D) {
     const k = D.wkKey, ms = (p.ms || {})[k], t = mkEl('div', 'pf-t pf-wk'); t.style.setProperty('--i', 10);
     t.append(mkEl('span', 'n', 'Semaine'), mkEl('span', 'wk', 'S' + weekNum(WEEKLY.from || WEEKLY.created)));
     if (ms) {
-      if (D.best[k] && ms === D.best[k]) { t.classList.add('gold'); const cr = mkEl('span', 'cr'); cr.innerHTML = ICON_CROWN; t.appendChild(cr); }
-      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms) + ' s')); tm.appendChild(ptsTag(D.best[k] || ms, ms));
+      if (!p.hidden && D.best[k] && ms === D.best[k]) { t.classList.add('gold'); const cr = mkEl('span', 'cr'); cr.innerHTML = ICON_CROWN; t.appendChild(cr); }
+      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms) + ' s')); tm.appendChild(ptsTag(D.best[k] || ms, ms, p.hidden));
       t.appendChild(tm);
     }
     c.appendChild(t);
@@ -9765,7 +9762,7 @@ async function boardMine(n, rows, el) {
   } catch (e) { console.warn(e); }
 }
 // Au survol d'un temps : les points qu'il rapporte prennent sa place
-function ptsTag(best, ms) { const p = mkEl('span', 'pt', fmtPts(ptsOf(best, ms))); p.appendChild(mkEl('i', 'cube')); return p; }
+function ptsTag(best, ms, zero) { const p = mkEl('span', 'pt', fmtPts(zero ? 0 : ptsOf(best, ms))); p.appendChild(mkEl('i', 'cube')); return p; }
 function boardList(rows, el, lv) {
   el.textContent = '';
   if (!rows.length) { const p = document.createElement('p'); p.className = 'acct-empty'; p.textContent = 'Personne n’a encore de temps ici.'; el.appendChild(p); return; }
