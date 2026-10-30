@@ -319,6 +319,7 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cube) center/contain no-repeat;vertical-align:-.08em}
 .pc-v{display:flex;align-items:center;gap:8px;font:800 36px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;white-space:nowrap}
 .pc-v i.cube{width:.72em;height:.72em}
+.pts-card.hid .pc-r{display:none}
 .pc-r{position:relative;overflow:hidden;align-self:stretch;display:grid;place-items:center;min-width:56px;padding:0 10px;border-radius:9px;background:var(--ink);color:#fff}
 .pc-r b{position:relative;font:italic 900 26px/1 var(--font-display);letter-spacing:-.02em}
 .pts-card.r1 .pc-r{background:var(--m-gold);color:var(--ink);box-shadow:0 0 18px rgba(var(--g-gold),.75),inset 0 0 0 2px rgba(17,17,17,.6)}
@@ -618,6 +619,7 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .pts-me .rk.m1{--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);--g:var(--g-gold)}
 .pts-me .rk.m2{--metal:linear-gradient(150deg,#ffffff 0%,#e7ebf0 24%,#a6afba 50%,#f5f7fa 70%,#86909c 100%);--g:var(--g-silver)}
 .pts-me .rk.m3{--metal:linear-gradient(150deg,#ffe4c8 0%,#f2ab6a 24%,#b5672d 50%,#f7c699 70%,#874a1e 100%);--g:var(--g-bronze)}
+.pts-me.hid{grid-template-columns:1fr auto;padding-left:16px}
 .pts-me .who{display:grid;gap:4px;min-width:0}
 .pts-me .lab{font:800 10px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
 .pts-me .ps{font:800 15px/1.2 var(--font-ui);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -9047,6 +9049,7 @@ function ptsCard() {
   PTS.shown = tot;
   $('ptsRank').textContent = D.me.rank ? '#' + D.me.rank : '#–';
   for (const r of [1, 2, 3]) b.classList.toggle('r' + r, D.me.rank === r);
+  b.classList.toggle('hid', !!D.me.hidden);   // compte masqué : son score, sans rang
   b.setAttribute('aria-label', `Tes points : ${fmtPts(tot)}${D.me.rank ? ', ' + D.me.rank + 'e sur ' + D.list.length : ''}. Ouvrir le classement général`);
 }
 function ptsTiles() {
@@ -9344,13 +9347,15 @@ function ptsView(c) {
   }
   // en bas : ma place et mon total
   const mine = mkEl('div', 'pts-me');
-  if (D.me && D.me.hidden) mine.appendChild(mkEl('span', 'lab', 'Tu n’apparais pas au classement'));
-  else if (D.me && D.me.total) {
-    const r = D.me.rank, rk = mkEl('span', 'rk' + (r && r <= 3 ? ' m' + r : ''), r ? '#' + r : '–');
+  if (D.me && (D.me.total || D.me.hidden)) {
+    // compte masqué : le même bandeau, avec son score, mais sans rang
+    const hid = !!D.me.hidden, r = hid ? 0 : D.me.rank;
     const ps = mkEl('span', 'ps', ACCT.pseudo || D.me.pseudo || 'Toi'); if (me) ps.dataset.uid = me;
-    const lab = mkEl('span', 'lab', 'Ta place');
+    const lab = mkEl('span', 'lab', hid ? 'Ton compte est masqué' : 'Ta place');
     const who = mkEl('span', 'who'); who.append(lab, ps);
-    mine.append(rk, who, totTag(D.me, 'me-tot'));
+    if (hid) mine.classList.add('hid');
+    else mine.appendChild(mkEl('span', 'rk' + (r && r <= 3 ? ' m' + r : ''), r ? '#' + r : '–'));
+    mine.append(who, totTag(D.me, 'me-tot'));
   } else mine.appendChild(mkEl('span', 'lab', 'Finis un niveau pour entrer au classement'));
   c.appendChild(mine);
   const f = mkEl('div', 'pts-formula'), fr = mkEl('span', 'fr');
