@@ -384,6 +384,9 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 .pts-sum{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 12px;border:2.5px solid var(--ink);border-radius:12px;box-shadow:var(--sh-1);
   font:800 34px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em}
 .pts-sum i.cube{width:28px;height:28px}
+.pf-tot.pts-big{min-height:62px}
+.pf-tot.pts-big .a b{font:800 34px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em}
+.pf-tot.pts-big .a i.cube{width:28px;height:28px}
 .pts-list .board li .tm .tv{display:inline-flex;align-items:center;gap:6px}
 .pts-list .board li .tm i.cube{width:15px;height:15px}
 .pts-list .board li .tm .pt.sum{gap:7px}
@@ -521,6 +524,7 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
   animation:pfIn .45s var(--ease-pop) backwards,foilRow 5s cubic-bezier(.45,0,.2,1) infinite;animation-delay:calc(var(--i,0) * 28ms + 60ms),.9s}
 .pf-t{animation:pfIn .45s var(--ease-pop) backwards;animation-delay:calc(var(--i,0) * 28ms + 60ms)}
 .pf-tot,.pts-sum,.pts-formula{animation:pfIn .45s var(--ease-pop) .32s backwards}
+.pf-tot.pts-big{animation-delay:.05s}
 @keyframes pfIn{from{opacity:0;translate:0 10px;scale:.94}}
 .pf-t.gold .n{text-shadow:0 1px 0 rgba(255,255,255,.7)}
 .pf-t .cr{position:absolute;top:6px;right:6px;width:18px;height:18px;display:grid;place-items:center;border-radius:5px;background:var(--ink);color:#ffd34d}
@@ -9156,7 +9160,12 @@ function ptsView(c) {
     return;
   }
   if (D.me && D.me.total) {
-    const sum = mkEl('div', 'pts-sum'); sum.append(mkEl('span', null, fmtPts(D.me.total)), mkEl('i', 'cube'));
+    // mon total ; au survol (appui long sur téléphone) : niveaux + semaines
+    const sum = mkEl('div', 'pf-tot pts-big'), ta = mkEl('div', 'a'), tb = mkEl('div', 'b');
+    ta.append(mkEl('b', null, fmtPts(D.me.total)), mkEl('i', 'cube'));
+    const part = (v, l) => { const x = mkEl('span', 'sm'); x.append(mkEl('b', null, fmtPts(v)), mkEl('small', null, l)); return x; };
+    tb.append(part(D.me.levels || 0, 'niveaux'), mkEl('span', 'op', '+'), part((D.me.wk || 0) + (D.me.cur || 0), 'semaines'), mkEl('i', 'cube'));
+    sum.append(ta, tb);
     c.appendChild(sum);
   }
   const box = mkEl('div', 'pts-list');
