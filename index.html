@@ -297,7 +297,9 @@ body.lowfx .logo .slab::after,body.lowfx .pv-play::after{animation:none;display:
 .tile.hard.open .best{color:#ffd0cb;opacity:.85}
 .tile.hard.open:hover .corner,.tile.hard.open:focus-visible .corner{background:var(--ink);color:#fff}
 .tile.hard.open:hover .best,.tile.hard.open:focus-visible .best{color:#fff}
-.tile.hard.locked{background:radial-gradient(120% 90% at 85% 110%,#e9b6b1 0%,#efe3e2 60%,var(--lock-bg) 100%)}
+.tile.hard.locked{background:radial-gradient(120% 90% at 85% 110%,#7d7f83 0%,#3b3d41 45%,#1f2023 100%);color:#9ba1a8;border-color:#3a3c40;box-shadow:4px 4px 0 #3a3c40}
+.tile.hard.locked .corner{color:#9ba1a8}
+.tile.hard.locked .num{opacity:.9}
 .screen.show .tile.shake{animation:shake .42s ease}
 @keyframes shake{20%{transform:translateX(-5px)}40%{transform:translateX(5px)}60%{transform:translateX(-3px)}80%{transform:translateX(2px)}}
 .screen.show .tile{animation:tileIn .55s var(--ease-pop) backwards;animation-delay:calc(var(--i) * 38ms + 180ms)}
