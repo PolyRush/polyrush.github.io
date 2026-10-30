@@ -477,8 +477,9 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .board li .tm.hp:hover .pt{opacity:1;transform:none}
 @media (prefers-reduced-motion:reduce){.board li .tm.hp > *{transition:opacity .15s}.board li .tm .pt,.board li .tm.hp:hover .tv{transform:none}}
 /* pseudos cliquables : ouvrent la fiche du joueur */
-.board .ps[data-uid]{cursor:pointer;text-underline-offset:3px;text-decoration-thickness:2px}
-.board .ps[data-uid]:hover{text-decoration-line:underline}
+.board .ps[data-uid]{justify-self:start;max-width:100%;cursor:pointer;border-radius:3px;padding:1px 3px;margin:-1px -3px;
+  background:linear-gradient(rgba(240,68,58,.28),rgba(240,68,58,.28)) no-repeat 0 100%/0% 100%;transition:background-size .25s var(--ease-out)}
+.board .ps[data-uid]:hover{background-size:100% 100%}
 /* fiche d'un joueur */
 .pf-back{justify-self:start;margin:-6px 0 -2px;padding:0;border:0;background:none;font:800 12px/1 var(--font-ui);color:var(--muted);cursor:pointer}
 .pf-back:hover{color:var(--ink)}
@@ -499,7 +500,9 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .pf-t .tm .pt i.cube{width:12px;height:12px}
 .pf-t:hover .tm.hp .tv{opacity:0;transform:translateY(-85%)}
 .pf-t:hover .tm.hp .pt{opacity:1;transform:none}
-.pf-t.none{color:var(--lock);border-color:var(--lock);box-shadow:none;background:repeating-linear-gradient(135deg,var(--lock-bg) 0 7px,#e7eaee 7px 14px)}
+.pf-t.lock{color:var(--lock);border-color:var(--lock);box-shadow:none;background:repeating-linear-gradient(135deg,var(--lock-bg) 0 7px,#e7eaee 7px 14px)}
+.pf-t.lock .lk{position:absolute;top:7px;right:7px;width:15px;height:15px;color:var(--lock)}
+.pf-t.lock .lk svg{width:100%;height:100%}
 .pf-t.gold{border-color:#3a2600;color:#2a1a00;
   background:linear-gradient(112deg,transparent 38%,rgba(255,255,255,.85) 47%,rgba(255,255,255,.2) 52%,transparent 60%) 160% 0/320% 100% no-repeat,
     repeating-linear-gradient(118deg,rgba(255,255,255,.12) 0 1.5px,transparent 1.5px 4px),linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);
@@ -9055,7 +9058,11 @@ function playerView(c) {
       const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms))); tm.appendChild(ptsTag(D.best[k] || ms, ms));
       t.appendChild(tm);
       t.title = `Niveau ${n} : ${fmtT(ms)} s`;
-    } else { t.classList.add('none'); t.appendChild(mkEl('span', 'tm', '—')); }
+    } else {
+      // pas fini : ouvert pour lui (niveau 1, précédent fini, ou il a un temps plus loin) = tuile vide ; sinon verrouillé
+      const pms = p.ms || {}, open = n === 1 || pms[String(n - 1)] || Object.keys(pms).some(x => +x > n);
+      if (!open) { t.classList.add('lock'); const lk = mkEl('span', 'lk'); lk.innerHTML = ICON_LOCK; t.appendChild(lk); }
+    }
     g.appendChild(t);
   }
   c.appendChild(g);
