@@ -102,7 +102,8 @@ async function drain() {
     }
   } finally { busy = false; }
 }
-for (const t of zeros) { await purge(t).catch(e => console.log(`::warning::suppression ${t.k} · ${t.pseudo} : ${e.message}`)); console.log(`::notice::Temps refusé supprimé — niveau ${t.k}, ${t.pseudo}, ${t.ms} ms`); }
+// déjà marqués refusés mais encore là : revérifiés avec le contrôle actuel (une erreur corrigée depuis les sauve), supprimés sinon
+for (const t of zeros) if (!queued.has(t.id)) { queued.add(t.id); todo.push(t); }
 await drain();
 
 // rapport : rejoue aussi les temps refusés gardés pour l'admin (pour voir si une nouvelle règle les accepterait)
