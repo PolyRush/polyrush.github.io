@@ -510,7 +510,25 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .pf-t.gold .n{text-shadow:0 1px 0 rgba(255,255,255,.7)}
 .pf-t .cr{position:absolute;top:6px;right:6px;width:18px;height:18px;display:grid;place-items:center;border-radius:5px;background:var(--ink);color:#ffd34d}
 .pf-t .cr svg{width:70%;height:70%}
-.pf-tot{display:flex;align-items:center;justify-content:center;gap:10px;padding:10px 12px;border:2.5px solid var(--ink);border-radius:12px;box-shadow:var(--sh-1)}
+.pf-tot{display:grid;place-items:center;overflow:hidden;padding:10px 12px;min-height:58px;box-sizing:border-box;border:2.5px solid var(--ink);border-radius:12px;box-shadow:var(--sh-1);cursor:default}
+.pf-tot > div{grid-area:1/1;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .34s cubic-bezier(.3,.75,.2,1),opacity .22s ease}
+.pf-tot .b{opacity:0;transform:translateY(80%);gap:12px}
+.pf-tot:hover .a{opacity:0;transform:translateY(-80%)}
+.pf-tot:hover .b{opacity:1;transform:none}
+.pf-tot .sm{display:grid;justify-items:center;gap:3px}
+.pf-tot .sm b{font-size:24px}
+.pf-tot .sm small{font:700 10px/1 var(--font-ui);letter-spacing:.08em;color:var(--muted)}
+.pf-tot .op{font:800 20px/1 var(--font-num);color:var(--muted);margin-top:-12px}
+.pf-tot .b i.cube{margin-top:-12px}
+/* niveau de la semaine dans la fiche */
+.pf-wk{aspect-ratio:auto;grid-template-columns:auto auto 1fr;align-items:center;column-gap:10px;padding:10px 12px;margin-top:-4px}
+.pf-wk .n{font-size:16px;text-transform:uppercase}
+.pf-wk .wk{font:800 11px/1 var(--font-num);padding:4px 7px;border-radius:6px;background:var(--lock-bg);color:var(--ink)}
+.pf-wk.gold .wk{background:rgba(255,255,255,.55)}
+.pf-wk .tm{justify-self:end;font-size:13.5px}
+.pf-wk .tm.hp{justify-items:end}
+.pf-wk .cr{top:50%;right:auto;left:auto;position:static;justify-self:end;order:5}
+.pf-wk.gold{grid-template-columns:auto auto 1fr auto}
 .pf-tot .l{font:800 11px/1 var(--font-ui);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-right:4px}
 .pf-tot b{font:800 30px/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em}
 .pf-tot i.cube{width:24px;height:24px}
@@ -9066,7 +9084,23 @@ function playerView(c) {
     g.appendChild(t);
   }
   c.appendChild(g);
-  const tot = mkEl('div', 'pf-tot'); tot.append(mkEl('span', 'l', 'Total'), mkEl('b', null, fmtPts(p.total || 0)), mkEl('i', 'cube'));
+  // niveau de la semaine en cours : son temps (en or s'il est premier), les points au survol
+  if (D.wkKey && WEEKLY) {
+    const k = D.wkKey, ms = (p.ms || {})[k], t = mkEl('div', 'pf-t pf-wk');
+    t.append(mkEl('span', 'n', 'Semaine'), mkEl('span', 'wk', 'S' + weekNum(WEEKLY.from || WEEKLY.created)));
+    if (ms) {
+      if (D.best[k] && ms === D.best[k]) { t.classList.add('gold'); const cr = mkEl('span', 'cr'); cr.innerHTML = ICON_CROWN; t.appendChild(cr); }
+      const tm = mkEl('span', 'tm hp'); tm.append(mkEl('span', 'tv', fmtT(ms) + ' s')); tm.appendChild(ptsTag(D.best[k] || ms, ms));
+      t.appendChild(tm);
+    }
+    c.appendChild(t);
+  }
+  // total ; au survol, d'où il vient : niveaux + semaines
+  const tot = mkEl('div', 'pf-tot'), ta = mkEl('div', 'a'), tb = mkEl('div', 'b');
+  ta.append(mkEl('span', 'l', 'Total'), mkEl('b', null, fmtPts(p.total || 0)), mkEl('i', 'cube'));
+  const part = (v, l) => { const x = mkEl('span', 'sm'); x.append(mkEl('b', null, fmtPts(v)), mkEl('small', null, l)); return x; };
+  tb.append(part(p.levels || 0, 'niveaux'), mkEl('span', 'op', '+'), part((p.wk || 0) + (p.cur || 0), 'semaines'), mkEl('i', 'cube'));
+  tot.append(ta, tb);
   c.appendChild(tot);
 }
 function ptsView(c) {
