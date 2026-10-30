@@ -103,6 +103,16 @@ async function drain() {
 for (const t of zeros) { await purge(t).catch(e => console.log(`::warning::suppression ${t.k} · ${t.pseudo} : ${e.message}`)); console.log(`::notice::Temps refusé supprimé — niveau ${t.k}, ${t.pseudo}, ${t.ms} ms`); }
 await drain();
 
+// rapport : rejoue aussi les temps refusés gardés pour l'admin (pour voir si une nouvelle règle les accepterait)
+if (REPORT) {
+  await openPage();
+  const rj = await db.collection('rejected').get();
+  for (const d of rj.docs) {
+    const r = d.data(); if (!r.g || !r.g.d) continue;
+    const res = await page.evaluate(([k, w, gg]) => window.__polyCheck(k, w, gg), [r.k, r.k[0] === 'w' ? wdoc : null, { d: r.g.d, ms: r.ms }]).catch(e => ({ err: e.message }));
+    REP.push(`[refusé gardé] ${r.k}/${r.pseudo}/${r.ms}=${res.spd ? res.spd.max.toFixed(3) : '?'}${res.err ? '(' + res.err + ')' : res.ok ? ' → accepté maintenant' : '(encore refusé : ' + res.bad.join(' · ') + ')'}`);
+  }
+}
 if (LOOP_MIN) {
   // veille : chaque temps ajouté ou amélioré est vérifié tout de suite
   const stop = keys.map(k => db.collection('scores').doc(k).collection('runs').onSnapshot(snap => {
