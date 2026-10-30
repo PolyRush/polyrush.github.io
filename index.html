@@ -1280,7 +1280,7 @@ body.lowfx #acct{-webkit-backdrop-filter:none;backdrop-filter:none}
           <div id="pvList" class="pv-list"></div>
           <div id="pvAdmin" class="pv-admin" hidden></div>
         </div>
-        <div id="pvMine" class="pv-mine"><span>Ton record</span><b id="pvRec">—</b><button id="pvRp" class="pv-reset" hidden title="Voir ton replay"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg><span class="t">Replay</span></button><button id="pvReset" class="pv-reset" hidden title="Effacer ton temps sur ce niveau"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg><span class="t">Reset</span></button></div>
+        <div id="pvMine" class="pv-mine"><span>Ton record</span><b id="pvRec">—</b><button id="pvRp" class="pv-reset" hidden title="Voir ton replay"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4.5v15l12.5-7.5z"/></svg><span class="t">Replay</span></button></div>
         <div id="pvPts" class="pv-pts" hidden><i class="cube" aria-label="Points"></i><div class="pp-bar"><i></i></div><b><span id="pvPtsV">0</span><small>/1000</small></b></div>
         <div id="pvWeek" class="pv-week" hidden>
           <p id="pvWeekInfo"></p>
@@ -7531,34 +7531,7 @@ function previewCamera(fdt) {
   camera.position.lerp(_pc, k); camera.quaternion.slerp(_pq, k);
 }
 // « Ton record » sur la fiche du niveau
-function pvRecShow(n) {
-  const rk = recKey(n), rv = $('pvRec'), b = $('pvReset'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]);
-  b.hidden = !records[rk] || ED.test || !!(ACCT.on && ACCT.user);   // avec un compte : la bande ouvre le panneau du temps (comme au classement)
-  if (b._k === rk && b._rec === records[rk] && !b.disabled) return;   // même record : on ne coupe pas un « Sûr ? » en cours
-  b._k = rk; b._rec = records[rk]; b.classList.remove('ask'); b.disabled = false; b.querySelector('.t').textContent = 'Reset'; clearTimeout(b._t);
-}
-// Effacer son propre temps sur ce niveau (deux clics : « Reset » puis « Sûr ? ») : record, temps au classement et points
-$('pvReset').addEventListener('click', async () => {
-  const b = $('pvReset'), t = b.querySelector('.t'); if (!PV || b.disabled) return;
-  if (!b.classList.contains('ask')) {
-    b.classList.add('ask'); t.textContent = 'Sûr ?'; clearTimeout(b._t);
-    b._t = setTimeout(() => { b.classList.remove('ask'); t.textContent = 'Reset'; }, 3000); return;
-  }
-  clearTimeout(b._t); b.disabled = true; t.textContent = '…';
-  const n = PV.n, rk = recKey(n);
-  if (ACCT.on && ACCT.user && boardOK(n)) {
-    if (isAdmin()) await adminDelete(n, ACCT.user.uid);
-    else {
-      await dropMyRecord([rk]);
-      for (const col of ['scores', 'ghosts']) { try { await ACCT.db.collection(col).doc(bkey(n)).collection('runs').doc(ACCT.user.uid).delete(); } catch (e) {} }
-    }
-  } else if (ACCT.on && ACCT.user) await dropMyRecord([rk]);
-  else { delete records[rk]; saveRecords(); buildLevelGrid(); }
-  if (PTS && PTS.data) delete PTS.data.mine[bkey(n)];
-  if (!PV || PV.n !== n) return;
-  pvRecShow(n); pvBoard(n);
-  await ptsRefresh(true); if (PV && PV.n === n) ptsPreview(n);
-});
+function pvRecShow(n) { const rk = recKey(n), rv = $('pvRec'); rv.textContent = records[rk] ? fmtT(records[rk]) : '—'; rv.classList.toggle('s', !!records[rk]); }
 function openLevelUI(n, back) {
   const wk = n === WEEKLY_N;
   $('pvTitle').textContent = wk ? 'Niveau de la semaine' : 'Niveau ' + String(n).padStart(2, '0');
@@ -7743,7 +7716,7 @@ function adminPanel(n, r, bad) {
   row.append(del); if (!self && isAdmin()) row.append(ban); box.appendChild(row);
 }
 // La bande « Ton record » se comporte comme ta ligne au classement : bouton Replay, et un clic ouvre le panneau du temps
-// (vérification du replay pour l'admin, « Effacer ce temps » pour tous) ; utile quand ta ligne n'est pas affichée
+// (admin : vérification du replay, « Effacer ce temps ») ; utile quand ta ligne n'est pas affichée
 async function pvMine(n) {
   const m = $('pvMine'), rp = $('pvRp');
   rp.hidden = true; rp.onclick = null; m.onclick = null; m.classList.remove('aud', 'sus'); m.title = '';
@@ -7754,13 +7727,14 @@ async function pvMine(n) {
   if (!PV || PV.n !== n || !r) return;
   if (!r.pseudo) r.pseudo = ACCT.pseudo || '';
   if (r.ghost && canWatch()) { rp.hidden = false; rp.onclick = e => { e.stopPropagation(); watchGhost(n, uid, r.pseudo); }; }
+  if (!isAdmin()) return;                                          // un joueur ne peut pas effacer son temps : pas de panneau
   let bad = null;
-  if (isAdmin()) {
+  {
     let g = null; try { const d = await db.collection('ghosts').doc(bkey(n)).collection('runs').doc(uid).get(); g = d.exists ? d.data() : null; } catch (e) {}
     if (!PV || PV.n !== n) return;
     bad = validateGhost(g, n); m.classList.toggle('sus', bad.length > 0);
   }
-  m.classList.add('aud'); m.title = bad && bad.length ? '⚠ ' + bad.join(' · ') : 'Ton temps : replay, effacer';
+  m.classList.add('aud'); m.title = bad.length ? '⚠ ' + bad.join(' · ') : 'Replay vérifié';
   m.onclick = e => { if (e.target.closest('.pv-reset')) return; adminPanel(n, r, bad); };
 }
 async function adminDelete(n, uid) {
@@ -10027,12 +10001,6 @@ function podiumFx(box, li, rank) {
   if (rank === 1) { const fl = mkEl('div', 'gold-flash'); document.body.appendChild(fl); setTimeout(() => fl.remove(), 1400); }
   sfx('check');
   setTimeout(() => fx.remove(), 2200);
-}
-function acctReset() {
-  if (!ACCT.user) return;
-  const uid = ACCT.user.uid;
-  ACCT.db.collection('users').doc(uid).update({ records: {}, maj: Date.now() }).catch(() => {});
-  for (const k of boardLevels()) ACCT.db.collection('scores').doc(bkey(k)).collection('runs').doc(uid).delete().catch(() => {});
 }
 async function setPseudo(p) {
   const low = p.toLowerCase(), uid = ACCT.user.uid, db = ACCT.db;

@@ -75,7 +75,7 @@ service cloud.firestore {
         && request.resource.data.ghost == true
         && ownsPseudo(request.resource.data.pseudo)
         && get(/databases/$(database)/documents/ghosts/$(level)/runs/$(uid)).data.ms == request.resource.data.ms;
-      allow delete: if (request.auth != null && request.auth.uid == uid) || isAdmin();
+      allow delete: if isAdmin();   // un joueur ne peut pas effacer son propre temps
     }
   }
 }
