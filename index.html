@@ -797,6 +797,8 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 @keyframes finIn{from{opacity:0;transform:translateY(60px) scale(.92)}to{opacity:1;transform:none}}
 .ftime{font:800 clamp(46px,11vw,70px)/1 var(--font-num);font-variant-numeric:tabular-nums;letter-spacing:-.04em;color:var(--ink)}
 /* Unité des temps : en secondes */
+.ftime.void{text-decoration:line-through;text-decoration-thickness:.08em;opacity:.55}
+.delta.invalid{font-size:13px;white-space:normal;max-width:30ch;line-height:1.3}
 .ftime::after,#tMain::after{content:' s';font-size:.5em;letter-spacing:0;opacity:.55}
 .delta{font:800 16px/1 var(--font-num);font-variant-numeric:tabular-nums;padding:7px 13px;border:2.5px solid var(--ink);border-radius:999px;background:var(--card);color:var(--ink);box-shadow:var(--sh-1)}
 .delta.better{background:var(--go);color:#fff}
@@ -7818,6 +7820,8 @@ async function pvMine(n) {
   let r = null;
   try { const d = await db.collection('scores').doc(bkey(n)).collection('runs').doc(uid).get(); if (d.exists) r = { uid, ...d.data() }; } catch (e) {}
   if (!PV || PV.n !== n || !r) return;
+  await srvVerdicts(); if (!PV || PV.n !== n) return;
+  if (srvVerdict(bkey(n), r) === 0) { lab.textContent = 'Ton record · refusé'; m.title = 'Ton temps de ' + fmtT(r.ms) + ' s n’a pas passé la vérification du replay : il ne compte pas'; }
   if (!r.pseudo) r.pseudo = ACCT.pseudo || '';
   if (r.ghost && canWatch()) { rp.hidden = false; rp.onclick = e => { e.stopPropagation(); watchGhost(n, uid, r.pseudo); }; }
   if (!isAdmin()) return;                                          // un joueur ne peut pas effacer son temps : pas de panneau
@@ -7887,14 +7891,19 @@ function updateTimer(a) {
 function onFinish() {
   const ms = Math.round((run.end - run.start) * DT * 1000);
   if (REC) { const e = run.endPos || P; qa.set(P.q.x, P.q.y, P.q.z, P.q.w); recSample(run.end, e.x, e.y, e.z, qa, true); }
+  // Avant tout : le replay de cette course passe le même contrôle que chez les autres joueurs et sur le serveur.
+  // Un temps non valide (vitesse modifiée, téléportation…) n'est ni enregistré, ni envoyé, ni compté.
+  let invalid = null;
+  if (!ED.test && REC && boardOK(LEVEL)) { try { const b = validateGhost({ d: REC.rows.join(';'), ms }, LEVEL); if (b.length) invalid = b; } catch (e) {} }
+  if (invalid) REC = null;
   // Un essai depuis l'éditeur ne compte pas comme record.
-  const prev = ED.test ? 0 : records[recKey(LEVEL)], better = !ED.test && (!prev || ms < prev);
+  const prev = ED.test ? 0 : records[recKey(LEVEL)], better = !ED.test && !invalid && (!prev || ms < prev);
   if (better) { records[recKey(LEVEL)] = ms; saveRecords(); recFresh[String(recKey(LEVEL))] = Date.now(); }
   sfx('finish', better && !!prev);
   tMain.textContent = fmtT(ms); timerEl.className = 'card done';
   winflash.classList.remove('go'); void winflash.offsetWidth; winflash.classList.add('go');
   if (W && W.onFinish) W.onFinish();
-  acctFinish(LEVEL, ms, better, prev);
+  acctFinish(LEVEL, ms, better, prev, !!invalid);
   if (shiftlock) setShiftlock(false);
   endRmb(); unlockPointer();
   const tok = ++finToken;
@@ -7902,14 +7911,16 @@ function onFinish() {
     if (tok !== finToken) return;
     finRec.hidden = !better;
     $('finEye').textContent = ED.test ? 'Essai terminé' : LEVEL === WEEKLY_N ? 'Niveau de la semaine' : 'Niveau ' + String(LEVEL).padStart(2, '0');
-    if (prev) {
+    finTime.classList.toggle('void', !!invalid);
+    if (invalid) { finDelta.textContent = 'Temps non valide : ' + invalid[0]; finDelta.className = 'delta worse invalid'; finDelta.hidden = false; }
+    else if (prev) {
       const d = ms - prev;
       finDelta.textContent = (d < 0 ? '−' : d > 0 ? '+' : '±') + fmtT(Math.abs(d)) + ' s';
       finDelta.className = 'delta' + (d < 0 ? ' better' : d > 0 ? ' worse' : ''); finDelta.hidden = false;
     } else finDelta.hidden = true;
     // Le temps passe du chrono au panneau : le chrono du haut s'en va.
     hudEl.classList.remove('enter'); hudEl.classList.add('leave');
-    finPoints(LEVEL, ms, prev, better, tok);
+    if (!invalid) finPoints(LEVEL, ms, prev, better, tok); else $('finGain').hidden = true;
     finishEl.hidden = false; finishEl.classList.remove('show'); void finishEl.offsetWidth; finishEl.classList.add('show');
     const t0 = performance.now(), dur = reduced ? 1 : 850;
     const tick = now => {
@@ -9136,8 +9147,8 @@ async function ptsLoad(force) {
       const snap = cols[i]; if (!snap) return;
       const n = k[0] === 'w' ? WEEKLY_N : +k;
       const all = snap.docs.map(d => ({ uid: d.id, ...d.data() }));
-      all.forEach(r => { if (r.uid === me) mine[k] = r.ms; if (bm.hidden.has(r.uid)) { const h = H[r.uid] || (H[r.uid] = { uid: r.uid, pseudo: r.pseudo || '', ms: {}, lv: {}, wk: 0, cur: 0 }); h.ms[k] = r.ms; } });
-      const rows = all.filter(r => r.uid === me || (VERD[verdKey(n, r)] !== 'bad' && srvOk(k, r)));
+      all.forEach(r => { if (r.uid === me && srvVerdict(k, r) !== 0) mine[k] = r.ms; if (bm.hidden.has(r.uid)) { const h = H[r.uid] || (H[r.uid] = { uid: r.uid, pseudo: r.pseudo || '', ms: {}, lv: {}, wk: 0, cur: 0 }); h.ms[k] = r.ms; } });
+      const rows = all.filter(r => srvOk(k, r) && (r.uid === me || VERD[verdKey(n, r)] !== 'bad'));
       rows.forEach(r => { const p = who(r.uid); if (r.pseudo) p.pseudo = r.pseudo; p.ms[k] = r.ms; });
       // temps pas encore vérifiés par le serveur : affichés sur la fiche (comme au classement), mais sans points pour l'instant
       all.forEach(r => {
@@ -9152,7 +9163,7 @@ async function ptsLoad(force) {
     for (const wk in (A.weeks || {})) {
       const W = A.weeks[wk]; if (!W || !W.ms || (W.id && WEEKLY && String(W.id) === String(WEEKLY.id))) continue;
       const from = +W.from || 0; if (from < gReset) continue;
-      const rows = Object.keys(W.ms).map(uid => ({ uid, ms: +W.ms[uid] })).filter(r => !(+resets[r.uid] > from) && (r.uid === me || srvOk('w' + W.id, r)));
+      const rows = Object.keys(W.ms).map(uid => ({ uid, ms: +W.ms[uid] })).filter(r => !(+resets[r.uid] > from) && srvOk('w' + W.id, r));
       const S = ptsScore(rows, ok);
       for (const uid in S.pts) { const p = who(uid); p.wk += S.pts[uid]; if (!p.pseudo) p.pseudo = names[uid] || ''; }
     }
@@ -9960,7 +9971,7 @@ async function shownTop(n, k = 10) {
   if (isAdmin()) return rows.filter(r => !bm.hidden.has(r.uid)).slice(0, k);
   const me = ACCT.user ? ACCT.user.uid : null;
   await srvVerdicts();
-  const vis = rows.filter(r => !bm.hidden.has(r.uid) && (r.uid === me || srvVerdict(bkey(n), r) !== 0));   // masqué : invisible, même pour lui
+  const vis = rows.filter(r => !bm.hidden.has(r.uid) && srvVerdict(bkey(n), r) !== 0);   // masqué ou refusé par le serveur : invisible, même pour lui
   const v = await Promise.all(vis.map(r => r.uid === me ? 'ok' : verdictOf(n, r)));
   return vis.filter((r, i) => v[i] !== 'bad').slice(0, k);
 }
