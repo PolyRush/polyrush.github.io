@@ -9715,8 +9715,17 @@ async function acctUser(u) {
         if ((+ls[k] || 0) < t) { for (const key of Object.keys(records)) if (hit(key)) delete records[key]; ls[k] = t; lc = true; }
         if (Math.max(+cs[k] || 0, legacy(k)) < t) { for (const key of Object.keys(cloud)) if (hit(key)) delete cloud[key]; cs[k] = t; cc = true; }
       }
-      if (lc) { saveRecords(); localSeen(loc); }
-      if (cc) await ref.update({ records: { ...cloud }, seenK: cs, maj: Date.now() }).catch(() => ref.set({ records: { ...cloud }, seenK: cs, maj: Date.now() }, { merge: true }));
+      // Reset du joueur par l'admin : un vrai reset, ses niveaux débloqués repartent du niveau 1 (repère à part, pour
+      // que les resets faits avant cette règle s'appliquent aussi une fois)
+      let relock = false;
+      if (R['@']) {
+        const t = R['@'];
+        if ((+ls['u@'] || 0) < t) { unlockMax = 1; LS.set('polyrush.unl.' + u.uid, '1'); ls['u@'] = t; lc = true; }
+        if ((+cs['u@'] || 0) < t) { d.unlock = 1; cs['u@'] = t; cc = true; relock = true; }
+      }
+      if (lc) { saveRecords(); localSeen(loc); buildLevelGrid(); }
+      const up = { records: { ...cloud }, seenK: cs, maj: Date.now(), ...(relock ? { unlock: 1 } : {}) };
+      if (cc) await ref.update(up).catch(() => ref.set(up, { merge: true }));
     } catch (e) { console.warn(e); }
     bumpUnlock(+d.unlock || 0);
     // Records : le meilleur temps de chaque côté (ce navigateur et le compte)
@@ -10255,16 +10264,21 @@ function acctRender() {
           if (PV) { pvBoard(PV.n); ptsPreview(PV.n); }
         }));
         const rs = mkEl('button', 'rs', 'Reset'); let armed = 0;
-        rs.title = 'Effacer ses temps et ses replays de tous les niveaux';
+        rs.title = 'Tout remettre à zéro : ses temps, ses replays, ses records et ses niveaux débloqués';
         rs.addEventListener('click', () => {
           if (!armed) { rs.textContent = 'Sûr ?'; rs.classList.add('armed'); armed = setTimeout(() => { armed = 0; rs.textContent = 'Reset'; rs.classList.remove('armed'); }, 3500); return; }
           clearTimeout(armed); armed = 0;
           acctDo(async () => {
             await ACCT.db.collection('meta').doc('board').set({ userResets: { [pl.uid]: Date.now() } }, { merge: true });
-            if (ACCT.user && pl.uid === ACCT.user.uid) await dropMyRecord(Object.keys(records));
+            if (ACCT.user && pl.uid === ACCT.user.uid) {                 // soi-même : tout de suite, niveaux débloqués compris
+              const now = Date.now(); await dropMyRecord(Object.keys(records));
+              unlockMax = 1; LS.set('polyrush.unl.' + ACCT.user.uid, '1'); buildLevelGrid();
+              const loc = localSeen(); (loc[ACCT.user.uid] || (loc[ACCT.user.uid] = {}))['u@'] = now; localSeen(loc);
+              try { await ACCT.db.collection('users').doc(ACCT.user.uid).set({ unlock: 1, seenK: { 'u@': now } }, { merge: true }); } catch (e) { console.warn(e); }
+            }
             for (const n of boardLevels()) await adminDelete(n, pl.uid);
             for (const k in VERD) if (k.includes('|' + pl.uid + '|')) delete VERD[k];
-            acctMsg(pl.pseudo + ' : temps effacés.', true); draw();
+            acctMsg(pl.pseudo + ' : tout remis à zéro (temps, records, niveaux débloqués).', true); draw();
           });
         });
         // Bannir : plus aucun temps accepté (règles du serveur), ses temps effacés partout ; « Banni » pour le gracier
