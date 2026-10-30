@@ -362,13 +362,16 @@ i.cube{display:inline-block;width:.9em;height:.9em;flex:none;background:var(--cu
 .pts-sum div:first-child b{font-size:22px;color:var(--red)}
 .pts-list{max-height:min(46vh,420px);overflow-y:auto;overscroll-behavior:contain;padding:2px 4px 4px 0}
 /* à côté du temps : ce qu'il rapporte */
-.fin-trow{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 20px}
+.fin-card{grid-template-columns:minmax(0,1fr)}
+.fin-trow{--k:1;align-self:stretch;width:100%;min-width:0;display:flex;flex-wrap:nowrap;align-items:center;justify-content:center;gap:calc(var(--k) * 20px)}
+.fin-trow .ftime{font-size:calc(var(--k) * clamp(46px,11vw,70px));white-space:nowrap;flex:none}
+.fin-trow .fin-gain{flex:none}   /* avec le tampon, les deux rétrécissent ensemble pour tenir sur une ligne */
 /* le gain, tamponné de travers à droite du temps */
 .fin-gain{position:relative;display:grid;justify-items:center;padding:6px 10px 5px;border:3px solid var(--red);border-radius:8px;color:var(--red);
   transform:rotate(-10deg);white-space:nowrap;pointer-events:none}
 .fin-gain::before{content:"";position:absolute;inset:3px;border:1.5px solid var(--red);border-radius:5px;opacity:.55}
-.fin-gain b{font:italic 900 clamp(34px,8vw,48px)/.9 var(--font-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
-.fin-gain span{display:flex;align-items:center;gap:5px;margin-top:2px;font:italic 900 13px/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase}
+.fin-gain b{font:italic 900 calc(var(--k) * clamp(34px,8vw,48px))/.9 var(--font-display);letter-spacing:-.03em;font-variant-numeric:tabular-nums}
+.fin-gain span{display:flex;align-items:center;gap:5px;margin-top:2px;font:italic 900 calc(var(--k) * 13px)/1 var(--font-display);letter-spacing:.14em;text-transform:uppercase}
 .fin-gain i.cube{width:15px;height:15px}
 .fin-gain.wait{visibility:hidden}
 .fin-gain.in{animation:stamp2 .42s cubic-bezier(.5,0,.75,0) both}
@@ -8708,9 +8711,19 @@ function finPoints(n, ms, prev, better, tok) {
     if (+n === WEEKLY_N) D.me.cur = newP; else { if (!D.me.lv[k]) D.me.nLv++; D.me.lv[k] = newP; D.me.levels = (D.me.levels || 0) + gain; }
     D.me.total = newTot; PTS.t = 0;
   }
-  const fg = $('finGain'); fg.classList.remove('in');
+  const fg = $('finGain'), row = fg.parentNode; fg.classList.remove('in'); row.style.setProperty('--k', 1);
   fg.hidden = !(gain > 0); if (!(gain > 0)) return;
   fg.querySelector('b').textContent = '+' + fmtPts(gain); fg.classList.add('wait');   // sa place est gardée : le temps ne bouge pas
+  // temps et tampon sur la même ligne : on mesure avec le temps final, et on réduit les deux si ça ne tient pas
+  requestAnimationFrame(() => {
+    if (tok !== finToken || !row.clientWidth) return;
+    const t = $('finTime'), was = t.textContent; t.textContent = fmtT(ms);
+    for (let i = 0; i < 2; i++) {
+      const need = t.offsetWidth + fg.offsetWidth * 1.08 + parseFloat(getComputedStyle(row).columnGap || 0), k = +row.style.getPropertyValue('--k') || 1;
+      if (need > row.clientWidth - 6) row.style.setProperty('--k', (k * (row.clientWidth - 6) / need).toFixed(3));
+    }
+    t.textContent = was;
+  });
   setTimeout(() => {
     if (tok !== finToken) return;
     fg.classList.remove('wait'); void fg.offsetWidth; fg.classList.add('in');
