@@ -2,7 +2,7 @@
 // Chaque nouveau temps du classement (niveaux 1 à 10 et niveau de la semaine) est rejoué par le jeu lui-même, ouvert dans
 // un navigateur sans écran : son replay doit partir du départ, finir sur l'arrivée, ne jamais traverser un bloc, ni aller
 // plus vite ou sauter plus haut que possible, et durer exactement le temps annoncé. Le verdict est rangé dans
-// meta/verified ({ "niveau|joueur|temps": 1 bon / 0 faux }) : le jeu cache des classements (et des points) les temps faux.
+// meta/verified ({ "niveau|joueur|temps": 1 bon / 0 faux }) ; un temps faux est supprimé (temps, replay, record du joueur).
 // En mode veille (LOOP_MIN), la tâche reste ouverte et vérifie chaque nouveau temps dans les secondes qui suivent son envoi
 // (écoute des classements, sans relire toute la base) ; une nouvelle tâche prend le relais à la fin.
 import { chromium } from 'playwright';
@@ -23,10 +23,11 @@ const wdoc = wk.exists && wk.data().id ? wk.data() : null;
 const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'];
 if (wdoc) keys.push('w' + wdoc.id);
 
-const todo = [], live = new Set(), queued = new Set();
+const todo = [], live = new Set(), queued = new Set(), zeros = [];
 const want = (k, d) => {
   const r = d.data(), id = `${k}|${d.id}|${r.ms}`;
   live.add(id);
+  if (!REPORT && V[id] === 0) zeros.push({ k, uid: d.id, ms: r.ms, pseudo: r.pseudo || '?', id });   // déjà refusé mais encore là : à supprimer
   if ((REPORT || !(id in V)) && !queued.has(id)) { queued.add(id); todo.push({ k, uid: d.id, ms: r.ms, pseudo: r.pseudo || '?', id }); }
 };
 for (const k of keys) {
@@ -59,8 +60,20 @@ async function check(t) {
   }
   V[t.id] = res.ok ? 1 : 0; dirty = true;
   if (res.ok) ok++;
-  else { bad++; console.log(`::notice::Temps refusé — niveau ${t.k}, ${t.pseudo}, ${t.ms} ms : ${res.bad.join(' · ')}`); }
+  else {
+    bad++; console.log(`::notice::Temps refusé et supprimé — niveau ${t.k}, ${t.pseudo}, ${t.ms} ms : ${res.bad.join(' · ')}`);
+    await purge(t).catch(e => console.log(`::warning::suppression ${t.k} · ${t.pseudo} : ${e.message}`));
+  }
   return 'done';
+}
+// Un temps refusé est supprimé pour de bon : son temps et son replay, et son record sur ce niveau (le jeu du joueur
+// l'efface à sa prochaine connexion, comme quand l'admin efface un temps)
+async function purge(t) {
+  const runs = c => db.collection(c).doc(t.k).collection('runs').doc(t.uid);
+  const cur = await runs('scores').get();
+  if (cur.exists && cur.data().ms !== t.ms) return;                // il a refait un temps entre-temps : ce nouveau temps sera vérifié à son tour
+  await Promise.all([runs('scores').delete(), runs('ghosts').delete()]);
+  await meta('board').set({ cuts: { [t.uid]: { [t.k]: Date.now() } } }, { merge: true });
 }
 async function save() {
   if (!dirty || REPORT) return;
@@ -81,6 +94,7 @@ async function drain() {
     }
   } finally { busy = false; }
 }
+for (const t of zeros) { await purge(t).catch(e => console.log(`::warning::suppression ${t.k} · ${t.pseudo} : ${e.message}`)); console.log(`::notice::Temps refusé supprimé — niveau ${t.k}, ${t.pseudo}, ${t.ms} ms`); }
 await drain();
 
 if (LOOP_MIN) {
