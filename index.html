@@ -1648,7 +1648,9 @@ function setAxes(b, pitch, yaw, roll) {
   b.ey = Math.abs(b.ax[1]) * b.h.x + Math.abs(b.ay[1]) * b.h.y + Math.abs(b.az[1]) * b.h.z;   // demi-hauteur occupée
 }
 function box(x, y, z, sx, sy, sz, o = {}) {
-  const yaw = o.yaw || 0, pitch = o.pitch || 0, roll = o.roll || 0, tilt = Math.abs(pitch) > 1e-6 || Math.abs(roll) > 1e-6;
+  // un demi-tour en tangage ou en roulis remet une boîte sur elle-même : ce n'est pas un bloc penché
+  const flat = v => Math.abs(Math.sin(v || 0)) < 1e-6 ? 0 : v;
+  const yaw = o.yaw || 0, pitch = flat(o.pitch), roll = flat(o.roll), tilt = Math.abs(pitch) > 1e-6 || Math.abs(roll) > 1e-6;
   if (CAP && !CAP_SKIP && !o.move && !o.glass) CAP.boxes.push({ x, y, z, sx, sy, sz, yaw, seam: !!o.seam, finish: !!o.finish });
   const b = {
     c: { x, y, z }, pc: { x, y, z }, h: { x: sx / 2, y: sy / 2, z: sz / 2 },
