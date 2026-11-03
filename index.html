@@ -8191,8 +8191,8 @@ try {
   for (const n of ED_SLOTS) { const c = cleanLevel(raw[n]); if (c && !staleCopy(n, c)) CUSTOM[n] = c; }
 } catch (e) { CUSTOM = {}; }
 // Une sauvegarde identique au niveau officiel n'est pas une modification
-// (au 8 : une copie de l'ancien 8, devenu le 9, n'est pas une modification non plus)
-function staleCopy(n, v) { return sameAsOfficial(n, v) || (+n === 8 && sameAsOfficial(9, v)); }
+// (au 8 et au 9 : une copie de l'un des deux niveaux officiels — d'avant l'échange — n'est pas une modification non plus)
+function staleCopy(n, v) { return sameAsOfficial(n, v) || ((+n === 8 || +n === 9) && (sameAsOfficial(8, v) || sameAsOfficial(9, v))); }
 function sameAsOfficial(n, v) {
   if (!OFFICIAL[n]) return false;
   const k = d => JSON.stringify([d.blocs, d.salle, d.fond, d.lumieres || null]);
