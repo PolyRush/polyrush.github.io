@@ -562,6 +562,8 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 
 /* classement général : un vrai podium, puis la suite, et ma place en bas */
 .pts-view{row-gap:14px}
+.pts-tabs{margin-bottom:-4px}
+.pts-tabs button{font-size:12.5px;padding:10px 6px;letter-spacing:.02em}
 .pod{display:grid;grid-template-columns:1fr 1.18fr 1fr;align-items:end;gap:10px;padding-top:30px;margin-bottom:-2px}
 .pod-s{position:relative;display:grid;justify-items:center;gap:6px;min-width:0}
 .pod-s.m1{--metal:linear-gradient(150deg,#fff3c2 0%,#ffd75e 22%,#e9a00c 48%,#ffe48f 68%,#b97c00 100%);--g:var(--g-gold);--h:118px;--d:.5s}
@@ -9669,20 +9671,40 @@ function ptsView(c) {
     return;
   }
   const me = D.me ? D.me.uid : null;
-  // un total ; au survol (appui long sur téléphone) : niveaux + semaines
+  /* deux onglets : « Niveaux » = seulement les points des niveaux principaux (sans détail au survol),
+     « Total » = niveaux + semaines (détail au survol) */
+  const tab = ACCT.ptsTab === 'tot' ? 'tot' : 'lv';
+  const tabs = mkEl('div', 'seg pts-tabs');
+  for (const [k, l] of [['lv', 'Niveaux'], ['tot', 'Total']]) {
+    const b = mkEl('button', tab === k ? 'on' : '', l); b.type = 'button';
+    b.setAttribute('aria-pressed', tab === k ? 'true' : 'false');
+    b.addEventListener('click', () => { if (tab === k) return; ACCT.ptsTab = k; acctRender(); });
+    tabs.appendChild(b);
+  }
+  c.appendChild(tabs);
+  const score = p => tab === 'lv' ? (p.levels || 0) : (p.total || 0);
+  let LIST = D.list;
+  if (tab === 'lv') {
+    LIST = D.list.filter(p => (p.levels || 0) > 0).slice().sort((a, b) => b.levels - a.levels);
+    let rk = 0, pv = -1;
+    LIST = LIST.map((p, i) => { if (p.levels !== pv) rk = i + 1; pv = p.levels; return Object.assign(Object.create(p), { rank: rk }); });
+  }
+  const myRow = me ? LIST.find(p => p.uid === me) : null;
+  // un score ; onglet Total : au survol (appui long sur téléphone) niveaux + semaines ; onglet Niveaux : le score seul
   const totTag = (p, cls) => {
-    const tm = mkEl('span', 'tm hp ' + (cls || '')), tv = mkEl('span', 'tv', fmtPts(p.total)), pt = mkEl('span', 'pt sum');
+    const tm = mkEl('span', 'tm ' + (tab === 'tot' ? 'hp ' : '') + (cls || '')), tv = mkEl('span', 'tv', fmtPts(score(p))), pt = mkEl('span', 'pt sum');
     tv.appendChild(mkEl('i', 'cube'));
+    if (tab === 'lv') { tm.appendChild(tv); return tm; }
     const part = (v, l) => { const x = mkEl('span', 'sm'); x.append(mkEl('b', null, fmtPts(v)), mkEl('small', null, l)); return x; };
     pt.append(part(p.levels || 0, 'niveaux'), mkEl('span', 'op', '+'), part((p.wk || 0) + (p.cur || 0), 'semaines'));
     tm.append(tv, pt); return tm;
   };
-  if (!D.list.length) { c.appendChild(mkEl('p', 'acct-empty', 'Personne n’a encore de points.')); }
+  if (!LIST.length) { c.appendChild(mkEl('p', 'acct-empty', tab === 'lv' ? 'Personne n’a encore de points sur les niveaux.' : 'Personne n’a encore de points.')); }
   else {
     // le podium : 2e à gauche, 1er au centre (plus haut), 3e à droite
     const pod = mkEl('div', 'pod');
     for (const i of [1, 0, 2]) {
-      const p = D.list[i], st = mkEl('div', 'pod-s m' + (i + 1) + (p ? '' : ' empty') + (p && p.uid === me ? ' me' : ''));
+      const p = LIST[i], st = mkEl('div', 'pod-s m' + (i + 1) + (p ? '' : ' empty') + (p && p.uid === me ? ' me' : ''));
       if (p) {
         if (i === 0) { const cr = mkEl('span', 'pod-cr'); cr.innerHTML = ICON_CROWN; st.appendChild(cr); }
         // le médaillon et le pseudo forment un seul bouton vers la fiche du joueur
@@ -9697,7 +9719,7 @@ function ptsView(c) {
     }
     c.appendChild(pod);
     // la suite, à partir du 4e
-    const rest = D.list.slice(3, 50);
+    const rest = LIST.slice(3, 50);
     if (rest.length) {
       const box = mkEl('div', 'pts-list'), ol = mkEl('ol', 'board');
       rest.forEach(p => {
@@ -9711,21 +9733,21 @@ function ptsView(c) {
   }
   // en bas : ma place et mon total
   const mine = mkEl('div', 'pts-me');
-  if (D.me && (D.me.total || D.me.hidden)) {
+  if (D.me && (score(D.me) || D.me.hidden)) {
     // compte masqué : le même bandeau, avec son score, mais sans rang
-    const hid = !!D.me.hidden, r = hid ? 0 : D.me.rank;
+    const hid = !!D.me.hidden, r = hid ? 0 : (myRow ? myRow.rank : 0);
     const ps = mkEl('span', 'ps', ACCT.pseudo || D.me.pseudo || 'Toi'); if (me) ps.dataset.uid = me;
     const lab = mkEl('span', 'lab', hid ? 'Ton compte est masqué' : 'Ta place');
     const who = mkEl('span', 'who'); who.append(lab, ps);
     if (hid) mine.classList.add('hid');
     else mine.appendChild(mkEl('span', 'rk' + (r && r <= 3 ? ' m' + r : ''), r ? '#' + r : '–'));
     mine.append(who, totTag(D.me, 'me-tot'));
-  } else mine.appendChild(mkEl('span', 'lab', 'Finis un niveau pour entrer au classement'));
+  } else mine.appendChild(mkEl('span', 'lab', tab === 'lv' ? 'Finis un niveau principal pour entrer au classement' : 'Finis un niveau pour entrer au classement'));
   c.appendChild(mine);
   const f = mkEl('div', 'pts-formula'), fr = mkEl('span', 'fr');
   fr.append(mkEl('span', null, 'meilleur temps'), mkEl('span', null, 'ton temps'));
   f.append(mkEl('i', 'cube'), document.createTextNode('= 1000 ×'), fr);
-  f.title = 'Par niveau, et pour chaque niveau de la semaine';
+  f.title = tab === 'lv' ? 'Par niveau (niveaux principaux seulement)' : 'Par niveau, et pour chaque niveau de la semaine';
   c.appendChild(f);
 }
 
