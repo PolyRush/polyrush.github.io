@@ -616,6 +616,31 @@ body.fps-on .pts-card{bottom:calc(max(20px,6vh) + 76px + env(safe-area-inset-bot
 @keyframes podCr{from{opacity:0;transform:translateY(-12px) rotate(-25deg) scale(.4)}}
 .pod + .pts-list{margin-top:-10px}
 .pts-view .pts-list{max-height:min(30vh,280px)}
+/* la fenêtre tient dans l'écran : en-tête, onglets, podium, ma place et formule restent fixes,
+   seule la liste du top (à partir du 4e) défile dans la place qui reste */
+.acct-card.pts-view{display:flex;flex-direction:column;gap:14px;overflow:hidden;
+  max-height:calc(100vh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px));
+  max-height:calc(100dvh - 32px - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))}
+.acct-card.pts-view > *{flex:none}
+.acct-card.pts-view > .pts-list{flex:0 1 auto;min-height:0;max-height:none}
+.acct-card.pts-view > .pod + .pts-list{margin-top:-10px}
+/* écran bas : on resserre le podium plutôt que de faire défiler la fenêtre */
+@media (max-height:760px){
+  .acct-card.pts-view{gap:10px;padding-top:18px;padding-bottom:14px}
+  .acct-card.pts-view h2{font-size:22px}
+  .pts-view .pod{padding-top:24px}
+  .pts-view .pod-s.m1{--h:84px} .pts-view .pod-s.m2{--h:60px} .pts-view .pod-s.m3{--h:46px}
+  .pts-view .pod-av{width:42px;height:42px;font-size:19px}
+  .pts-view .pod-s.m1 .pod-av{width:50px;height:50px;font-size:22px}
+  .pts-view .pod-base b{font-size:26px} .pts-view .pod-s.m1 .pod-base b{font-size:32px}
+  .pts-view .pts-formula{padding:7px 10px}
+}
+@media (max-height:620px){
+  .pts-view .pts-formula{display:none}
+  .pts-view .pod-s.m1{--h:60px} .pts-view .pod-s.m2{--h:44px} .pts-view .pod-s.m3{--h:34px}
+  .pts-view .pod-base{padding-top:4px}
+  .pts-view .pod-base b{font-size:20px} .pts-view .pod-s.m1 .pod-base b{font-size:24px}
+}
 /* ma place, en bas */
 .pts-me{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:10px 14px 10px 10px;border:2.5px solid var(--ink);border-radius:12px;background:#fff0ee;box-shadow:var(--sh-2);
   animation:pfIn .45s var(--ease-pop) .5s backwards}
