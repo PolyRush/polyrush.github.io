@@ -1939,6 +1939,21 @@ function inFrame(th, out, E, run) {
   if (E) { back(TE.pos, E.pos); for (const v of TE.bid) E.bid.push(v); }
   return true;
 }
+// Même chose dans le repère d'un bloc quelconque (lacet, tangage, roulis) : M = { ax, ay, az }, ses axes dans le monde
+function inFrameM(M, out, E, run) {
+  const T = { pos: [], nrm: out.nrm ? [] : null, col: [], bid: [], idx: [] }, TE = E ? { pos: [], bid: [] } : null;
+  if (run(T, TE) === false) return false;
+  const X = M.ax, Y = M.ay, Z = M.az;
+  const back = (src, dst) => { for (let i = 0; i < src.length; i += 3) { const x = src[i], y = src[i + 1], z = src[i + 2]; dst.push(x * X[0] + y * Y[0] + z * Z[0], x * X[1] + y * Y[1] + z * Z[1], x * X[2] + y * Y[2] + z * Z[2]); } };
+  const base = out.pos.length / 3;
+  back(T.pos, out.pos);
+  if (out.nrm) back(T.nrm, out.nrm);
+  if (out.col) for (const v of T.col) out.col.push(v);
+  for (const v of T.bid) out.bid.push(v);
+  for (const v of T.idx) out.idx.push(v + base);
+  if (E) { back(TE.pos, E.pos); for (const v of TE.bid) E.bid.push(v); }
+  return true;
+}
 // Tous les blocs du groupe ont le même lacet (à un quart de tour près) ? Renvoie ce lacet, sinon null.
 function commonYaw(boxes) {
   const Q = Math.PI / 2, y0 = Math.atan2(boxes[0].b.sn, boxes[0].b.cs);
@@ -2152,6 +2167,8 @@ function prismUnion(boxes, grow, out, withColor, E) {
 // En mode « fusion » (les niveaux), les blocs alignés forment un seul volume (voir unionGrid) ; quelques blocs
 // « seam » gardent en plus tous leurs traits, exprès. Les blocs tournés restent à part, sauf dans le niveau de la
 // semaine (merge = 2) : là, ils fusionnent aussi avec ce qu'ils touchent (voir prismUnion).
+// Niveaux de l'éditeur (pas les officiels, ni l'entraînement) : leurs blocs tournés pareil et collés se réunissent aussi
+let MERGE_TURNED = false;
 function buildStatic(merge) {
   buildStaticSet(staticBoxes.filter(s => !s.noShadow), merge, true);
   const open = staticBoxes.filter(s => s.noShadow);
@@ -2173,8 +2190,10 @@ function buildStaticSet(list, merge, cast) {
   const useComp = comp => { let x = 0, z = 0; for (const { b } of comp) { x += b.c.x; z += b.c.z; } use(x / comp.length, z / comp.length); };
   const col = new THREE.Color();
   const aligned = merge ? list.filter(s => Math.abs(s.b.sn) < 1e-6 && !s.b.tilt) : [];
-  const turned = merge === 2 ? list.filter(s => Math.abs(s.b.sn) >= 1e-6 && !s.b.tilt) : [];
-  const single = merge ? list.filter(s => s.b.tilt || (Math.abs(s.b.sn) >= 1e-6 && merge !== 2)) : list;
+  const turned = merge === 2 || (merge && MERGE_TURNED) ? list.filter(s => Math.abs(s.b.sn) >= 1e-6 && !s.b.tilt) : [];
+  const tilted = merge && MERGE_TURNED ? list.filter(s => s.b.tilt) : [];
+  const inTurned = new Set(turned);
+  const single = merge ? list.filter(s => (s.b.tilt && !MERGE_TURNED) || (Math.abs(s.b.sn) >= 1e-6 && !s.b.tilt && !inTurned.has(s))) : list;
   const wput = (arr, b, x, y, z) => { const X = b.ax, Y = b.ay, Z = b.az; arr.push(b.c.x + x * X[0] + y * Y[0] + z * Z[0], b.c.y + x * X[1] + y * Y[1] + z * Z[1], b.c.z + x * X[2] + y * Y[2] + z * Z[2]); };
   const boxEdges = b => {
     const sx = b.h.x * 2, sy = b.h.y * 2, sz = b.h.z * 2;
@@ -2214,8 +2233,29 @@ function buildStaticSet(list, merge, cast) {
     else prismUnionAny(comp, OUT, H, false, null);
   }
   else for (const comp of touchGroups(aligned)) gridUnion(comp);
+  // Blocs tournés exactement pareil (lacet seul, ou penchés) qui se touchent : un seul volume, calculé dans leur
+  // repère commun (comme des blocs droits), puis remis dans le monde. Typiquement : des blocs collés, tournés ensemble.
+  const sameFrame = arr => {
+    const buckets = new Map();
+    for (const s of arr) { const b = s.b, k = [...b.ax, ...b.ay, ...b.az].map(v => Math.round(v * 1e4)).join(); if (!buckets.has(k)) buckets.set(k, []); buckets.get(k).push(s); }
+    for (const grp of buckets.values()) {
+      if (grp.length < 2) { addSingle(grp[0]); continue; }
+      const M = grp[0].b, d = (b, v) => b.c.x * v[0] + b.c.y * v[1] + b.c.z * v[2];
+      const loc = grp.map(s => ({ ...s, src: s, b: { ...s.b, c: { x: d(s.b, M.ax), y: d(s.b, M.ay), z: d(s.b, M.az) } } }));
+      for (const rc of touchGroups(loc)) {
+        const comp = rc.map(o => o.src);
+        if (rc.length < 2) { addSingle(comp[0]); continue; }
+        const tol = 0.02, G0 = unionGrid(rc, 0, tol);
+        if (G0.n[0] * G0.n[1] * G0.n[2] > 3e6) { for (const s of comp) addSingle(s); continue; }
+        useComp(comp);
+        inFrameM(M, F, E, (o, e) => { unionFaces(G0, rc, o, true); unionEdges(G0, rc, e); });
+        inFrameM(M, H, null, o => unionFaces(unionGrid(rc, OUT, tol), rc, o, false));
+      }
+    }
+  };
+  if (merge === 2) sameFrame(tilted); else if (MERGE_TURNED) sameFrame(turned.concat(tilted));
   for (const s of aligned) if (s.seam) { use(s.b.c.x, s.b.c.z); boxEdges(s.b); }
-  for (const s of turned) if (s.seam) { use(s.b.c.x, s.b.c.z); boxEdges(s.b); }
+  for (const s of turned.concat(tilted)) if (s.seam) { use(s.b.c.x, s.b.c.z); boxEdges(s.b); }
   const geo = (pos, bid, extra) => {
     const g = new THREE.BufferGeometry();
     g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('bid', new THREE.Float32BufferAttribute(bid, 1));
@@ -3430,7 +3470,7 @@ const OFFICIAL = {
 };
 const officialLevel = n => JSON.parse(JSON.stringify(cleanLevel(OFFICIAL[n])));
 const BUILTIN = { 1: buildLevel1, 2: buildLevel2 };
-for (const n in OFFICIAL) BUILTIN[n] = () => buildCustom(+n, officialLevel(n));
+for (const n in OFFICIAL) BUILTIN[n] = () => buildCustom(+n, officialLevel(n), true);
 // Niveau jouable : intégré (1 à 3) ou construit dans l'éditeur (4 à 10, avec un départ et une arrivée).
 function getBuilder(n) {
   if (n === WEEKLY_N) { const W = WEEKLY_TRY || WEEKLY; return W ? () => buildCustom(n, W.data) : null; }
@@ -3472,7 +3512,8 @@ function weeklyFacing(blocs, sp, yBase) {
   return Math.hypot(dx, dz) < 0.5 ? null : Math.atan2(-dx, -dz);
 }
 // Murs à fente : un bloc dont le bas est séparé d'un autre bloc juste en dessous par une fente de 0,15 à 1,6.
-function buildCustom(n, data) {
+function buildCustom(n, data, official) {
+  MERGE_TURNED = !official;   // niveaux faits à l'éditeur : leurs blocs tournés pareil et collés font un seul volume
   const d = data || CUSTOM[n], Q = boxesOf(d.blocs), R = roomBox(d.salle), sol = d.fond === 'sol';
   KILL_Y = -30;
   const dep = Q.find(q => q.b.type === 'depart'), arr = Q.find(q => q.b.type === 'arrivee');
@@ -3630,6 +3671,7 @@ function loadMap(name) {
   MAP = name;
   LEVEL = name === 'training' ? 0 : +name.slice(5);
   KILL_Y = -30;
+  MERGE_TURNED = false;
   const env = LEVEL ? getBuilder(LEVEL)() : buildTraining();
   // le niveau de la semaine fusionne aussi ses blocs tournés (pas pendant sa vérification au robot : rien ne s'y voit)
   buildStatic(LEVEL > 0 ? (LEVEL === WEEKLY_N && !WEEKLY_TRY ? 2 : 1) : 1);   // l'entraînement aussi : ses blocs collés font un seul volume resetKin(); worldTicks = 0;
@@ -8448,15 +8490,18 @@ function placeMesh(b) {
   }
   const a = g.userData.arrow;
   if (a) { const k = Math.max(0.6, Math.min(sx, sz) * 0.6); a.scale.set(k, 1, k); a.position.set(0, sy / 2 + 0.03, 0); }
-  const sel = ED.sel.includes(b), merged = !!b.groupe && ED.groupDrawn && !b.rotation;   // un bloc tourné garde son contour
+  const sel = ED.sel.includes(b), merged = !!b.groupe && ED.groupDrawn && (!b.rotation || edGM.has(b));   // tourné : seulement s'il est dans un contour réuni
   g.userData.e.material = sel ? edSelEdge : edgeMat; g.userData.h.material = sel ? edSelHull : hullMat;
   g.userData.e.visible = g.userData.h.visible = !merged;      // un bloc d'un groupe : le contour est celui du groupe entier
 }
 // Contour d'un groupe : celui du volume réuni de ses blocs (comme en jeu), sans trait entre eux.
 // Pendant un glissement, chaque bloc reprend son propre contour (dragging = true).
+let edGM = new WeakSet();   // blocs tournés dessinés dans le contour réuni de leur groupe
+// Clé d'une orientation : deux blocs tournés exactement pareil ont la même
+const rotKey = b => { const M = rotEls(b); return [0, 1, 2, 4, 5, 6, 8, 9, 10].map(i => Math.round(M[i] * 1e4)).join(); };
 function edGroupLines(dragging) {
   for (const o of [...edGroupGroup.children]) { edGroupGroup.remove(o); o.geometry.dispose(); }
-  ED.groupDrawn = !dragging;
+  ED.groupDrawn = !dragging; edGM = new WeakSet();
   if (!dragging) {
     const groups = new Map();
     for (const b of ED.blocks) if (b.groupe) { if (!groups.has(b.groupe)) groups.set(b.groupe, []); groups.get(b.groupe).push(b); }
@@ -8469,6 +8514,25 @@ function edGroupLines(dragging) {
         if (G0.n[0] * G0.n[1] * G0.n[2] > 3e6) continue;
         unionEdges(G0, comp, E); unionFaces(unionGrid(comp, OUT), comp, H, false);
       }
+      // blocs tournés pareil : même calcul dans leur repère, puis remis dans le monde
+      const rb = new Map();
+      for (const b of list) if (b.rotation) { const k = rotKey(b); if (!rb.has(k)) rb.set(k, []); rb.get(k).push(b); }
+      for (const arr of rb.values()) {
+        if (arr.length < 2) continue;
+        const M = rotEls(arr[0]), X = [M[0], M[1], M[2]], Y = [M[4], M[5], M[6]], Z = [M[8], M[9], M[10]], d = (p, v) => p[0] * v[0] + p[1] * v[1] + p[2] * v[2];
+        const loc = arr.map(b => ({ src: b, b: { c: { x: d(b.pos, X), y: d(b.pos, Y), z: d(b.pos, Z) }, h: { x: b.taille[0] / 2, y: b.taille[1] / 2, z: b.taille[2] / 2 }, bid: 0 } }));
+        const back = (src, dst) => { for (let i = 0; i < src.length; i += 3) { const x = src[i], y = src[i + 1], z = src[i + 2]; dst.push(x * X[0] + y * Y[0] + z * Z[0], x * X[1] + y * Y[1] + z * Z[1], x * X[2] + y * Y[2] + z * Z[2]); } };
+        for (const comp of touchGroups(loc)) {
+          if (comp.length < 2) continue;
+          const G0 = unionGrid(comp, 0, 0.01);
+          if (G0.n[0] * G0.n[1] * G0.n[2] > 3e6) continue;
+          const e = { pos: [], bid: [] }, h = { pos: [], bid: [], idx: [] };
+          unionEdges(G0, comp, e); unionFaces(unionGrid(comp, OUT, 0.01), comp, h, false);
+          back(e.pos, E.pos); for (const v of e.bid) E.bid.push(v);
+          const base = H.pos.length / 3; back(h.pos, H.pos); for (const v of h.bid) H.bid.push(v); for (const v of h.idx) H.idx.push(v + base);
+          for (const o of comp) edGM.add(o.src);
+        }
+      }
       const sel = list.some(b => ED.sel.includes(b));
       const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute(E.pos, 3));
       const hg = new THREE.BufferGeometry(); hg.setAttribute('position', new THREE.Float32BufferAttribute(H.pos, 3)); hg.setIndex(H.idx);
@@ -8478,12 +8542,19 @@ function edGroupLines(dragging) {
   for (const b of ED.blocks) placeMesh(b);
 }
 // Deux blocs qui forment ensemble un pavé exact (même section, collés ou chevauchants), ou l'un contient l'autre
-function boxMerge(a, c) {
-  if (a.rotation || c.rotation) return null;
-  const E = 1e-3, lo = (b, i) => b.pos[i] - b.taille[i] / 2, hi = (b, i) => b.pos[i] + b.taille[i] / 2;
+// Blocs tournés : seulement s'ils ont exactement la même orientation ; le calcul se fait alors dans leur repère.
+function boxMerge(a0, c0) {
+  let a = a0, c = c0, M = null;
+  if (a0.rotation || c0.rotation) {
+    if (!a0.rotation || !c0.rotation || rotKey(a0) !== rotKey(c0)) return null;
+    const m = rotEls(a0), X = [m[0], m[1], m[2]], Y = [m[4], m[5], m[6]], Z = [m[8], m[9], m[10]], d = (p, v) => p[0] * v[0] + p[1] * v[1] + p[2] * v[2];
+    M = [X, Y, Z];
+    a = { pos: [d(a0.pos, X), d(a0.pos, Y), d(a0.pos, Z)], taille: a0.taille }; c = { pos: [d(c0.pos, X), d(c0.pos, Y), d(c0.pos, Z)], taille: c0.taille };
+  }
+  const E = M ? 0.01 : 1e-3, lo = (b, i) => b.pos[i] - b.taille[i] / 2, hi = (b, i) => b.pos[i] + b.taille[i] / 2;
   const inside = (p, q) => [0, 1, 2].every(i => lo(p, i) >= lo(q, i) - E && hi(p, i) <= hi(q, i) + E);
-  if (inside(c, a)) return { pos: a.pos.slice(), taille: a.taille.slice() };
-  if (inside(a, c)) return { pos: c.pos.slice(), taille: c.taille.slice() };
+  if (inside(c, a)) return { pos: a0.pos.slice(), taille: a0.taille.slice() };
+  if (inside(a, c)) return { pos: c0.pos.slice(), taille: c0.taille.slice() };
   let d = -1;
   for (let i = 0; i < 3; i++) {
     if (Math.abs(lo(a, i) - lo(c, i)) < E && Math.abs(hi(a, i) - hi(c, i)) < E) continue;
@@ -8491,8 +8562,9 @@ function boxMerge(a, c) {
   }
   if (d < 0 || hi(a, d) < lo(c, d) - E || hi(c, d) < lo(a, d) - E) return null;
   const pos = a.pos.slice(), taille = a.taille.slice(), l = Math.min(lo(a, d), lo(c, d)), h = Math.max(hi(a, d), hi(c, d));
-  pos[d] = r3((l + h) / 2); taille[d] = r3(h - l);
-  return { pos, taille };
+  pos[d] = (l + h) / 2; taille[d] = r3(h - l);
+  if (M) { const [X, Y, Z] = M; return { pos: [0, 1, 2].map(i => r3(pos[0] * X[i] + pos[1] * Y[i] + pos[2] * Z[i])), taille }; }
+  return { pos: pos.map(r3), taille };
 }
 function mergeSel() {
   const list = ED.sel.filter(b => b.type === 'bloc');
