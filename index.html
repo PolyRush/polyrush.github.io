@@ -5266,7 +5266,7 @@ function recSwitch(o) {
 }
 function bumpUnlock(fromCloud) {
   let m = Math.max(unlockMax, +fromCloud || 0);
-  for (const k in records) { const n = lvlOfKey(k); if (n >= 1 && n <= 10 && records[k]) m = Math.max(m, n === 7 ? 9 : n + 1); }
+  for (const k in records) { const n = lvlOfKey(k); if (n >= 1 && n <= 10 && records[k]) m = Math.max(m, n === 7 ? 10 : n + 1); }
   m = Math.min(m, 11);
   const up = m > unlockMax; unlockMax = m;
   LS.set('polyrush.unl.' + recOwner, String(m));
@@ -5295,8 +5295,8 @@ function buildLevelGrid() {
   for (let i = 1; i <= 10; i++) {
     const b = document.createElement('button'), num = String(i).padStart(2, '0');
     b.style.setProperty('--i', i - 1);
-    // Un niveau s'ouvre quand le précédent est terminé ; les niveaux durs 8 et 9 s'ouvrent ensemble après le 7, le 10 après le 9.
-    if (getBuilder(i) && (i === 1 || records[recKey(i === 8 || i === 9 ? 7 : i - 1)] || unlockMax >= i)) {
+    // Un niveau s'ouvre quand le précédent est terminé ; les trois niveaux durs (8, 9 et 10) s'ouvrent ensemble après le 7.
+    if (getBuilder(i) && (i === 1 || records[recKey(i >= 8 ? 7 : i - 1)] || unlockMax >= i)) {
       const done = !!records[recKey(i)];
       b.className = 'tile open' + (i >= 8 ? ' hard' : '') + (done ? ' done' : ' next'); b.setAttribute('aria-label', 'Niveau ' + i + (i >= 8 ? ', difficile' : '') + (done ? ', terminé' : ''));
       b.innerHTML = `<span class="num">${num}</span><span class="corner">${done ? ICON_CHECK : i >= 8 ? ICON_FLAME : ICON_PLAY}</span><span class="best">${done ? fmtT(records[recKey(i)]) + ' s' : ''}</span>`;
@@ -9790,7 +9790,7 @@ function pfBody(c, p, D) {
       t.title = `Niveau ${n} : ${fmtT(ms)} s` + (pend ? ' · en cours de vérification, pas encore de points' : '');
     } else {
       // pas fini : ouvert pour lui (niveau 1, précédent fini, ou il a un temps plus loin) = tuile vide ; sinon verrouillé
-      const pms = p.ms || {}, open = !!getBuilder(n) && (n === 1 || pms[String(recKey(n === 8 || n === 9 ? 7 : n - 1))] || Object.keys(pms).some(x => lvlOfKey(x) > n));   // pas encore construit : verrouillé
+      const pms = p.ms || {}, open = !!getBuilder(n) && (n === 1 || pms[String(recKey(n >= 8 ? 7 : n - 1))] || Object.keys(pms).some(x => lvlOfKey(x) > n));   // pas encore construit : verrouillé
       if (!open) { t.classList.add('lock'); const lk = mkEl('span', 'lk'); lk.innerHTML = ICON_LOCK; t.appendChild(lk); }
     }
     g.appendChild(t);
