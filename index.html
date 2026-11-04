@@ -8067,7 +8067,7 @@ async function adminBan(uid) {
 }
 $('bBackLv').addEventListener('click', () => { if (!UI.busy) screenBack(); });
 $('bPlay').addEventListener('click', () => { if (PV) startLevel(PV.n); });
-$('bPts').addEventListener('click', () => { if (!UI.busy) acctOpen('points'); });
+$('bPts').addEventListener('click', () => { if (!UI.busy) { ACCT.ptsTab = 'lv'; acctOpen('points'); } });   // s'ouvre toujours sur « Niveaux »
 
 function resetRun() {
   sStopFin();
