@@ -9569,7 +9569,7 @@ function syncRecords(keys, cols, mine) {
 function ptsLevel(n) {
   const D = PTS.data; if (!D || !D.me) return null;
   if (+n === WEEKLY_N) return D.wkKey ? D.me.cur || 0 : null;
-  return D.me.lv[String(n)] || 0;
+  return D.me.lv[bkey(n)] || 0;   // les points sont rangés sous la clé du niveau (« 8n », « 9n », « 8 »…), pas son numéro
 }
 function countTo(el, from, to, dur) {
   if (reduced || from === to) { el.textContent = fmtPts(to); return; }
@@ -9630,7 +9630,7 @@ async function ptsRefresh(force) {
 function finPoints(n, ms, prev, better, tok) {
   const D = PTS.data; $('finGain').hidden = true;
   if (ED.test || !ACCT.on || !ACCT.user || !ACCT.pseudo || !boardOK(n) || !D || !D.me) return;
-  const k = +n === WEEKLY_N ? D.wkKey : String(n); if (!k) return;
+  const k = +n === WEEKLY_N ? D.wkKey : bkey(n); if (!k) return;
   const oldMs = D.mine[k] || 0, newMs = better ? ms : (oldMs || ms);
   if (D.me.hidden || (ACCT.bm && ACCT.bm.hidden.has(ACCT.user.uid))) { D.mine[k] = newMs; return; }   // compte masqué : ni tampon ni points
   const oldBest = D.best[k] || 0, newBest = Math.min(oldBest || Infinity, newMs);
