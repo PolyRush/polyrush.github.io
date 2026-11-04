@@ -21,7 +21,7 @@ const meta = id => db.collection('meta').doc(id);
 const [vs, wk] = await Promise.all([meta('verified').get(), meta('weekly').get()]);
 const V = (vs.exists && vs.data().v) || {};
 const wdoc = wk.exists && wk.data().id ? wk.data() : null;
-const keys = ['1', '2', '3', '4', '5', '6', '7', '8n', '8', '9', '10'];   // « 8n » : le nouveau niveau 8 ; « 8 » : l'ancien 8, devenu le 9
+const keys = ['1', '2', '3', '4', '5', '6', '7', '8n', '9n', '8', '9', '10'];   // « 8n » : le niveau 8 ; « 9n » : le niveau 9 (la tour) ; « 8 » : le niveau 10 (l'ancien 8, puis 9)
 if (wdoc) keys.push('w' + wdoc.id);
 
 const todo = [], live = new Set(), queued = new Set(), zeros = [];
