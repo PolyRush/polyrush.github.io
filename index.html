@@ -8134,6 +8134,20 @@ function adminPanel(n, r, bad) {
     await adminBan(r.uid); toast((r.pseudo || 'Joueur') + ' banni', 1500); pvBoard(n);
   });
   row.append(del); if (!self && isAdmin()) row.append(ban); box.appendChild(row);
+  // temps refusé (ou pas encore vérifié) par le serveur : l'admin peut le valider d'office (la vérification n'y touchera plus)
+  const sv = srvVerdict(bkey(n), r);
+  if (isAdmin() && sv !== 1) {
+    const ok = mkEl('button', 'ed-btn primary', sv === 0 ? 'Accepter ce temps (refusé)' : 'Accepter ce temps');
+    ok.addEventListener('click', async () => {
+      const id = bkey(n) + '|' + r.uid + '|' + r.ms + (r.at ? '|' + r.at : '');
+      try {
+        await ACCT.db.collection('meta').doc('verified').update(new firebase.firestore.FieldPath('v', id), 1);
+        toast('Temps de ' + (r.pseudo || '?') + ' accepté', 1500);
+        await srvVerdicts(true); pvBoard(n); await ptsRefresh(true); if (PV && PV.n === n) ptsPreview(n);
+      } catch (e) { console.warn(e); toast('Impossible de valider ce temps', 1600); }
+    });
+    const r2 = mkEl('div', 'acct-row'); r2.style.marginTop = '8px'; r2.appendChild(ok); box.appendChild(r2);
+  }
 }
 // La bande « Ton record » se comporte comme ta ligne au classement : bouton Replay, et un clic ouvre le panneau du temps
 // (admin : vérification du replay, « Effacer ce temps ») ; utile quand ta ligne n'est pas affichée

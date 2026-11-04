@@ -48,6 +48,8 @@ async function openPage() {
   await page.waitForFunction(() => typeof window.__polyCheck === 'function', null, { timeout: 60000 });
 }
 async function check(t) {
+  // l'admin a pu valider ce temps entre-temps (« Restaurer », « Accepter ce temps ») : sa décision passe avant tout
+  if (!REPORT) { const cur = await meta('verified').get(); const v = cur.exists && cur.data().v ? cur.data().v[t.id] : undefined; if (v === 1) { V[t.id] = 1; return 'done'; } }
   const g = await db.collection('ghosts').doc(t.k).collection('runs').doc(t.uid).get();
   const gd = g.exists ? g.data() : null;
   if (gd && gd.ms !== t.ms) return 'later';                          // replay en cours d'envoi : plus tard
@@ -60,7 +62,7 @@ async function check(t) {
     if (res.ng && res.ng.length) DET.push(`vide ${t.k}/${t.pseudo} → ${JSON.stringify(res.ng)}`);
     return 'done';
   }
-  V[t.id] = res.ok ? 1 : 0; dirty = true;
+  V[t.id] = res.ok ? 1 : 0; changed[t.id] = V[t.id]; dirty = true;
   if (res.ok) ok++;
   else {
     bad++; console.log(`::notice::Temps refusé et supprimé — niveau ${t.k}, ${t.pseudo}, ${t.ms} ms : ${res.bad.join(' · ')}`);
@@ -83,10 +85,14 @@ async function purge(t, why) {
   await Promise.all([runs('scores').delete(), runs('ghosts').delete()]);
   await meta('board').set({ cuts: { [t.uid]: { [t.k]: Date.now() } } }, { merge: true });
 }
+// On n'écrit que les verdicts que l'on vient de rendre (fusion) : une validation faite par l'admin pendant que la tâche
+// tourne n'est jamais écrasée par la copie gardée en mémoire.
+const changed = {};
 async function save() {
   if (!dirty || REPORT) return;
   dirty = false;
-  await meta('verified').set({ v: V, upd: Date.now() });
+  const v = { ...changed }; for (const id in v) delete changed[id];
+  await meta('verified').set({ v, upd: Date.now() }, { merge: true });
 }
 // la file : un temps à la fois ; un replay pas encore arrivé est réessayé un peu plus tard
 async function drain() {
@@ -132,7 +138,13 @@ if (REPORT) { console.log(`::notice::Rapport vitesse (${REP.length}) : ${REP.joi
 // on oublie les verdicts des temps qui ne sont plus au classement (sauf ceux des niveaux de la semaine : leurs points restent)
 const now = new Set();
 for (const k of keys) { const snap = await db.collection('scores').doc(k).collection('runs').get(); for (const d of snap.docs) now.add(`${k}|${d.id}|${d.data().ms}|${d.data().at || 0}`); }
-for (const id of Object.keys(V)) if (!now.has(id) && id[0] !== 'w') delete V[id];
-await meta('verified').set({ v: V, upd: Date.now() });
+// (relu juste avant : on ne retire que les verdicts périmés, sans toucher à ceux posés par l'admin entre-temps)
+const fresh = await meta('verified').get(), FV = fresh.exists && fresh.data().v ? fresh.data().v : {};
+const stale = Object.keys(FV).filter(id => !now.has(id) && id[0] !== 'w');
+for (let i = 0; i < stale.length; i += 200) {
+  const args = []; for (const id of stale.slice(i, i + 200)) args.push(new admin.firestore.FieldPath('v', id), admin.firestore.FieldValue.delete());
+  await meta('verified').update(...args);
+}
+await meta('verified').set({ upd: Date.now() }, { merge: true });
 console.log(`::notice::Vérifiés : ${ok} bons, ${bad} refusés, ${skip} remis à plus tard`);
 process.exit(0);
