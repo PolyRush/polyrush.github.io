@@ -2169,6 +2169,9 @@ function prismUnion(boxes, grow, out, withColor, E) {
 // semaine (merge = 2) : là, ils fusionnent aussi avec ce qu'ils touchent (voir prismUnion).
 // Niveaux de l'éditeur (pas les officiels, ni l'entraînement) : leurs blocs tournés pareil et collés se réunissent aussi
 let MERGE_TURNED = false;
+const PRISM_MAX = 1000;
+let PRISM_GUARD = true;   // faux au niveau de la semaine (il garde la fusion complète, comme avant)   // triangles au plus par bloc pour une fusion à angles mélangés (au-delà : blocs de même angle réunis seulement)
+const HEADLESS_CHECK = /[?&]autogen=1/.test(location.search);   // page ouverte par la vérification des temps
 function buildStatic(merge) {
   buildStaticSet(staticBoxes.filter(s => !s.noShadow), merge, true);
   const open = staticBoxes.filter(s => s.noShadow);
@@ -2193,6 +2196,11 @@ function buildStaticSet(list, merge, cast) {
   const turned = merge === 2 || (merge && MERGE_TURNED) ? list.filter(s => Math.abs(s.b.sn) >= 1e-6 && !s.b.tilt) : [];
   const tilted = merge && MERGE_TURNED ? list.filter(s => s.b.tilt) : [];
   const inTurned = new Set(turned);
+  const appendBuf = (src, dst) => {
+    const base = dst.pos.length / 3;
+    for (const k of ['pos', 'nrm', 'col', 'bid']) if (src[k] && dst[k]) for (const v of src[k]) dst[k].push(v);
+    if (src.idx && dst.idx) for (const v of src.idx) dst.idx.push(v + base);
+  };
   const single = merge ? list.filter(s => (s.b.tilt && !MERGE_TURNED) || (Math.abs(s.b.sn) >= 1e-6 && !s.b.tilt && !inTurned.has(s))) : list;
   const wput = (arr, b, x, y, z) => { const X = b.ax, Y = b.ay, Z = b.az; arr.push(b.c.x + x * X[0] + y * Y[0] + z * Z[0], b.c.y + x * X[1] + y * Y[1] + z * Z[1], b.c.z + x * X[2] + y * Y[2] + z * Z[2]); };
   const boxEdges = b => {
@@ -2223,16 +2231,6 @@ function buildStaticSet(list, merge, cast) {
     inFrame(th, F, E, (o, e) => { unionFaces(G0, rc, o, true); unionEdges(G0, rc, e); });
     inFrame(th, H, null, o => unionFaces(unionGrid(rc, OUT, tol), rc, o, false));
   };
-  // Blocs tournés : un groupe qui en contient passe par le découpage en trapèzes (tous les angles) ; un groupe
-  // tout droit garde la grille.
-  if (merge === 2) for (const comp of prismGroups(aligned.concat(turned))) {
-    const cy = commonYaw(comp);
-    if (comp.every(s => Math.abs(s.b.sn) < 1e-6)) gridUnion(comp);
-    else if (comp.length > 1 && cy !== null) gridUnion(comp, -cy);      // tous tournés pareil : grille exacte dans leur repère
-    else if (comp.length < 2 || (useComp(comp), !prismUnionAny(comp, 0, F, true, E))) for (const s of comp) addSingle(s);
-    else prismUnionAny(comp, OUT, H, false, null);
-  }
-  else for (const comp of touchGroups(aligned)) gridUnion(comp);
   // Blocs tournés exactement pareil (lacet seul, ou penchés) qui se touchent : un seul volume, calculé dans leur
   // repère commun (comme des blocs droits), puis remis dans le monde. Typiquement : des blocs collés, tournés ensemble.
   const sameFrame = arr => {
@@ -2253,6 +2251,28 @@ function buildStaticSet(list, merge, cast) {
       }
     }
   };
+  // Blocs tournés : un groupe qui en contient passe par le découpage en trapèzes (tous les angles) ; un groupe
+  // tout droit garde la grille.
+  if (merge === 2) for (const comp of prismGroups(aligned.concat(turned))) {
+    const cy = commonYaw(comp);
+    if (comp.every(s => Math.abs(s.b.sn) < 1e-6)) gridUnion(comp);
+    else if (comp.length > 1 && cy !== null) gridUnion(comp, -cy);      // tous tournés pareil : grille exacte dans leur repère
+    else if (comp.length < 2) addSingle(comp[0]);
+    else {
+      // Angles mélangés : découpage en trapèzes, d'abord à part. Garde-fou (pas au niveau de la semaine) : un très
+      // grand ensemble, ou un découpage qui éclate en une foule de morceaux, réunit seulement les blocs de même angle.
+      const fallback = () => {
+        for (const c of touchGroups(comp.filter(s => Math.abs(s.b.sn) < 1e-6))) gridUnion(c);
+        sameFrame(comp.filter(s => Math.abs(s.b.sn) >= 1e-6));
+      };
+      if (PRISM_GUARD && comp.length > 40) { fallback(); continue; }
+      const TF = { pos: [], nrm: [], col: [], bid: [], idx: [] }, TE = { pos: [], bid: [] };
+      const ok = prismUnionAny(comp, 0, TF, true, TE), tris = TF.idx.length / 3;
+      if (!ok || (PRISM_GUARD && tris > PRISM_MAX * comp.length)) fallback();
+      else { useComp(comp); appendBuf(TF, F); appendBuf(TE, E); prismUnionAny(comp, OUT, H, false, null); }
+    }
+  }
+  else for (const comp of touchGroups(aligned)) gridUnion(comp);
   if (merge === 2) sameFrame(tilted); else if (MERGE_TURNED) sameFrame(turned.concat(tilted));
   for (const s of aligned) if (s.seam) { use(s.b.c.x, s.b.c.z); boxEdges(s.b); }
   for (const s of turned.concat(tilted)) if (s.seam) { use(s.b.c.x, s.b.c.z); boxEdges(s.b); }
@@ -3560,7 +3580,8 @@ function weeklyFacing(blocs, sp, yBase) {
 }
 // Murs à fente : un bloc dont le bas est séparé d'un autre bloc juste en dessous par une fente de 0,15 à 1,6.
 function buildCustom(n, data, official) {
-  MERGE_TURNED = !official;   // niveaux faits à l'éditeur : leurs blocs tournés pareil et collés font un seul volume
+  MERGE_TURNED = true;   // niveaux faits à l'éditeur (officiels compris) : leurs blocs tournés et collés font un seul volume
+  PRISM_GUARD = n !== WEEKLY_N;
   const d = data || CUSTOM[n], Q = boxesOf(d.blocs), R = roomBox(d.salle), sol = d.fond === 'sol';
   KILL_Y = -30;
   const dep = Q.find(q => q.b.type === 'depart'), arr = Q.find(q => q.b.type === 'arrivee');
@@ -3720,8 +3741,9 @@ function loadMap(name) {
   KILL_Y = -30;
   MERGE_TURNED = false;
   const env = LEVEL ? getBuilder(LEVEL)() : buildTraining();
-  // le niveau de la semaine fusionne aussi ses blocs tournés (pas pendant sa vérification au robot : rien ne s'y voit)
-  buildStatic(LEVEL > 0 ? (LEVEL === WEEKLY_N && !WEEKLY_TRY ? 2 : 1) : 1);   // l'entraînement aussi : ses blocs collés font un seul volume resetKin(); worldTicks = 0;
+  // les niveaux faits à l'éditeur (officiels, perso, semaine) fusionnent aussi leurs blocs tournés, quel que soit l'angle
+  // (pas pendant la vérification au robot ni sur la page de vérification des temps : rien ne s'y voit)
+  buildStatic(LEVEL > 0 && MERGE_TURNED && !(LEVEL === WEEKLY_N && WEEKLY_TRY) && !HEADLESS_CHECK ? 2 : 1);   // l'entraînement aussi : ses blocs collés font un seul volume resetKin(); worldTicks = 0;
   setEnv(env);
   const w = W, ls = labels.slice();
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => { if (W === w) ls.forEach(d => d()); });
